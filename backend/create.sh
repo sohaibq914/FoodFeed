@@ -1,4 +1,6 @@
-python3 -m venv env
+python -m venv env
 source env/bin/activate
-python3 -m pip3 install flask
-python3 -m pip3 install supabase
+python -m pip install flask
+python -m pip install supabase
+python -m pip install flask-cors
+python -m pip install python-dotenv
