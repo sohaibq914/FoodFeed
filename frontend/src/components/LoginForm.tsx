@@ -1,5 +1,16 @@
 "use client";
 import { useState } from 'react';
+import { 
+  Container, 
+  Paper, 
+  TextInput, 
+  PasswordInput, 
+  Button, 
+  Title, 
+  Alert, 
+  Stack,
+  Center
+} from '@mantine/core';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginForm() {
@@ -24,72 +35,50 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign In
-          </h2>
-        </div>
-        <div className="bg-white py-8 px-6 shadow-lg rounded-lg">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="login" className="block text-sm font-medium text-gray-700 mb-2">
-                Email or Username
-              </label>
-              <input
-                type="text"
-                id="login"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-                required
-                placeholder="Enter your email or username"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+    <Container size="xs" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+      <Paper shadow="lg" p="xl" radius="md" style={{ width: '100%' }}>
+        <Center mb="xl">
+          <Title order={2}>Sign In</Title>
+        </Center>
+        
+        <form onSubmit={handleSubmit}>
+          <Stack gap="md">
+            <TextInput
+              label="Email or Username"
+              placeholder="Enter your email or username"
+              value={login}
+              onChange={(e) => setLogin(e.currentTarget.value)}
+              required
+              size="md"
+            />
             
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Enter your password"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+            <PasswordInput
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.currentTarget.value)}
+              required
+              size="md"
+            />
             
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+              <Alert color="red" variant="filled">
                 {error}
-              </div>
+              </Alert>
             )}
             
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-              }`}
+              loading={loading}
+              size="md"
+              fullWidth
+              mt="md"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing In...
-                </div>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+              {loading ? 'Signing In...' : 'Sign In'}
+            </Button>
+          </Stack>
+        </form>
+      </Paper>
+    </Container>
   );
 }

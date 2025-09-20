@@ -3,6 +3,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { 
+  Container, 
+  Paper, 
+  Title, 
+  Button, 
+  Group, 
+  Text, 
+  Center, 
+  Loader,
+  AppShell
+} from '@mantine/core';
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -16,12 +27,14 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
+      <Container size="lg" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+        <Center style={{ width: '100%' }}>
+          <div style={{ textAlign: 'center' }}>
+            <Loader size="lg" />
+            <Text mt="md" c="dimmed">Loading...</Text>
+          </div>
+        </Center>
+      </Container>
     );
   }
 
@@ -30,38 +43,44 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-blue-600">FoodFeed</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/login"
-                className="text-gray-700 hover:text-gray-900 transition-colors duration-200"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div style={{ minHeight: '100vh' }}>
+      <AppShell
+        header={{ height: 70 }}
+        padding="md"
+      >
+        <AppShell.Header>
+          <Container size="xl" h="100%">
+            <Group justify="space-between" h="100%" align="center">
+              <Title order={1} c="blue">FoodFeed</Title>
+              <Group>
+                <Button 
+                  component={Link} 
+                  href="/login" 
+                  variant="subtle"
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  component={Link} 
+                  href="/register"
+                >
+                  Sign Up
+                </Button>
+              </Group>
+            </Group>
+          </Container>
+        </AppShell.Header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center bg-white rounded-lg shadow-sm border p-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Welcome to FoodFeed
-          </h2>
-        </div>
-      </div>
+        <AppShell.Main>
+          <Container size="lg" py="xl">
+            <Paper shadow="sm" p="xl" radius="md">
+              <Center>
+                <Title order={2}>Welcome to FoodFeed</Title>
+              </Center>
+            </Paper>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
     </div>
   );
 }

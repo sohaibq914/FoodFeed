@@ -1,18 +1,19 @@
 import LoginForm from '@/components/LoginForm';
 import Link from 'next/link';
+import { Container, Text, Anchor } from '@mantine/core';
 
 export default function LoginPage() {
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       <LoginForm />
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-        <p className="text-sm text-gray-600">
+      <Container size="xs" style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)' }}>
+        <Text ta="center" c="dimmed" size="sm">
           Don't have an account?{' '}
-          <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+          <Anchor component={Link} href="/register" c="blue">
             Sign up here
-          </Link>
-        </p>
-      </div>
+          </Anchor>
+        </Text>
+      </Container>
     </div>
   );
 }

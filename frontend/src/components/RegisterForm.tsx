@@ -1,5 +1,16 @@
 "use client";
 import { useState } from 'react';
+import { 
+  Container, 
+  Paper, 
+  TextInput, 
+  PasswordInput, 
+  Button, 
+  Title, 
+  Alert, 
+  Stack,
+  Center
+} from '@mantine/core';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function RegisterForm() {
@@ -38,106 +49,70 @@ export default function RegisterForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Register Account
-          </h2>
-        </div>
-        <div className="bg-white py-8 px-6 shadow-lg rounded-lg">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="Enter your email"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+    <Container size="xs" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+      <Paper shadow="lg" p="xl" radius="md" style={{ width: '100%' }}>
+        <Center mb="xl">
+          <Title order={2}>Register Account</Title>
+        </Center>
+        
+        <form onSubmit={handleSubmit}>
+          <Stack gap="md">
+            <TextInput
+              label="Email"
+              placeholder="Enter your email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.currentTarget.value)}
+              required
+              size="md"
+            />
 
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
-              <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                minLength={3}
-                placeholder="Choose a username"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+            <TextInput
+              label="Username"
+              placeholder="Choose a username"
+              value={username}
+              onChange={(e) => setUsername(e.currentTarget.value)}
+              required
+              minLength={3}
+              size="md"
+            />
             
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                placeholder="Enter your password"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+            <PasswordInput
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.currentTarget.value)}
+              required
+              size="md"
+            />
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                minLength={6}
-                placeholder="Confirm your password"
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-              />
-            </div>
+            <PasswordInput
+              label="Confirm Password"
+              placeholder="Confirm your password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.currentTarget.value)}
+              required
+              size="md"
+            />
             
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+              <Alert color="red" variant="filled">
                 {error}
-              </div>
+              </Alert>
             )}
             
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white ${
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-              }`}
+              loading={loading}
+              size="md"
+              fullWidth
+              mt="md"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                'Sign Up'
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </Button>
+          </Stack>
+        </form>
+      </Paper>
+    </Container>
   );
 }
