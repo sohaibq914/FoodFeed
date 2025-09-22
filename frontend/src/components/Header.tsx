@@ -23,7 +23,17 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%" align="center">
           <Group>
-            <Title order={1} c="blue">FoodFeed</Title>
+            <Link 
+              href="/dashboard" 
+              style={{ 
+                textDecoration: 'none',
+                color: 'inherit'
+              }}
+            >
+              <Title order={1} c="blue">
+                FoodFeed
+              </Title>
+            </Link>
           </Group>
           <Group>
             <Text c="dimmed">@{user?.username}</Text>
