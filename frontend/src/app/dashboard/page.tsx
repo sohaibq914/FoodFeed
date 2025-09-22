@@ -5,16 +5,15 @@ import { useEffect } from "react";
 import { 
   Container, 
   Title, 
-  Button, 
-  Group, 
   Text, 
   Center, 
   Loader,
   AppShell
 } from '@mantine/core';
+import Header from '@/components/Header';
 
 export default function Dashboard() {
-  const { user, signOut, loading } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -44,24 +43,7 @@ export default function Dashboard() {
         header={{ height: 70 }}
         padding="md"
       >
-        <AppShell.Header>
-          <Container size="xl" h="100%">
-            <Group justify="space-between" h="100%" align="center">
-              <Title order={1} c="blue">FoodFeed</Title>
-              <Group>
-                <Text c="dimmed">@{user.username}</Text>
-                <Button
-                  onClick={signOut}
-                  color="red"
-                  variant="filled"
-                >
-                  Logout
-                </Button>
-              </Group>
-            </Group>
-          </Container>
-        </AppShell.Header>
-
+        <Header showSettingsButton={true} showBackButton={false} />
         <AppShell.Main>
           <Container size="lg" py="xl">
             <Title order={2}>Welcome to your Dashboard!</Title>
