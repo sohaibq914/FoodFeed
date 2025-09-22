@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (storedUser) {
           const userData = JSON.parse(storedUser);
           
-          const response = await fetch('http://localhost:5000/verify-session', {
+          const response = await fetch('http://localhost:5001/verify-session', { //note the port number -andrew
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      const response = await fetch('http://localhost:5000/register', {
+      const response = await fetch('http://localhost:5001/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (login: string, password: string) => {
     try {
-      const response = await fetch('http://localhost:5000/login', {
+      const response = await fetch('http://localhost:5001/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      await fetch('http://localhost:5000/logout', {
+      await fetch('http://localhost:5001/logout', {
         method: 'POST',
       });
     } catch (error) {
