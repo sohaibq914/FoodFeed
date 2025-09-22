@@ -98,3 +98,31 @@ def sign_out_user():
     except Exception as e:
         print(f"Error in sign_out_user: {str(e)}")
         return {"error": str(e)}
+
+def change_user_password(email: str, current_password: str, new_password: str):
+    try:
+        print(f"Attempting to change password for user: {email}")
+        
+        sign_in_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": current_password
+        })
+        
+        if not sign_in_response.user:
+            return {"error": "Current password is incorrect"}
+        
+        update_response = supabase.auth.update_user({
+            "password": new_password
+        })
+        
+        print(f"Password change response: {update_response}")
+        
+        if update_response.user:
+            supabase.auth.sign_out()
+            return {"message": "Password changed successfully"}
+        else:
+            return {"error": "Failed to change password"}
+            
+    except Exception as e:
+        print(f"Error in change_user_password: {str(e)}")
+        return {"error": str(e)}
