@@ -1,14 +1,7 @@
 import Link from "next/link";
-import { 
-  Container, 
-  Title, 
-  Button, 
-  Group, 
-  Text,
-  AppShell
-} from '@mantine/core';
-import { IconSettings } from '@tabler/icons-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Container, Title, Button, Group, Text, AppShell } from "@mantine/core";
+import { IconSettings, IconUsers } from "@tabler/icons-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
   showBackButton?: boolean;
@@ -23,11 +16,11 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%" align="center">
           <Group>
-            <Link 
-              href="/dashboard" 
-              style={{ 
-                textDecoration: 'none',
-                color: 'inherit'
+            <Link
+              href="/dashboard"
+              style={{
+                textDecoration: "none",
+                color: "inherit",
               }}
             >
               <Title order={1} c="blue">
@@ -36,22 +29,16 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
             </Link>
           </Group>
           <Group>
-            <Text c="dimmed">@{user?.username}</Text>
+            {/* <Text c="dimmed">@{user?.username}</Text> */}
+            <Button component={Link} href="/community" variant="light" leftSection={<IconUsers size={16} />}>
+              Community
+            </Button>
             {showSettingsButton && (
-              <Button
-                component={Link}
-                href="/account-settings"
-                variant="light"
-                leftSection={<IconSettings size={16} />}
-              >
+              <Button component={Link} href="/account-settings" variant="light" leftSection={<IconSettings size={16} />}>
                 Account Settings
               </Button>
             )}
-            <Button
-              onClick={signOut}
-              color="red"
-              variant="filled"
-            >
+            <Button onClick={signOut} color="red" variant="filled">
               Logout
             </Button>
           </Group>
