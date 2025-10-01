@@ -1,21 +1,17 @@
 import Link from "next/link";
-import { 
-  Container, 
-  Title, 
-  Button, 
-  Group, 
-  Text,
-  AppShell
-} from '@mantine/core';
-import { IconSettings } from '@tabler/icons-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Container, Title, Button, Group, Text, AppShell } from "@mantine/core";
+import { IconSettings } from "@tabler/icons-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
   showBackButton?: boolean;
   showSettingsButton?: boolean;
 }
 
-export default function CommonHeader({ showBackButton = false, showSettingsButton = true }: CommonHeaderProps) {
+export default function CommonHeader({
+  showBackButton = false,
+  showSettingsButton = true,
+}: CommonHeaderProps) {
   const { user, signOut } = useAuth();
 
   return (
@@ -23,11 +19,11 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%" align="center">
           <Group>
-            <Link 
-              href="/dashboard" 
-              style={{ 
-                textDecoration: 'none',
-                color: 'inherit'
+            <Link
+              href="/dashboard"
+              style={{
+                textDecoration: "none",
+                color: "inherit",
               }}
             >
               <Title order={1} c="blue">
@@ -36,7 +32,16 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
             </Link>
           </Group>
           <Group>
-            <Text c="dimmed">@{user?.username}</Text>
+            {user?.username && (
+              <Button
+                component={Link}
+                href={`/${user.username}`}
+                variant="subtle"
+                color="gray"
+              >
+                @{user.username}
+              </Button>
+            )}
             {showSettingsButton && (
               <Button
                 component={Link}
@@ -47,11 +52,7 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
                 Account Settings
               </Button>
             )}
-            <Button
-              onClick={signOut}
-              color="red"
-              variant="filled"
-            >
+            <Button onClick={signOut} color="red" variant="filled">
               Logout
             </Button>
           </Group>
