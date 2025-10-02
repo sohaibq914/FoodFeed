@@ -108,4 +108,9 @@ def add_restrictions(csv_file):
                     'restriction_id': restr_id
                 }) \
                 .execute()
-        
+
+if __name__ == '__main__':
+    update_names('update_food_names.csv')
+    insert_food_items('food_items')
+    insert_nutrients('nutrients.csv')
+    add_restrictions('food_to_restr.csv')

@@ -17,7 +17,7 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-def get_meal_templates(user_id):
+def get_user_meal_templates(user_id):
     try: 
         res = supabase.table('meal_templates') \
             .select('*') \
@@ -32,12 +32,7 @@ def get_meal_templates(user_id):
     
 def add_meal_template(user_id, name, calories):
     try: 
-        res = supabase.table('meal_templates') \
-            .select('*') \
-            .eq('owner_id', user_id) \
-            .eq('name', name) \
-            .execute()
-        if len(res['data']) != 0:
+        if has_meal_name(user_id, name):
             return False
         res = supabase.table('meal_templates') \
             .insert({
@@ -63,14 +58,10 @@ def has_meal_name(user_id, name):
     
 def update_meal_template(user_id, old_name, new_name, calories):
     try: 
-        res = supabase.table('meal_templates') \
-            .select('*') \
-            .eq('owner_id', user_id) \
-            .eq('name', old_name) \
-            .execute()
-        if len(res['data']) != 1:
-            return False
-        res = supabase.table('meal_templates') \
+        if old_name != new_name:
+            if not has_meal_name(user_id, old_name) or has_meal_name(user_id, new_name):
+                return False
+        supabase.table('meal_templates') \
             .update({
                 'name': new_name,
                 'calories': calories
@@ -82,16 +73,11 @@ def update_meal_template(user_id, old_name, new_name, calories):
     except:
         return False
     
-def delete_meal_template(user_id, name):
+def delete_meal_template_of_user(user_id, name):
     try: 
-        res = supabase.table('meal_templates') \
-            .select('*') \
-            .eq('owner_id', user_id) \
-            .eq('name', name) \
-            .execute()
-        if len(res['data']) != 0:
+        if not has_meal_name(name):
             return False
-        res = supabase.table('meal_templates') \
+        supabase.table('meal_templates') \
             .delete() \
             .eq('owner_id', user_id) \
             .eq('name', name) \
@@ -103,9 +89,9 @@ def delete_meal_template(user_id, name):
 def add_meal(user_id, name, calories, ate_at):
     try: 
         now = datetime.now().isoformat()
-        if now - ate_at < 0:
-            return False
-        supabase.table('meal_templates') \
+        if datetime.fromisoformat(now) - datetime.fromisoformat(ate_at) < 0:
+            return None
+        res = supabase.table('meal_templates') \
             .insert({
                 'owner': user_id,
                 'name': name,
@@ -113,9 +99,9 @@ def add_meal(user_id, name, calories, ate_at):
                 'ate_at': ate_at
             }) \
             .execute()
-        return True
+        return res['data'][0]['id']
     except:
-        return False  
+        return None  
     
 def delete_meal(meal_id):
     try: 
@@ -123,7 +109,7 @@ def delete_meal(meal_id):
             .select("*") \
             .eq('id', meal_id) \
             .execute()
-        if res['data'][0]['ate_at'] > (datetime(hour=24) + datetime.now()).isoformat():
+        if datetime.fromisoformat(res['data'][0]['ate_at']) > (datetime(hour=24) + datetime.now()):
             return False
         supabase.table('meal_templates') \
             .delete() \

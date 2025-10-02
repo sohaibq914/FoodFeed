@@ -30,12 +30,13 @@ def get_food_items(type):
         return [FoodItem('', '', '')]
     
     
-def add_user_nutrient(user_id, nutrient_id):
+def add_user_nutrient(user_id, nutrient_id, amount):
     try: 
         supabase.table('user_has_nutrient') \
             .insert({
                 'user_id': user_id,
-                'nutr_id': nutrient_id
+                'nutr_id': nutrient_id,
+                'amount': amount
             }) \
             .execute()
     except Exception as e:
