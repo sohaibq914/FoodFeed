@@ -2,7 +2,7 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
-import { Container, Title, Center, Loader, Text, AppShell, Paper, Stack, Group, Avatar, TextInput, ActionIcon, ScrollArea, Box, Flex, UnstyledButton, Button } from "@mantine/core";
+import { Container, Title, Center, Loader, Text, AppShell, Paper, Stack, Group, Avatar, TextInput, ActionIcon, ScrollArea, Box, Flex, UnstyledButton } from "@mantine/core";
 import { IconSend, IconUser } from "@tabler/icons-react";
 import Header from "@/components/Header";
 
@@ -16,6 +16,8 @@ interface Message {
 
 interface Conversation {
   user_id: string;
+  username: string;
+  email: string;
   last_message: string;
   timestamp: string;
 }
@@ -26,7 +28,7 @@ export default function Community() {
 
   // State management
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -45,11 +47,14 @@ export default function Community() {
 
   // API helper function
   const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-    const session = await user?.getSession();
-    const response = await fetch(`/api${endpoint}`, {
+    if (!user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    const response = await fetch(`http://localhost:5001${endpoint}`, {
       ...options,
       headers: {
-        Authorization: `Bearer ${session?.access_token}`,
+        "X-User-ID": user.id,
         "Content-Type": "application/json",
         ...options.headers,
       },
@@ -66,7 +71,10 @@ export default function Community() {
   // Load conversations
   const loadConversations = async () => {
     try {
+      console.log("Loading conversations...");
+      console.log("User object:", user);
       const response = await apiCall("/messages/conversations");
+      console.log("Conversations response:", response);
       setConversations(response.conversations || []);
     } catch (error) {
       console.error("Error loading conversations:", error);
@@ -103,14 +111,14 @@ export default function Community() {
       await apiCall("/messages/send", {
         method: "POST",
         body: JSON.stringify({
-          receiver_id: selectedConversation,
+          receiver_id: selectedConversation.user_id,
           content: newMessage.trim(),
         }),
       });
 
       setNewMessage("");
       // Reload messages and conversations
-      await loadMessages(selectedConversation);
+      await loadMessages(selectedConversation.user_id);
       await loadConversations();
     } catch (error) {
       console.error("Error sending message:", error);
@@ -145,13 +153,9 @@ export default function Community() {
     return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  // Simple function to start a conversation (you can enhance this later)
-  const startNewConversation = () => {
-    const otherUserId = prompt("Enter user ID to message:");
-    if (otherUserId) {
-      setSelectedConversation(otherUserId);
-      loadMessages(otherUserId);
-    }
+  // Get avatar initials
+  const getInitials = (username: string) => {
+    return username.slice(0, 2).toUpperCase();
   };
 
   if (loading) {
@@ -183,12 +187,10 @@ export default function Community() {
                 <Stack gap={0} h="100%">
                   {/* Header */}
                   <Box p="md" style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
-                    <Group justify="space-between">
-                      <Title order={4}>Messages</Title>
-                      <Button size="xs" onClick={startNewConversation}>
-                        New Chat
-                      </Button>
-                    </Group>
+                    <Title order={4}>Messages</Title>
+                    <Text size="xs" c="dimmed" mt={4}>
+                      {conversations.length} user{conversations.length !== 1 ? "s" : ""} available
+                    </Text>
                   </Box>
 
                   {/* Conversations List */}
@@ -202,11 +204,8 @@ export default function Community() {
                         <Stack align="center" gap="sm">
                           <IconUser size={48} color="gray" />
                           <Text c="dimmed" size="sm" ta="center">
-                            No messages yet
+                            No other users found
                           </Text>
-                          <Button size="sm" variant="light" onClick={startNewConversation}>
-                            Start a conversation
-                          </Button>
                         </Stack>
                       </Center>
                     ) : (
@@ -216,29 +215,31 @@ export default function Community() {
                           w="100%"
                           p="md"
                           style={{
-                            backgroundColor: selectedConversation === conversation.user_id ? "var(--mantine-color-blue-0)" : undefined,
+                            backgroundColor: selectedConversation?.user_id === conversation.user_id ? "var(--mantine-color-blue-0)" : undefined,
                             borderBottom: "1px solid var(--mantine-color-gray-1)",
                           }}
                           onClick={() => {
-                            setSelectedConversation(conversation.user_id);
+                            setSelectedConversation(conversation);
                             loadMessages(conversation.user_id);
                           }}
                         >
                           <Group gap="sm" wrap="nowrap">
-                            <Avatar size="md" radius="xl">
-                              {conversation.user_id.slice(0, 2).toUpperCase()}
+                            <Avatar size="md" radius="xl" color="blue">
+                              {getInitials(conversation.username)}
                             </Avatar>
                             <Box flex={1} style={{ minWidth: 0 }}>
                               <Text fw={500} size="sm" truncate>
-                                User {conversation.user_id.slice(0, 8)}
+                                {conversation.username}
                               </Text>
                               <Text size="xs" c="dimmed" truncate>
                                 {conversation.last_message}
                               </Text>
                             </Box>
-                            <Text size="xs" c="dimmed">
-                              {formatTimestamp(conversation.timestamp)}
-                            </Text>
+                            {conversation.last_message !== "No messages yet" && (
+                              <Text size="xs" c="dimmed">
+                                {formatTimestamp(conversation.timestamp)}
+                              </Text>
+                            )}
                           </Group>
                         </UnstyledButton>
                       ))
@@ -254,12 +255,17 @@ export default function Community() {
                     {/* Chat Header */}
                     <Box p="md" style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
                       <Group gap="sm">
-                        <Avatar size="sm" radius="xl">
-                          {selectedConversation.slice(0, 2).toUpperCase()}
+                        <Avatar size="sm" radius="xl" color="blue">
+                          {getInitials(selectedConversation.username)}
                         </Avatar>
-                        <Text fw={500} size="sm">
-                          User {selectedConversation.slice(0, 8)}
-                        </Text>
+                        <div>
+                          <Text fw={500} size="sm">
+                            {selectedConversation.username}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {selectedConversation.email}
+                          </Text>
+                        </div>
                       </Group>
                     </Box>
 
@@ -271,9 +277,11 @@ export default function Community() {
                         </Center>
                       ) : messages.length === 0 ? (
                         <Center h="100%">
-                          <Text c="dimmed" size="sm">
-                            No messages yet. Start the conversation!
-                          </Text>
+                          <Stack align="center" gap="sm">
+                            <Text c="dimmed" size="sm">
+                              No messages yet. Start the conversation!
+                            </Text>
+                          </Stack>
                         </Center>
                       ) : (
                         <Stack gap="sm">
@@ -320,7 +328,7 @@ export default function Community() {
                     <Stack align="center" gap="sm">
                       <IconUser size={64} color="gray" />
                       <Text c="dimmed" size="lg">
-                        Select a conversation to start messaging
+                        Select a user to start messaging
                       </Text>
                     </Stack>
                   </Center>

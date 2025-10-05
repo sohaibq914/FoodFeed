@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Container, Title, Button, Group, Text, AppShell } from "@mantine/core";
-import { IconSettings, IconUsers } from "@tabler/icons-react";
+import { IconSettings, IconUsers, IconMessage } from "@tabler/icons-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
@@ -32,6 +32,9 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
             {/* <Text c="dimmed">@{user?.username}</Text> */}
             <Button component={Link} href="/community" variant="light" leftSection={<IconUsers size={16} />}>
               Community
+            </Button>
+            <Button component={Link} href="/messages" variant="light" leftSection={<IconMessage size={16} />}>
+              Messages
             </Button>
             {showSettingsButton && (
               <Button component={Link} href="/account-settings" variant="light" leftSection={<IconSettings size={16} />}>
