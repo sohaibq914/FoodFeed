@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from supabase_backend import sign_up_user, sign_in_user, sign_out_user
+from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password
 import os
 from dotenv import load_dotenv
 
@@ -115,5 +115,30 @@ def logout():
         print(f"Logout exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@app.route("/change-password", methods=["POST"])
+def change_password():
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        current_password = data.get("currentPassword")
+        new_password = data.get("newPassword")
+        
+        if not email or not current_password or not new_password:
+            return jsonify({"error": "Email, current password, and new password are required"}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters long"}), 400
+        
+        result = change_user_password(email, current_password, new_password)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        
+        return jsonify({"message": "Password changed successfully"}), 200
+        
+    except Exception as e:
+        print(f"Change password exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True, port=5001)

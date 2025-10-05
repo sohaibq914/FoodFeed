@@ -16,7 +16,7 @@ import {
   Stack,
   Divider
 } from '@mantine/core';
-import { IconArrowLeft, IconUser, IconMail } from '@tabler/icons-react';
+import { IconArrowLeft, IconUser, IconMail, IconKey } from '@tabler/icons-react';
 import Header from '@/components/Header';
 
 export default function AccountSettings() {
@@ -76,6 +76,18 @@ export default function AccountSettings() {
                 </div>
 
                 <Divider />
+
+                <Button
+                  component={Link}
+                  href="/change-password"
+                  variant="outline"
+                  leftSection={<IconKey size={16} />}
+                  fullWidth
+                  size="md"
+                  color="orange"
+                >
+                  Change Password
+                </Button>
 
                 <Button
                   component={Link}
