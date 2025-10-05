@@ -30,9 +30,6 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
           </Group>
           <Group>
             {/* <Text c="dimmed">@{user?.username}</Text> */}
-            <Button component={Link} href="/community" variant="light" leftSection={<IconUsers size={16} />}>
-              Community
-            </Button>
             <Button component={Link} href="/messages" variant="light" leftSection={<IconMessage size={16} />}>
               Messages
             </Button>
