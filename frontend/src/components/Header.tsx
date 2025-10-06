@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Container, Title, Button, Group, Text, AppShell } from "@mantine/core";
+
 import { IconSettings, IconUsers, IconMessage } from "@tabler/icons-react";
+
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
@@ -8,7 +10,10 @@ interface CommonHeaderProps {
   showSettingsButton?: boolean;
 }
 
-export default function CommonHeader({ showBackButton = false, showSettingsButton = true }: CommonHeaderProps) {
+export default function CommonHeader({
+  showBackButton = false,
+  showSettingsButton = true,
+}: CommonHeaderProps) {
   const { user, signOut } = useAuth();
 
   return (
@@ -29,10 +34,23 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
             </Link>
           </Group>
           <Group>
+
+            {user?.username && (
+              <Button
+                component={Link}
+                href={`/${user.username}`}
+                variant="subtle"
+                color="gray"
+              >
+                @{user.username}
+              </Button>
+            )}
+
             {/* <Text c="dimmed">@{user?.username}</Text> */}
             <Button component={Link} href="/messages" variant="light" leftSection={<IconMessage size={16} />}>
               Messages
             </Button>
+
             {showSettingsButton && (
               <Button component={Link} href="/account-settings" variant="light" leftSection={<IconSettings size={16} />}>
                 Account Settings
