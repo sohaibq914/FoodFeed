@@ -36,6 +36,14 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
             </Link>
           </Group>
           <Group>
+            <Button
+                component={Link}
+                href="/diet-page"
+                variant="light"
+                leftSection={<IconSettings size={16} />}
+              >
+                Diet Page
+              </Button>
             <Text c="dimmed">@{user?.username}</Text>
             {showSettingsButton && (
               <Button

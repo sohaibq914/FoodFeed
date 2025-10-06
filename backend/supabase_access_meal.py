@@ -1,5 +1,5 @@
 import os
-from supabase import create_client, Client, time
+from supabase import create_client, Client
 from dotenv import load_dotenv
 from storage_objs import Meal, MealTemplate
 from datetime import datetime
@@ -19,22 +19,25 @@ supabase: Client = create_client(url, key)
 
 def get_user_meal_templates(user_id):
     try: 
-        res = supabase.table('meal_templates') \
+        print('Executing on id ' + user_id) 
+        res = supabase.table('meal_template') \
             .select('*') \
             .eq('owner', user_id) \
             .execute()
         templates = []
-        for row in res['data']:
+        print(res)
+        for row in res.data:
             templates.append(MealTemplate(row['name'], row['calories']))
         return templates
-    except:
-        return [MealTemplate('', 0)]
+    except Exception as e:
+        print("Template error: " + str(e))
+        return []
     
 def add_meal_template(user_id, name, calories):
     try: 
         if has_meal_name(user_id, name):
             return False
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal_template') \
             .insert({
                 'owner_id': user_id,
                 'name': name,
@@ -47,12 +50,12 @@ def add_meal_template(user_id, name, calories):
     
 def has_meal_name(user_id, name):
     try: 
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal_template') \
             .select('*') \
             .eq('owner_id', user_id) \
             .eq('name', name) \
             .execute()
-        return len(res['data']) != 0
+        return len(res.data) != 0
     except:
         return False
     
@@ -61,7 +64,7 @@ def update_meal_template(user_id, old_name, new_name, calories):
         if old_name != new_name:
             if not has_meal_name(user_id, old_name) or has_meal_name(user_id, new_name):
                 return False
-        supabase.table('meal_templates') \
+        supabase.table('meal_template') \
             .update({
                 'name': new_name,
                 'calories': calories
@@ -77,7 +80,7 @@ def delete_meal_template_of_user(user_id, name):
     try: 
         if not has_meal_name(name):
             return False
-        supabase.table('meal_templates') \
+        supabase.table('meal_template') \
             .delete() \
             .eq('owner_id', user_id) \
             .eq('name', name) \
@@ -91,7 +94,7 @@ def add_meal(user_id, name, calories, ate_at):
         now = datetime.now().isoformat()
         if datetime.fromisoformat(now) - datetime.fromisoformat(ate_at) < 0:
             return None
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal') \
             .insert({
                 'owner': user_id,
                 'name': name,
@@ -99,19 +102,19 @@ def add_meal(user_id, name, calories, ate_at):
                 'ate_at': ate_at
             }) \
             .execute()
-        return res['data'][0]['id']
+        return res.data[0]['id']
     except:
         return None  
     
 def delete_meal(meal_id):
     try: 
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal') \
             .select("*") \
             .eq('id', meal_id) \
             .execute()
-        if datetime.fromisoformat(res['data'][0]['ate_at']) > (datetime(hour=24) + datetime.now()):
+        if datetime.fromisoformat(res.data[0]['ate_at']) > (datetime(hour=24) + datetime.now()):
             return False
-        supabase.table('meal_templates') \
+        supabase.table('meal') \
             .delete() \
             .eq('id', meal_id) \
             .execute()
@@ -119,29 +122,30 @@ def delete_meal(meal_id):
     except:
         return False  
     
-def get_meals(user_id):
+def get_all_user_meals(user_id):
     try: 
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal') \
             .select('*') \
             .eq('owner', user_id) \
             .execute()
         meals = []
-        for row in res['data']:
+        for row in res.data:
             meals.append(Meal(row['id'], row['name'], row['calories'], row['ate_at']))
         return meals
-    except:
-        return [Meal('', 0, datetime.now().isoformat())]    
+    except Exception as e:
+        print("Failed: " + str(e))
+        return []    
     
 def get_meals(user_id, start, end):
     try: 
-        res = supabase.table('meal_templates') \
+        res = supabase.table('meal') \
             .select('*') \
             .eq('owner', user_id) \
             .gte('ate_at', start) \
             .lte('ate_at', end) \
             .execute()
         meals = []
-        for row in res['data']:
+        for row in res.data:
             meals.append(Meal(row['id'], row['name'], row['calories'], row['ate_at']))
         return meals
     except:

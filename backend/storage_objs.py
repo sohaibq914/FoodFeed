@@ -34,7 +34,7 @@ class NutrientItem:
     
 class Meal:
     def __init__(self, id, name, calories, time):
-        self.id, id
+        self.id = id
         self.name = name
         self.calories = calories
         self.time = time

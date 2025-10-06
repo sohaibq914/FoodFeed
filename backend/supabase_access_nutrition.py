@@ -21,12 +21,13 @@ def get_food_items(type):
         items = []
         res = supabase.table('food_item').select('*')\
             .eq("type", type).execute()
-        for row in res['data']:
+        for row in res.data:
             items.append(
                 FoodItem(row['id'], row['name'], row['description'])
             )
         return items
     except Exception as e:
+        print("Food Items: " + str(e))
         return [FoodItem('', '', '')]
     
     
@@ -69,13 +70,13 @@ def get_nutrients(user_id):
             .eq('user_id', user_id) \
             .execute()
         selected_nutrients = {}
-        for row in res['data']:
+        for row in res.data:
             selected_nutrients[row['nutr_id']] = row['amount']
         res = supabase.table('nutrients') \
             .select('*') \
             .execute()
         given_nutrients = []
-        for row in res['data']:
+        for row in res.data:
             given_nutrients.append(
                 NutrientItem(row['id'],
                     row['name'],
@@ -83,8 +84,10 @@ def get_nutrients(user_id):
                     selected_nutrients[row['id']],
                     row['id'] in selected_nutrients)
             )
+        return given_nutrients
     except Exception as e:
-        return [NutrientItem('', '', '', 0, False)]
+        print("Nutrient Exception: " + str(e))
+        return []
 
 def get_foods_with_nutrient(nutr_id):
     try:
@@ -93,7 +96,7 @@ def get_foods_with_nutrient(nutr_id):
             .eq('nutrient_id', nutr_id) \
             .execute()
         foods = []
-        for row in res['data']:
+        for row in res.data:
             info = supabase.table('food_item') \
                 .select('*') \
                 .eq('id', row['food_id']) \
@@ -113,11 +116,12 @@ def get_user_restriction_ids(user_id):
             .eq('user_id', user_id) \
             .execute()
         restriction_ids = []
-        for row in res['data']:
+        for row in res.data:
             restriction_ids.append(row['restr_id'])
         return restriction_ids
     except Exception as e:
-        return ["Failed"]
+        print("Restrictions: " + str(e))
+        return []
 
 def get_user_restrictions(user_id):
     try:
@@ -143,7 +147,7 @@ def get_elligble_foods(user_id, foods):
                 .select('*') \
                 .eq('restriction_id', restr_id) \
                 .execute()
-            for row in res['data']:
+            for row in res.data:
                 if row['food_id'] in ids_to_food:
                     ids_to_food.pop(row['food_id'])
         elligble_foods = []
@@ -151,7 +155,8 @@ def get_elligble_foods(user_id, foods):
             elligble_foods.append(food)
         return elligble_foods
     except Exception as e:
-        return [FoodItem('', '', '')]
+        print("Elligible Foods: " + str(e))
+        return []
 
 def get_elligble_foods_type(user_id, type):
     return get_elligble_foods(user_id, get_food_items(type))
