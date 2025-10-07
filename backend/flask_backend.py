@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password
+from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -269,9 +269,6 @@ def get_conversations():
 
     return jsonify({'conversations': conversations})
 
-
-# ==================== WEBSOCKET EVENTS ====================
-
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')
@@ -332,3 +329,60 @@ def handle_send_message(data):
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)
+
+# Recipe handlers
+@app.route("/update_recipe", methods=["POST"])
+def update_recipe_handler():
+    try:
+        data = request.get_json()
+        id = data.get("id")
+        author = data.get("author")
+        title = data.get("title")
+        desc = data.get("description")
+        ingredients = data.get("ingredients")
+        instructions = data.get("instructions")
+        nutrition = data.get("nutrition")
+        allergens = data.get("allergens")
+        posting = data.get("posting")
+
+        if not author or not title or not desc or not ingredients or not instructions:
+            return jsonify({"error": "Missing author, title, description, ingredients, or instructions"}), 400
+
+        if not id:
+            id = "new"
+        if not posting:
+            posting = False
+
+        result = update_recipe(id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({"message": "Recipe updated"}), 200
+
+    except Exception as e:
+        print(f"Update recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/get_recipe", methods=["POST"])
+def get_recipe_handler():
+    try:
+        data = request.get_json()
+        id = data.get("id")
+
+        if not id:
+            return jsonify({"error": "Missing recipe id"}), 400
+
+        result = get_recipe(id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=True, port=5001)

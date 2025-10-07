@@ -126,3 +126,47 @@ def change_user_password(email: str, current_password: str, new_password: str):
     except Exception as e:
         print(f"Error in change_user_password: {str(e)}")
         return {"error": str(e)}
+
+
+# Recipe methods
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
+    try:
+        if id == "new":
+            response = supabase.table('recipes').insert({
+            "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+        else:
+            response = supabase.table('recipes').upsert({
+            "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+
+        print(f"Recipe upsert response: {response}")
+
+        if response.data:
+            return {"message": "Recipe added"}
+        else:
+            return {"error": "Failed to add recipe"}
+
+    except Exception as e:
+        print(f"Error in update_recipe: {str(e)}")
+        return {"error": str(e)}
+
+def get_recipe(id: str):
+    try:
+        if id:
+            if id == "new":
+                return {"error": "Recipe not in database"}
+            response = supabase.table('recipes').select("*").eq("recipe_id", id).execute()
+
+        print(f"Recipe get response: {response}")
+
+        if response.data:
+            print(response.data[0])
+            return response.data[0]
+
+        else:
+            return {"error": "Failed to get recipe"}
+
+    except Exception as e:
+        print(f"Error in get_recipe: {str(e)}")
+        return {"error": str(e)}
