@@ -326,16 +326,14 @@ def handle_send_message(data):
         emit('error', {'message': 'Failed to send message'})
 
 
-if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', debug=True,
-                 port=5001, allow_unsafe_werkzeug=True)
+
 
 # Recipe handlers
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
     try:
         data = request.get_json()
-        id = data.get("id")
+        id = data.get("recipe_id")
         author = data.get("author")
         title = data.get("title")
         desc = data.get("description")
@@ -358,7 +356,9 @@ def update_recipe_handler():
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
 
-        return jsonify({"message": "Recipe updated"}), 200
+        print(result)
+
+        return jsonify({"message": "Recipe saved", "recipe_id": result['data']['recipe_id']}), 200
 
     except Exception as e:
         print(f"Update recipe exception: {str(e)}")
@@ -368,7 +368,7 @@ def update_recipe_handler():
 def get_recipe_handler():
     try:
         data = request.get_json()
-        id = data.get("id")
+        id = data.get("recipe_id")
 
         if not id:
             return jsonify({"error": "Missing recipe id"}), 400
@@ -378,11 +378,14 @@ def get_recipe_handler():
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
 
-        return jsonify(result), 200
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
 
     except Exception as e:
         print(f"Get recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True, port=5001)
+    socketio.run(app, host='0.0.0.0', debug=True,
+                 port=5001, allow_unsafe_werkzeug=True)

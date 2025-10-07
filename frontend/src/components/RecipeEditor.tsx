@@ -40,8 +40,6 @@ export default function RecipeEditor(params: {recipe_id: string}) {
 
     if (user != null ) {
       update_recipe( params.recipe_id, user.id, title, description, ingredients, instructions, nutrition, allergens, posting);
-      //TODO: redirect to recipe list page or refresh this page after updating 
-      //      (which requires moving to url with new id if the draft was new)
     }
     else {
       setError('User not logged in')
@@ -50,7 +48,7 @@ export default function RecipeEditor(params: {recipe_id: string}) {
     setLoading(false);
   };
 
-  const get_recipe = async (id: string) => {
+  const get_recipe = async (recipe_id: string) => {
     try {
       console.log("hello")
 
@@ -59,7 +57,7 @@ export default function RecipeEditor(params: {recipe_id: string}) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ recipe_id }),
       });
 
       const data = await response.json();
@@ -96,17 +94,20 @@ export default function RecipeEditor(params: {recipe_id: string}) {
     }
   };
 
-  const update_recipe = async (id: string, author: string, title: string, description: string, ingredients: string, instructions: string, nutrition: string, allergens: string, posting: boolean) => {
+  const update_recipe = async (recipe_id: string, author: string, title: string, description: string, ingredients: string, instructions: string, nutrition: string, allergens: string, posting: boolean) => {
    try {
       const response = await fetch('http://localhost:5001/update_recipe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ id, author, title, description, ingredients, instructions, nutrition, allergens, posting }),
+        body: JSON.stringify({ recipe_id, author, title, description, ingredients, instructions, nutrition, allergens, posting }),
       });
       
       const data = await response.json();
+      console.log(data)
+
+      router.push('/edit-recipe/' + data.recipe_id)
 
     } catch (error) {
       return { data: null, error: { message: 'Network error' } };

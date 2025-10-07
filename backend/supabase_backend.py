@@ -131,11 +131,14 @@ def change_user_password(email: str, current_password: str, new_password: str):
 # Recipe methods
 def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
     try:
+        print(id)
         if id == "new":
+            print("new row")
             response = supabase.table('recipes').insert({
             "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
             "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
         else:
+            print("update")
             response = supabase.table('recipes').upsert({
             "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
             "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
@@ -143,7 +146,8 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
         print(f"Recipe upsert response: {response}")
 
         if response.data:
-            return {"message": "Recipe added"}
+            print(response.data[0])
+            return {"message": "Recipe added", "data": response.data[0]}
         else:
             return {"error": "Failed to add recipe"}
 
