@@ -82,6 +82,7 @@ export default function RecipeEditor(params: {recipe_id: string}) {
         if ( data.allergens ) {
           setAllergens( data.allergens )
         }
+        router.push("/dashboard");
         return { data, error: null };
         
       } else {
