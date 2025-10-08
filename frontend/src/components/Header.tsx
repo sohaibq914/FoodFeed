@@ -56,6 +56,13 @@ export default function CommonHeader({
                 Account Settings
               </Button>
             )}
+            <Button
+                component="a"
+                variant="light"
+                href="/restaurants"
+            >
+              Restaurants
+            </Button>
             <Button onClick={signOut} color="red" variant="filled">
               Logout
             </Button>
