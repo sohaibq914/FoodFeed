@@ -126,8 +126,7 @@ def change_user_password(email: str, current_password: str, new_password: str):
     except Exception as e:
         print(f"Error in change_user_password: {str(e)}")
         return {"error": str(e)}
-
-
+    
 # Recipe methods
 def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
     try:

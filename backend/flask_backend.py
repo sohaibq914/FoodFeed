@@ -385,6 +385,21 @@ def get_recipe_handler():
     except Exception as e:
         print(f"Get recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+
+@app.route("/recipes", methods=["GET"])
+def list_recipes():
+    try:
+        res = supabase.table("recipes") \
+            .select("recipe_id,title") \
+            .order("timestamp", desc=True) \
+            .execute()
+
+        return jsonify({"recipes": res.data}), 200
+    except Exception as e:
+        print(f"List recipes exception: {str(e)}")
+        return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
