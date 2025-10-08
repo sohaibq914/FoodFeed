@@ -4,10 +4,19 @@ import { TextInput, Group, Button, Badge } from "@mantine/core";
 import { IconSearch, IconX } from "@tabler/icons-react";
 import { useRestaurants } from "@/contexts/restaurants/RestaurantContext";
 
-const API_BASE = "http://127.0.0.1:5001";
+const Endpoint = "http://0.0.0.0:5001";
 
 export default function RestaurantSearchBar(): React.ReactElement {
     const { filter, setFilter, items, tagQuery, setTagQuery } = useRestaurants();
+
+    const toggleTag = (t: string) => {
+        const tag = t.toLowerCase();
+        const curr = (tagQuery ?? []).map((x: string) => x.toLowerCase());
+        const next = curr.includes(tag)
+            ? curr.filter((x: string) => x !== tag)
+            : [...curr, tag];
+        setTagQuery(next);
+    };
 
     return (
         <form onSubmit={(e) => e.preventDefault()}>
@@ -24,7 +33,7 @@ export default function RestaurantSearchBar(): React.ReactElement {
                     variant="light"
                     onClick={() => {
                         setFilter("");
-                        setTagQuery("");
+                        setTagQuery([]);
                     }}
                     leftSection={<IconX size={16} /> as React.ReactNode}
                 >
@@ -36,21 +45,19 @@ export default function RestaurantSearchBar(): React.ReactElement {
             </Group>
 
             <AllTagsRow
-                tagQuery={tagQuery}
-                onToggle={(t) => {
-                    const isActive = tagQuery.toLowerCase() === t.toLowerCase();
-                    setTagQuery(isActive ? "" : t);
-                }}
-            />
+                label="Sort"
+                selectedTags={(tagQuery ?? []) as string[]}
+                onToggle={toggleTag}>
+            </AllTagsRow>
         </form>
     );
 }
 
 function AllTagsRow({
-                        tagQuery,
+                        selectedTags,
                         onToggle,
                     }: {
-    tagQuery: string;
+    selectedTags: string[];
     onToggle: (tag: string) => void;
 }) {
     const [tags, setTags] = useState<string[]>([]);
@@ -61,7 +68,7 @@ function AllTagsRow({
         (async () => {
             setLoading(true);
             try {
-                const res = await fetch(`${API_BASE}/restaurant_tags_all`);
+                const res = await fetch(`${Endpoint}/restaurant_tags_all`);
                 const json = await res.json();
                 if (!res.ok) {
                     if (alive) setTags([]);
@@ -81,7 +88,8 @@ function AllTagsRow({
     return (
         <Group gap="xs" wrap="wrap">
             {tags.map((t) => {
-                const active = tagQuery.toLowerCase() === t.toLowerCase();
+                const lower = t.toLowerCase();
+                const active = selectedTags.some((x) => x.toLowerCase() === lower);
                 return (
                     <Badge
                         key={t}

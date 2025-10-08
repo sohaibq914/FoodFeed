@@ -63,8 +63,8 @@ export default function RestaurantList(): React.ReactElement {
     useEffect(() => {
         let alive = true;
         const run = async () => {
-            const tq = (tagQuery || "").toLowerCase().trim();
-            if (!tq) {
+            const selected = (tagQuery ?? []).map((t) => t.toLowerCase().trim());
+            if (selected.length === 0) {
                 if (alive) {
                     setTagMatches(new Set());
                     setTagLoading(false);
@@ -75,7 +75,8 @@ export default function RestaurantList(): React.ReactElement {
             const results = await Promise.all(
                 textFiltered.map(async (r) => {
                     const { data } = await fetchTags(r.id);
-                    const has = (data || []).some((t) => String(t).toLowerCase().includes(tq));
+                    const lower = (data || []).map((t: string) => String(t).toLowerCase());
+                    const has = lower.some((t) => selected.includes(t));
                     return { id: r.id, has };
                 })
             );
@@ -90,14 +91,14 @@ export default function RestaurantList(): React.ReactElement {
     }, [tagQuery, textFiltered, fetchTags]);
 
     const filtered = useMemo(() => {
-        const tq = (tagQuery || "").trim();
-        if (!tq) return textFiltered;
+        const hasTags = (tagQuery ?? []).length > 0;
+        if (!hasTags) return textFiltered;
         return textFiltered.filter((r) => tagMatches.has(r.id));
     }, [textFiltered, tagQuery, tagMatches]);
 
     if (loading && items.length === 0) return <Text c="dimmed">Loading…</Text>;
     if (!loading && filtered.length === 0) {
-        if ((tagQuery || "").trim() && tagLoading) return <Text c="dimmed">Searching tags…</Text>;
+        if ((tagQuery ?? []).length > 0 && tagLoading) return <Text c="dimmed">Searching tags…</Text>;
         return <Text c="dimmed">No restaurants match your search.</Text>;
     }
 

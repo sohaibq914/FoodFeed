@@ -179,6 +179,9 @@ export default function RestaurantCreateForm() {
                         <Button type="submit" loading={submitting}>
                             Submit
                         </Button>
+                        <Button component="a" href="/restaurants" variant="light" color="blue">
+                            Go to Restaurants
+                        </Button>
                     </Group>
                 </Stack>
             </form>

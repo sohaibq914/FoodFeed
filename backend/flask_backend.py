@@ -222,7 +222,7 @@ def reviews_list():
     if not rid:
         return jsonify({"error": "missing restaurant_id"}), 400
     rows = fetch_reviews(rid)
-    if isinstance(rows, dict) and rows.get("error"):
+    if "error" in rows:
         return jsonify({"error": rows["error"]}), 400
     return jsonify({"reviews": rows}), 200
 
@@ -239,7 +239,7 @@ def reviews_create():
 
         row = create_review(f.get("restaurant_id"), f.get("author"), f.get("text"), f.get("rating"), file)
     else:
-        data = request.get_json(force=True) or {}
+        data = request.get_json()
         row = create_review(data.get("restaurant_id"), data.get("author"), data.get("text"), data.get("rating"), None)
 
     if "error" in row:
@@ -252,7 +252,8 @@ def get_restaurant_tags():
     if not tag_id:
         return jsonify({"error": "missing id"}), 400
     ret = get_r_tags(tag_id)
-    if isinstance(ret, dict) and ret.get("error"):
+    #Reason for isinstance check: return errors with "error" key which I didn't mean to do but oh well
+    if "error" in ret:
         print(ret["error"])
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
@@ -261,7 +262,7 @@ def get_restaurant_tags():
 def get_all_restaurant_tags():
     ret = get_all_r_tags()
     print(ret)
-    if isinstance(ret, dict) and ret.get("error"):
+    if "error" in ret:
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
 
@@ -279,7 +280,7 @@ def insert_restaurant_tags():
     tags = [str(t).strip() for t in tags if str(t).strip()]
 
     ret = insert_r_tags(r_id, tags)
-    if isinstance(ret, dict) and ret.get("error"):
+    if "error" in ret:
         return jsonify({"error": ret["error"]}), 400
     return jsonify({"restaurant_tags": ret}), 201
 

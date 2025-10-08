@@ -28,8 +28,8 @@ interface RestaurantsContextType {
     filter: string;
     setFilter: (v: string) => void;
 
-    tagQuery: string;
-    setTagQuery: (v: string) => void;
+    tagQuery: [];
+    setTagQuery: (v: string[]) => void;
 
     allTags: string[];
     refreshAllTags: () => Promise<{ data: string[]; error: any }>;
@@ -49,7 +49,7 @@ interface RestaurantsContextType {
 
 const RestaurantsContext = createContext<RestaurantsContextType | undefined>(undefined);
 
-const Endpoint = "http://127.0.0.1:5001";
+const Endpoint = "http://0.0.0.0:5001";
 
 export const RestaurantsProvider = ({ children }: { children: React.ReactNode }) => {
     const [items, setItems] = useState<Restaurant[]>([]);
@@ -62,7 +62,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
 
     const [filter, setFilter] = useState("");
 
-    const [tagQuery, setTagQuery] = useState("");
+    const [tagQuery, setTagQuery] = useState([]);
     const [allTags, setAllTags] = useState<string[]>([]);
 
     const refresh = async () => {
@@ -76,10 +76,10 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
             const next: Restaurant[] = [];
             for (const r of rows) {
                 if (!r) continue;
-                const id = typeof r.id === "string" ? r.id : "";
-                const name = typeof r.name === "string" ? r.name : "";
-                const address = typeof r.address === "string" ? r.address : "";
-                const owner = typeof r.owner === "string" ? r.owner : "";
+                const id = r.id;
+                const name = r.name;
+                const address = r.address;
+                const owner = r.owner;
                 if (id && name && address && owner) next.push({ id, name, address, owner });
             }
             setItems(next);
