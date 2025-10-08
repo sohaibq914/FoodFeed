@@ -267,3 +267,50 @@ def insert_r_tags(restaurant_id, tags):
         return rows[0]
     except Exception as e:
         return {"error": str(e)}
+
+# Recipe methods
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
+    try:
+        print(id)
+        if id == "new":
+            print("new row")
+            response = supabase.table('recipes').insert({
+            "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+        else:
+            print("update")
+            response = supabase.table('recipes').upsert({
+            "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+
+        print(f"Recipe upsert response: {response}")
+
+        if response.data:
+            print(response.data[0])
+            return {"message": "Recipe added", "data": response.data[0]}
+        else:
+            return {"error": "Failed to add recipe"}
+
+    except Exception as e:
+        print(f"Error in update_recipe: {str(e)}")
+        return {"error": str(e)}
+
+def get_recipe(id: str):
+    try:
+        if id:
+            if id == "new":
+                return {"error": "Recipe not in database"}
+            response = supabase.table('recipes').select("*").eq("recipe_id", id).execute()
+
+        print(f"Recipe get response: {response}")
+
+        if response.data:
+            print(response.data[0])
+            return response.data[0]
+
+        else:
+            return {"error": "Failed to get recipe"}
+
+    except Exception as e:
+        print(f"Error in get_recipe: {str(e)}")
+        return {"error": str(e)}
