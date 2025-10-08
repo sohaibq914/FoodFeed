@@ -18,13 +18,8 @@ import { IconPlus, IconX } from "@tabler/icons-react";
 
 const toMsg = (e: unknown): string => {
     if (!e) return "";
-    if (typeof e === "string") return e;
-    const anyE = e as any;
-    if (typeof anyE.message === "string") return anyE.message;
-    if (typeof anyE.error === "string") return anyE.error;
-    if (typeof anyE.error?.message === "string") return anyE.error.message;
     try {
-        return JSON.stringify(e);
+        return JSON.stringify(e.error);
     } catch {
         return "Unknown error";
     }
@@ -68,12 +63,12 @@ export default function RestaurantCreateForm() {
             console.log("[Create] addRestaurant response", { data, addErr });
 
             if (addErr) {
-                setErrorMsg(toMsg(addErr) || "Failed to add restaurant");
+                setErrorMsg(toMsg(addErr));
                 setSubmitting(false);
                 return;
             }
 
-            const rid: string | undefined = data?.restaurant?.id || data?.id;
+            const rid: string = data.restaurant.id;
 
             if (rid && tags.length > 0) {
                 console.log("[Create] calling addRestaurantTags", { rid, tags });

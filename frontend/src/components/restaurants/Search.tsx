@@ -4,7 +4,7 @@ import { TextInput, Group, Button, Badge } from "@mantine/core";
 import { IconSearch, IconX } from "@tabler/icons-react";
 import { useRestaurants } from "@/contexts/restaurants/RestaurantContext";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://127.0.0.1:5001";
+const API_BASE = "http://127.0.0.1:5001";
 
 export default function RestaurantSearchBar(): React.ReactElement {
     const { filter, setFilter, items, tagQuery, setTagQuery } = useRestaurants();
@@ -31,7 +31,7 @@ export default function RestaurantSearchBar(): React.ReactElement {
                     Clear
                 </Button>
                 <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
-                    {items.length} result{items.length === 1 ? "" : "s"}
+                    {items.length}
                 </Button>
             </Group>
 

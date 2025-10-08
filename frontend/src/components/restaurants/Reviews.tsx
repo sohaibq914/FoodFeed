@@ -72,7 +72,7 @@ export default function ReviewsPage(): React.ReactElement {
             image: file || undefined,
         });
         if (error) {
-            setErr(error?.error || error?.message || "Failed to submit review");
+            setErr(error.error);
         } else {
             setOk("Review submitted");
             setAuthor("");

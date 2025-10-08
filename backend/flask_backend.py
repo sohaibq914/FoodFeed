@@ -201,6 +201,7 @@ def get_restaurant_tags():
         return jsonify({"error": "missing id"}), 400
     ret = get_r_tags(tag_id)
     if isinstance(ret, dict) and ret.get("error"):
+        print(ret["error"])
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
 

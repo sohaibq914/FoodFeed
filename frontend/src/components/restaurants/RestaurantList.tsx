@@ -21,7 +21,7 @@ function RestaurantTags({ restaurantId }: { restaurantId: string }) {
                 setErr("Failed to load tags");
                 setTags([]);
             } else {
-                setTags(Array.isArray(data) ? data : []);
+                setTags(data);
             }
             setLoading(false);
         })();
