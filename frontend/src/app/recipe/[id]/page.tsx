@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import {
   Container,
   Title,
@@ -53,20 +54,30 @@ export default function RecipePage() {
       </Container>
     );
 
-    if (!recipe) {
-        console.log("Recipe is missing:", recipe);
-        return (
-          <Container>
-            <Text c="dimmed">Recipe not found.</Text>
-          </Container>
-        );
-      }
-      
+  if (!recipe) {
+    console.log("Recipe is missing:", recipe);
+    return (
+      <Container>
+        <Text c="dimmed">Recipe not found.</Text>
+      </Container>
+    );
+  }
+
   return (
     <Container size="md" py="xl">
       <Title order={2}>{recipe.title}</Title>
       <Text c="dimmed" mt="sm">
-        By {recipe.author_id || "Unknown"}
+        By{" "}
+        <Link
+          href={`/${recipe.users?.username || recipe.author_id}`}
+          style={{
+            color: "blue",
+            textDecoration: "none",
+            fontWeight: 500,
+          }}
+        >
+          {recipe.users?.username || "Unknown"}
+        </Link>
       </Text>
 
       <Paper shadow="xs" p="md" mt="xl">
@@ -74,22 +85,30 @@ export default function RecipePage() {
           <Text fw={600}>Description</Text>
           <Text>{recipe.description}</Text>
 
-          <Text fw={600} mt="md">Ingredients</Text>
+          <Text fw={600} mt="md">
+            Ingredients
+          </Text>
           <Text>{recipe.ingredients}</Text>
 
-          <Text fw={600} mt="md">Instructions</Text>
+          <Text fw={600} mt="md">
+            Instructions
+          </Text>
           <Text>{recipe.instructions}</Text>
 
           {recipe.nutrition && (
             <>
-              <Text fw={600} mt="md">Nutrition</Text>
+              <Text fw={600} mt="md">
+                Nutrition
+              </Text>
               <Text>{recipe.nutrition}</Text>
             </>
           )}
 
           {recipe.allergens && (
             <>
-              <Text fw={600} mt="md">Allergens</Text>
+              <Text fw={600} mt="md">
+                Allergens
+              </Text>
               <Text>{recipe.allergens}</Text>
             </>
           )}
