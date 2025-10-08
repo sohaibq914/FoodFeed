@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password
+from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, add_restaurant, \
+    fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags
 import os
 from dotenv import load_dotenv
 
@@ -139,6 +140,96 @@ def change_password():
     except Exception as e:
         print(f"Change password exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/create_restaurants", methods=["POST"])
+def create_restaurants():
+    data = request.get_json(force=True) or {}
+    name = (data.get("name") or "").strip()
+    address = (data.get("address") or "").strip()
+    owner = (data.get("owner") or "").strip()
+
+    if not name or not address or not owner:
+        return jsonify({"error": "Fields 'name', 'address', and 'owner' are required."}), 400
+
+    created = add_restaurant(name=name, address=address, owner=owner)
+
+    if isinstance(created, dict) and created.get("error"):
+        return jsonify({"error": created["error"]}), 400
+
+    return jsonify({"restaurant": created}), 201
+@app.route("/restaurants", methods=["GET"])
+def list_restaurants():
+    rows = fetch_restaurants()
+    if "error" in rows:
+        return jsonify({"error": rows["error"]}), 400
+    return jsonify({"restaurants": rows}), 200
+
+@app.route("/reviews", methods=["GET"])
+def reviews_list():
+    rid = (request.args.get("restaurant_id") or "").strip()
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+    rows = fetch_reviews(rid)
+    if isinstance(rows, dict) and rows.get("error"):
+        return jsonify({"error": rows["error"]}), 400
+    return jsonify({"reviews": rows}), 200
+
+@app.route("/reviews", methods=["POST"])
+def reviews_create():
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        f = request.form
+        file = request.files.get("image")
+
+        name_ok = file.filename.lower().endswith(".png")
+        type_ok = (file.mimetype or "").lower() == "image/png"
+        if not (name_ok and type_ok):
+            return jsonify({"error": "Only PNG images are allowed"}), 400
+
+        row = create_review(f.get("restaurant_id"), f.get("author"), f.get("text"), f.get("rating"), file)
+    else:
+        data = request.get_json(force=True) or {}
+        row = create_review(data.get("restaurant_id"), data.get("author"), data.get("text"), data.get("rating"), None)
+
+    if "error" in row:
+        return jsonify({"error": row["error"]}), 400
+    return jsonify({"review": row}), 201
+
+@app.route("/restaurant_tags", methods=["GET"])
+def get_restaurant_tags():
+    tag_id = (request.args.get("restaurant_id") or "").strip()
+    if not tag_id:
+        return jsonify({"error": "missing id"}), 400
+    ret = get_r_tags(tag_id)
+    if isinstance(ret, dict) and ret.get("error"):
+        return jsonify({"error": ret["error"]}), 400
+    return jsonify(ret), 200
+
+@app.route("/restaurant_tags_all", methods=["GET"])
+def get_all_restaurant_tags():
+    ret = get_all_r_tags()
+    print(ret)
+    if isinstance(ret, dict) and ret.get("error"):
+        return jsonify({"error": ret["error"]}), 400
+    return jsonify(ret), 200
+
+@app.route("/restaurant_tags", methods=["POST"])
+def insert_restaurant_tags():
+    data = request.get_json(force=True) or {}
+    r_id = (data.get("restaurant_id") or "").strip()
+    tags = data.get("tags")
+
+    if not r_id:
+        return jsonify({"error": "missing restaurant_id"}), 400
+    if not isinstance(tags, list):
+        return jsonify({"error": "tags must be an array of strings"}), 400
+
+    tags = [str(t).strip() for t in tags if str(t).strip()]
+
+    ret = insert_r_tags(r_id, tags)
+    if isinstance(ret, dict) and ret.get("error"):
+        return jsonify({"error": ret["error"]}), 400
+    return jsonify({"restaurant_tags": ret}), 201
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True, port=5001)
