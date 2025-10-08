@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant,
+from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags
 import os
 from dotenv import load_dotenv
