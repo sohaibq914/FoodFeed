@@ -1,10 +1,15 @@
 "use client";
 
-import { AppShell, Container, Title, Card, Text, SimpleGrid, Button} from "@mantine/core";
+import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader } from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
 import { IconPencil } from "@tabler/icons-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+type RecipeSummary = { recipe_id: string; title: string; description?: string | null };
+
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
@@ -13,11 +18,31 @@ export default function ProfilePage() {
   const profileUsername = params.username;
   const isOwner = !!user?.username && user.username === profileUsername;
 
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!profileUsername) return;
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
+        setRecipes(data.recipes || []);
+      } catch (e: any) {
+        setError(e.message || "Failed to load recipes");
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [profileUsername]);
+
   return (
-    <AppShell
-      header={{ height: 64 }}
-      padding="md"
-    >
+    <AppShell header={{ height: 64 }} padding="md">
       <AppShell.Header>
         <CommonHeader />
       </AppShell.Header>
@@ -29,9 +54,7 @@ export default function ProfilePage() {
             @{profileUsername}
           </Title>
           <Text c="dimmed" mb="md">
-            {isOwner
-              ? "This is your profile — show edit controls here."
-              : "Public view."}
+            {isOwner ? "This is your profile — show edit controls here." : "Public view."}
           </Text>
 
           {/* Edit Controls (Only for Owner) */}
@@ -50,51 +73,48 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* My Recipes Section */}
+          {/* User's Recipes */}
           <section style={{ marginTop: 48 }}>
             <Title order={2} mb="md">
               {isOwner ? "My Recipes" : `${profileUsername}'s Recipes`}
             </Title>
 
-            {/* Example layout of recipe cards */}
-            <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={4}>Spaghetti Carbonara</Title>
-                <Text c="dimmed" size="sm">
-                  A creamy Italian pasta made with eggs, cheese, and pancetta.
-                </Text>
-              </Card>
+            {loading && (
+              <Center py="lg">
+                <Loader />
+              </Center>
+            )}
 
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={4}>Spaghetti Carbonara</Title>
-                <Text c="dimmed" size="sm">
-                  A creamy Italian pasta made with eggs, cheese, and pancetta.
-                </Text>
-              </Card>
+            {error && <Text c="red">{error}</Text>}
 
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={4}>Spaghetti Carbonara</Title>
-                <Text c="dimmed" size="sm">
-                  A creamy Italian pasta made with eggs, cheese, and pancetta.
-                </Text>
-              </Card>
-
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={4}>Spaghetti Carbonara</Title>
-                <Text c="dimmed" size="sm">
-                  A creamy Italian pasta made with eggs, cheese, and pancetta.
-                </Text>
-              </Card>
-
-              <Card shadow="sm" padding="lg" radius="md" withBorder>
-                <Title order={4}>Spaghetti Carbonara</Title>
-                <Text c="dimmed" size="sm">
-                  A creamy Italian pasta made with eggs, cheese, and pancetta.
-                </Text>
-              </Card>
-
-              
-            </SimpleGrid>
+            {!loading && !error && (
+              <>
+                {recipes.length === 0 ? (
+                  <Text c="dimmed">No recipes yet.</Text>
+                ) : (
+                  <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
+                    {recipes.map((r) => (
+                      <Card
+                        key={r.recipe_id}
+                        withBorder
+                        component={Link}
+                        href={`/recipe/${r.recipe_id}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        <Title order={4} mb={4}>
+                          {r.title || "(untitled)"}
+                        </Title>
+                        {r.description && (
+                          <Text c="dimmed" size="sm" lineClamp={3}>
+                            {r.description}
+                          </Text>
+                        )}
+                      </Card>
+                    ))}
+                  </SimpleGrid>
+                )}
+              </>
+            )}
           </section>
         </Container>
       </AppShell.Main>

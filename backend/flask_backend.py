@@ -400,6 +400,40 @@ def list_recipes():
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
 
+@app.route("/users/<username>/recipes", methods=["GET"])
+def list_recipes_by_username(username):
+    """
+    Return all recipes (id + title [+ optional description]) for a given username.
+    """
+    try:
+        # 1) Find the user id for this username
+        user_res = (
+            supabase.table("users")
+            .select("id, username")
+            .eq("username", username)
+            .single()
+            .execute()
+        )
+        if not user_res.data:
+            return jsonify({"recipes": [], "userNotFound": True}), 200
+
+        user_id = user_res.data["id"]
+
+        # 2) Fetch that user's recipes
+        rec_res = (
+            supabase.table("recipes")
+            .select("recipe_id, title, description, timestamp")
+            .eq("author_id", user_id)
+            .order("timestamp", desc=True)
+            .execute()
+        )
+
+        return jsonify({"recipes": rec_res.data, "username": username}), 200
+
+    except Exception as e:
+        print(f"list_recipes_by_username error: {e}")
+        return jsonify({"error": "Failed to fetch user's recipes"}), 500
+
 
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,

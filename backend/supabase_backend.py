@@ -163,7 +163,6 @@ def get_recipe(id: str):
 
             print("Full recipe response:", response.data)
 
-            # Print just the nested username if it exists
             if response.data and "users" in response.data:
                 print("Author username:", response.data["users"].get("username"))
             else:
