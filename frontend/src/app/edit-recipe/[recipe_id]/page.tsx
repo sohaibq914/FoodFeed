@@ -21,10 +21,20 @@ export default function Dashboard() {
   const router = useRouter();
 
   useEffect(() => {
+    window.addEventListener('beforeunload', alertUser)
+    return () => {
+        window.removeEventListener('beforeunload', alertUser)
+    }
+
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  const alertUser = e => {
+    e.preventDefault()
+    e.returnValue = ''
+  }
 
   if (loading) {
     return (
