@@ -10,7 +10,9 @@ import {
   Center,
   Paper,
   Stack,
+  AppShell,
 } from "@mantine/core";
+import Header from "@/components/Header";
 
 export default function RecipePage() {
   const params = useParams();
@@ -49,71 +51,86 @@ export default function RecipePage() {
 
   if (error)
     return (
-      <Container>
-        <Text c="red">{error}</Text>
-      </Container>
+      <AppShell header={{ height: 70 }} padding="md">
+        <Header />
+        <AppShell.Main>
+          <Container>
+            <Text c="red">{error}</Text>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
     );
 
   if (!recipe) {
     console.log("Recipe is missing:", recipe);
     return (
-      <Container>
-        <Text c="dimmed">Recipe not found.</Text>
-      </Container>
+      <AppShell header={{ height: 70 }} padding="md">
+        <Header />
+        <AppShell.Main>
+          <Container>
+            <Text c="dimmed">Recipe not found.</Text>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
     );
   }
 
   return (
-    <Container size="md" py="xl">
-      <Title order={2}>{recipe.title}</Title>
-      <Text c="dimmed" mt="sm">
-        By{" "}
-        <Link
-          href={`/${recipe.users?.username || recipe.author_id}`}
-          style={{
-            color: "blue",
-            textDecoration: "none",
-            fontWeight: 500,
-          }}
-        >
-          {recipe.users?.username || "Unknown"}
-        </Link>
-      </Text>
-
-      <Paper shadow="xs" p="md" mt="xl">
-        <Stack>
-          <Text fw={600}>Description</Text>
-          <Text>{recipe.description}</Text>
-
-          <Text fw={600} mt="md">
-            Ingredients
+    <AppShell header={{ height: 70 }} padding="md">
+      <Header showBackButton={true} showSettingsButton={true} />
+      <AppShell.Main>
+        <Container size="md" py="xl">
+          <Title order={2}>{recipe.title}</Title>
+          <Text c="dimmed" mt="sm">
+            By{" "}
+            <Link
+              href={`/${recipe.users?.username || recipe.author_id}`}
+              style={{
+                color: "blue",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              {recipe.users?.username || "Unknown"}
+            </Link>
           </Text>
-          <Text>{recipe.ingredients}</Text>
 
-          <Text fw={600} mt="md">
-            Instructions
-          </Text>
-          <Text>{recipe.instructions}</Text>
+          <Paper shadow="xs" p="md" mt="xl">
+            <Stack>
+              <Text fw={600}>Description</Text>
+              <Text>{recipe.description}</Text>
 
-          {recipe.nutrition && (
-            <>
               <Text fw={600} mt="md">
-                Nutrition
+                Ingredients
               </Text>
-              <Text>{recipe.nutrition}</Text>
-            </>
-          )}
+              <Text>{recipe.ingredients}</Text>
 
-          {recipe.allergens && (
-            <>
               <Text fw={600} mt="md">
-                Allergens
+                Instructions
               </Text>
-              <Text>{recipe.allergens}</Text>
-            </>
-          )}
-        </Stack>
-      </Paper>
-    </Container>
+              <Text>{recipe.instructions}</Text>
+
+              {recipe.nutrition && (
+                <>
+                  <Text fw={600} mt="md">
+                    Nutrition
+                  </Text>
+                  <Text>{recipe.nutrition}</Text>
+                </>
+              )}
+
+              {recipe.allergens && (
+                <>
+                  <Text fw={600} mt="md">
+                    Allergens
+                  </Text>
+                  <Text>{recipe.allergens}</Text>
+                </>
+              )}
+            </Stack>
+          </Paper>
+        </Container>
+      </AppShell.Main>
+    </AppShell>
   );
 }
