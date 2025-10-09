@@ -31,7 +31,7 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  const alertUser = e => {
+  const alertUser = (e: BeforeUnloadEvent) => {
     e.preventDefault()
     e.returnValue = ''
   }
