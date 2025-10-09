@@ -17,6 +17,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
+
+
 export default function RecipeEditor(params: {recipe_id: string}) {
   const [title, setTitle] = useState('');
   const [description, setDesc] = useState('');
@@ -39,7 +41,9 @@ export default function RecipeEditor(params: {recipe_id: string}) {
     setError('');
 
     if (user != null ) {
-      update_recipe( params.recipe_id, user.id, title, description, ingredients, instructions, nutrition, allergens, posting);
+      if (confirm("Are you sure you want to save this post?")) {
+        update_recipe( params.recipe_id, user.id, title, description, ingredients, instructions, nutrition, allergens, posting);
+      }
     }
     else {
       setError('User not logged in')
