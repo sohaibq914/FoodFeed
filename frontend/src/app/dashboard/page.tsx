@@ -43,7 +43,8 @@ export default function Dashboard() {
         const res = await fetch(`http://localhost:5001/recipes`, { method: "GET" });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
-        setRecipes(data.recipes || []);
+        const postedOnly = (data.recipes || []).filter((r: any) => r.posted === true);
+        setRecipes(postedOnly);
       } catch (err: any) {
         setRecipesError(err.message || "Failed to fetch recipes");
       } finally {

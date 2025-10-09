@@ -483,7 +483,7 @@ def get_recipe_handler():
 def list_recipes():
     try:
         res = supabase.table("recipes") \
-            .select("recipe_id,title") \
+            .select("recipe_id,title,posted") \
             .order("timestamp", desc=True) \
             .execute()
 
