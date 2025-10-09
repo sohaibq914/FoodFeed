@@ -1,6 +1,16 @@
 "use client";
 
-import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader } from "@mantine/core";
+import {
+  AppShell,
+  Container,
+  Title,
+  Card,
+  Text,
+  SimpleGrid,
+  Button,
+  Center,
+  Loader,
+} from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
@@ -8,8 +18,11 @@ import { IconPencil } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type RecipeSummary = { recipe_id: string; title: string; description?: string | null };
-
+type RecipeSummary = {
+  recipe_id: string;
+  title: string;
+  description?: string | null;
+};
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
@@ -28,10 +41,18 @@ export default function ProfilePage() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes`);
+        const res = await fetch(
+          `http://localhost:5001/users/${encodeURIComponent(
+            profileUsername
+          )}/recipes`
+        );
+        
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
-        setRecipes(data.recipes || []);
+        const postedOnly = (data.recipes || []).filter(
+          (r: any) => r.posted === true
+        );
+        setRecipes(postedOnly);
       } catch (e: any) {
         setError(e.message || "Failed to load recipes");
       } finally {
@@ -54,7 +75,9 @@ export default function ProfilePage() {
             @{profileUsername}
           </Title>
           <Text c="dimmed" mb="md">
-            {isOwner ? "This is your profile — show edit controls here." : "Public view."}
+            {isOwner
+              ? "This is your profile — show edit controls here."
+              : "Public view."}
           </Text>
 
           {/* Edit Controls (Only for Owner) */}
