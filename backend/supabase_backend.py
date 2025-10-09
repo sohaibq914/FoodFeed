@@ -141,6 +141,7 @@ def change_user_password(email: str, current_password: str, new_password: str):
     except Exception as e:
         print(f"Error in change_user_password: {str(e)}")
         return {"error": str(e)}
+    
 
 def add_restaurant(name: str, address: str, owner: str):
     try:
@@ -300,14 +301,17 @@ def get_recipe(id: str):
         if id:
             if id == "new":
                 return {"error": "Recipe not in database"}
-            response = supabase.table('recipes').select("*").eq("recipe_id", id).execute()
+            response = supabase.table('recipes').select("*, users!recipes_author_id_fkey(username)").eq("recipe_id", id).single().execute()
 
-        print(f"Recipe get response: {response}")
+            print("Full recipe response:", response.data)
 
-        if response.data:
-            print(response.data[0])
-            return response.data[0]
+            if response.data and "users" in response.data:
+                print("Author username:", response.data["users"].get("username"))
+            else:
+                print("No users.username found")
 
+        
+            return response.data
         else:
             return {"error": "Failed to get recipe"}
 

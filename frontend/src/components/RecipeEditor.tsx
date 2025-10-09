@@ -86,6 +86,7 @@ export default function RecipeEditor(params: {recipe_id: string}) {
         if ( data.allergens ) {
           setAllergens( data.allergens )
         }
+        router.push("/dashboard");
         return { data, error: null };
         
       } else {
@@ -118,10 +119,12 @@ export default function RecipeEditor(params: {recipe_id: string}) {
     }
   };
 
-  useEffect(() => {
-    get_recipe(params.recipe_id)
-  }, []);
+  const isNew = params.recipe_id === "new";
 
+  useEffect(() => {
+    if (!params.recipe_id || isNew) return;   
+    get_recipe(params.recipe_id);
+  }, [params.recipe_id, isNew]);
   return (
 
     <Container size="xl" style={{ height: 70, minHeight: '100vh', display: 'flex', alignItems: 'start' }}>

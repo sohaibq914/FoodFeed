@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { Container, Title, Button, Group, Text, AppShell } from "@mantine/core";
-
-import { IconSettings, IconUsers, IconMessage } from "@tabler/icons-react";
-
+import { Container, Title, Button, Group, AppShell } from "@mantine/core";
+import { IconSettings, IconMessage, IconPlus } from "@tabler/icons-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
@@ -20,6 +18,7 @@ export default function CommonHeader({
     <AppShell.Header>
       <Container size="xl" h="100%">
         <Group justify="space-between" h="100%" align="center">
+          {/* Left: Logo */}
           <Group>
             <Link
               href="/dashboard"
@@ -33,7 +32,19 @@ export default function CommonHeader({
               </Title>
             </Link>
           </Group>
+
+          {/* Right: Navigation + Actions */}
           <Group>
+            {/* Add Recipe Button */}
+            <Button
+              component={Link}
+              href="/edit-recipe/new"
+              leftSection={<IconPlus size={16} />}
+              color="green"
+              variant="filled"
+            >
+              Add Recipe
+            </Button>
 
             {user?.username && (
               <Button
@@ -46,16 +57,26 @@ export default function CommonHeader({
               </Button>
             )}
 
-            {/* <Text c="dimmed">@{user?.username}</Text> */}
-            <Button component={Link} href="/messages" variant="light" leftSection={<IconMessage size={16} />}>
+            <Button
+              component={Link}
+              href="/messages"
+              variant="light"
+              leftSection={<IconMessage size={16} />}
+            >
               Messages
             </Button>
 
             {showSettingsButton && (
-              <Button component={Link} href="/account-settings" variant="light" leftSection={<IconSettings size={16} />}>
+              <Button
+                component={Link}
+                href="/account-settings"
+                variant="light"
+                leftSection={<IconSettings size={16} />}
+              >
                 Account Settings
               </Button>
             )}
+
             <Button
                 component="a"
                 variant="light"
