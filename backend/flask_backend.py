@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
-    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -499,7 +499,7 @@ def get_recipe_handler():
 def list_recipes():
     try:
         res = supabase.table("recipes") \
-            .select("recipe_id,title") \
+            .select("recipe_id,title,posted") \
             .order("timestamp", desc=True) \
             .execute()
 
@@ -528,6 +528,7 @@ def list_recipes_by_username(username):
 
         user_id = user_res.data["id"]
 
+
         # 2) Fetch that user's recipes
         rec_res = (
             supabase.table("recipes")
@@ -544,6 +545,66 @@ def list_recipes_by_username(username):
     except Exception as e:
         print(f"list_recipes_by_username error: {e}")
         return jsonify({"error": "Failed to fetch user's recipes"}), 500
+    
+@app.route("/recipes/<recipe_id>/draft", methods=["POST"])
+@require_auth
+def move_to_draft(recipe_id):
+    try:
+        user_id = request.headers.get("X-User-ID")
+        if not user_id:
+            return jsonify({"error": "Missing user ID"}), 401
+
+        # Ensure the recipe belongs to this user
+        check = (
+            supabase.table("recipes")
+            .select("author_id")
+            .eq("recipe_id", recipe_id)
+            .single()
+            .execute()
+        )
+
+        if not check.data or check.data["author_id"] != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Update the recipe: set posted = False
+        res = (
+            supabase.table("recipes")
+            .update({"posted": False})
+            .eq("recipe_id", recipe_id)
+            .execute()
+        )
+
+        return jsonify({"message": "Recipe moved to draft", "data": res.data}), 200
+
+    except Exception as e:
+        print(f"move_to_draft error: {e}")
+        return jsonify({"error": "Failed to move recipe to draft"}), 500
+
+
+@app.route("/recipes/<recipe_id>", methods=["DELETE"])
+@require_auth
+def delete_recipe(recipe_id):
+    try:
+        # Optional: ensure the recipe belongs to the requester (defense-in-depth
+        # even if RLS already enforces it)
+        owned = (
+            supabase.table("recipes")
+            .select("recipe_id, author_id")
+            .eq("recipe_id", recipe_id)
+            .single()
+            .execute()
+        )
+        if not owned.data:
+            return jsonify({"error": "Recipe not found"}), 404
+        if owned.data["author_id"] != request.current_user_id:
+            return jsonify({"error": "Not authorized"}), 403
+
+        supabase.table("recipes").delete().eq("recipe_id", recipe_id).execute()
+        return jsonify({"message": "Recipe deleted"}), 200
+    except Exception as e:
+        print(f"delete_recipe error: {e}")
+        return jsonify({"error": "Failed to delete recipe"}), 500
+
 
 @app.route("/update_restrictions", methods=["POST"])
 def edit_restrictions_handler():
@@ -671,6 +732,20 @@ def check_like_handler(recipe_id):
     except Exception as e:
         print(f"Check like exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/likes", methods=["GET"])
+@require_auth
+def get_my_likes():
+    try:
+        user_id = request.current_user_id
+        result = get_user_likes(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"/likes error: {e}")
+        return jsonify({"error": "Failed to fetch likes"}), 500
 
 
 # ==================== RECIPE COMMENTS ROUTES ====================

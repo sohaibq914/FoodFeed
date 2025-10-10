@@ -74,6 +74,7 @@ export default function CommonHeader({
                 Diet Page
               </Button>
 
+            
             {showSettingsButton && (
               <Button
                 component={Link}
@@ -84,9 +85,6 @@ export default function CommonHeader({
                 Account Settings
               </Button>
             )}
-
-            
-
             {user?.username && (
               <Button
                 component={Link}

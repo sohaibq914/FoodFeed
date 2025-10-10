@@ -442,6 +442,44 @@ def check_recipe_liked(user_id: str, recipe_id: str):
         print(f"Error in check_recipe_liked: {str(e)}")
         return {"error": str(e)}
 
+def get_user_likes(user_id: str):
+    """Fetch all recipes liked by a specific user"""
+    try:
+        print(f"Fetching all likes for user: {user_id}")
+
+        if not user_id:
+            return {"error": "Missing user_id"}
+
+        # Join recipe_likes with recipes to get recipe info
+        response = (
+            supabase.table("recipe_likes")
+            .select("recipe_id, recipes!inner(title, author_id, posted)")
+            .eq("user_id", user_id)
+            .execute()
+        )
+
+        if not response.data:
+            return {"likes": []}
+
+        liked_recipes = [
+            {
+                "recipe_id": r["recipe_id"],
+                "title": r["recipes"]["title"],
+                "author_id": r["recipes"]["author_id"],
+                "posted": r["recipes"]["posted"]
+            }
+            for r in response.data
+            if r.get("recipes")
+        ]
+
+        print(f"Found {len(liked_recipes)} liked recipes.")
+        return {"likes": liked_recipes}
+
+    except Exception as e:
+        print(f"Error in get_user_likes: {str(e)}")
+        return {"error": str(e)}
+
+
 # Comment methods
 
 
