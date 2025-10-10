@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
-    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -732,6 +732,20 @@ def check_like_handler(recipe_id):
     except Exception as e:
         print(f"Check like exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/likes", methods=["GET"])
+@require_auth
+def get_my_likes():
+    try:
+        user_id = request.current_user_id
+        result = get_user_likes(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        return jsonify(result), 200
+    except Exception as e:
+        print(f"/likes error: {e}")
+        return jsonify({"error": "Failed to fetch likes"}), 500
 
 
 # ==================== RECIPE COMMENTS ROUTES ====================
