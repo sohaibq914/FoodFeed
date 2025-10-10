@@ -6,3 +6,4 @@ python -m pip install flask-cors
 python -m pip install python-dotenv
 python -m pip install flask-socketio
 python -m pip install eventlet
+python -m pip install pandas
