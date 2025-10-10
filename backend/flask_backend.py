@@ -587,6 +587,7 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "Failed to delete recipe"}), 500
 
 
+
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)

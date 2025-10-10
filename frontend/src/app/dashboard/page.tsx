@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
   Container, 
@@ -14,6 +14,7 @@ import {
   Stack
 } from '@mantine/core';
 import Header from '@/components/Header';
+import { IconStar, IconStarFilled } from "@tabler/icons-react";
 
 type RecipeSummary = { recipe_id: string; title: string };
 
