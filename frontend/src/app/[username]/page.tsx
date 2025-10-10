@@ -8,7 +8,7 @@ import { IconPencil } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type RecipeSummary = { recipe_id: string; title: string; description?: string | null };
+type RecipeSummary = { recipe_id: string; title: string; description?: string; posted: boolean | null };
 
 
 export default function ProfilePage() {
@@ -30,8 +30,10 @@ export default function ProfilePage() {
         setError(null);
         const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes`);
         const data = await res.json();
+        console.log(data)
         if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
         setRecipes(data.recipes || []);
+        console.log(data.recipes)
       } catch (e: any) {
         setError(e.message || "Failed to load recipes");
       } finally {
@@ -101,6 +103,7 @@ export default function ProfilePage() {
                         href={`/recipe/${r.recipe_id}`}
                         style={{ textDecoration: "none" }}
                       >
+                        
                         <Title order={4} mb={4}>
                           {r.title || "(untitled)"}
                         </Title>
@@ -109,10 +112,15 @@ export default function ProfilePage() {
                             {r.description}
                           </Text>
                         )}
+                        {isOwner &&
+                          <Text c="blue" size="sm">
+                            { r.posted ? ('Posted') : ('Draft') }
+                          </Text>  
+                        }            
                         {isOwner && (                       
                           <Button
-                            component={Link}
-                            href={`/edit-recipe/${r.recipe_id}`}
+                            //component={Link}
+                            //href={`/edit-recipe/${r.recipe_id}`}
                             size="compact-md"
                             variant="light"
                           >
