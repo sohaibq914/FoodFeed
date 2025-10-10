@@ -531,11 +531,13 @@ def list_recipes_by_username(username):
         # 2) Fetch that user's recipes
         rec_res = (
             supabase.table("recipes")
-            .select("recipe_id, title, description, timestamp")
+            .select("recipe_id, title, description, timestamp, posted")
             .eq("author_id", user_id)
             .order("timestamp", desc=True)
             .execute()
         )
+
+
 
         return jsonify({"recipes": rec_res.data, "username": username}), 200
 

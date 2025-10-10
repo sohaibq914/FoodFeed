@@ -120,7 +120,6 @@ export default function RestrictionsForm() {
               placeholder="Such as allergens or diets"
               value={tags}
               onChange={setTags}
-              required
               size="md"
             />
             

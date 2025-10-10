@@ -234,7 +234,7 @@ export default function RecipeEditor(params: {recipe_id: string}) {
                 fullWidth
                 mt="md"
               >
-                {posting ? 'Post to profile' : 'Save as Draft'}
+                {posting ? 'Post to Profile' : 'Save as Draft'}
               </Button>
             </Flex>
           </Stack>
