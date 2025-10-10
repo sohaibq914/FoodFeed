@@ -27,9 +27,7 @@ type RecipeSummary = {
   posted: boolean | null;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
-
-type ViewMode = "posted" | "drafts";
+type ViewMode = "posted" | "drafts" | "liked";
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
@@ -45,23 +43,46 @@ export default function ProfilePage() {
 
   // Delete modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(
+    null
+  );
 
   // -- API helpers --
   const fetchRecipes = async (mode: ViewMode) => {
     try {
       setLoading(true);
       setError(null);
+
+      if (mode === "liked") {
+        const res = await fetch(`http://localhost:5001/likes`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user?.id || "",
+          },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || "Failed to load likes");
+
+        // data.likes: [{ recipe_id, title, author_id, posted }]
+        const liked: RecipeSummary[] = (data.likes || []).map((r: any) => ({
+          recipe_id: r.recipe_id,
+          title: r.title,
+          posted: r.posted ?? true,
+        }));
+        setRecipes(liked);
+        return;
+      }
+
+      // posted/drafts
       const postedQuery = mode === "posted" ? "true" : "false";
       const res = await fetch(
-        `${API_BASE}/users/${encodeURIComponent(
+        `http://localhost:5001/users/${encodeURIComponent(
           profileUsername
         )}/recipes?posted=${postedQuery}`
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
 
-      // Safety filter (if backend returns mixed)
       const filtered: RecipeSummary[] = (data.recipes || []).filter(
         (r: RecipeSummary) =>
           mode === "posted" ? r.posted !== false : r.posted === false
@@ -76,12 +97,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!profileUsername) return;
+    if (view === "liked") {
+      if (!isOwner) return;         
+      if (!user?.id) return;        
+    }
     fetchRecipes(view);
   }, [profileUsername, view]);
 
   const handleDelete = async (recipeId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/recipes/${recipeId}`, {
+      const res = await fetch(`http://localhost:5001/recipes/${recipeId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -100,13 +125,16 @@ export default function ProfilePage() {
 
   const handleDraft = async (recipeId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/recipes/${recipeId}/draft`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user?.id || "",
-        },
-      });
+      const res = await fetch(
+        `http://localhost:5001/recipes/${recipeId}/draft`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user?.id || "",
+          },
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to draft recipe");
 
@@ -135,7 +163,9 @@ export default function ProfilePage() {
       ? isOwner
         ? "My Recipes"
         : `${profileUsername}'s Recipes`
-      : "Drafts";
+      : view === "drafts"
+      ? "Drafts"
+      : "Likes";
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -170,24 +200,28 @@ export default function ProfilePage() {
           <section style={{ marginTop: 48 }}>
             <Group justify="space-between" mb="md">
               <Title order={2}>{headerTitle}</Title>
-
-              <Group>
-                <Button
-                  variant={view === "posted" ? "filled" : "light"}
-                  onClick={() => setView("posted")}
-                >
-                  My Recipes
-                </Button>
-
-                {isOwner && (
+              {isOwner && (
+                <Group>
+                  <Button
+                    variant={view === "posted" ? "filled" : "light"}
+                    onClick={() => setView("posted")}
+                  >
+                    My Recipes
+                  </Button>
                   <Button
                     variant={view === "drafts" ? "filled" : "light"}
                     onClick={() => setView("drafts")}
                   >
                     Drafts
                   </Button>
-                )}
-              </Group>
+                  <Button
+                    variant={view === "liked" ? "filled" : "light"}
+                    onClick={() => setView("liked")}
+                  >
+                    Likes
+                  </Button>
+                </Group>
+              )}
             </Group>
 
             {loading && (
@@ -217,7 +251,7 @@ export default function ProfilePage() {
                             {r.title || "(untitled)"}
                           </Title>
 
-                          {isOwner && (
+                          {isOwner && view !== "liked" && (
                             <Group gap="xs">
                               {/* Archive / Move to drafts (only show on posted view) */}
                               {view === "posted" && (
@@ -257,27 +291,7 @@ export default function ProfilePage() {
                           </Text>
                         )}
 
-                        <Group mt="md">
-                          {isOwner ? (
-                            <Button
-                              component={Link}
-                              href={`/edit-recipe/${r.recipe_id}`}
-                              size="compact-md"
-                              variant="light"
-                            >
-                              Edit Recipe
-                            </Button>
-                          ) : (
-                            <Button
-                              component={Link}
-                              href={`/recipe/${r.recipe_id}`}
-                              size="compact-md"
-                              variant="light"
-                            >
-                              View Recipe
-                            </Button>
-                          )}
-                        </Group>
+                        
                       </Card>
                     ))}
                   </SimpleGrid>
@@ -297,7 +311,11 @@ export default function ProfilePage() {
         radius="md"
         shadow="lg"
         overlayProps={{ backgroundOpacity: 0.6, blur: 3 }}
-        transitionProps={{ transition: "pop", duration: 180, timingFunction: "ease" }}
+        transitionProps={{
+          transition: "pop",
+          duration: 180,
+          timingFunction: "ease",
+        }}
       >
         <Text size="sm" mb="md">
           Are you sure you want to delete{" "}

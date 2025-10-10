@@ -32,20 +32,23 @@ export default function Dashboard() {
 
   // fetch all recipe titles with like data
   useEffect(() => {
-    if (!user) return; // wait until auth known
+    if (!user) return;
+  
     const fetchRecipes = async () => {
       try {
         setRecipesLoading(true);
         setRecipesError(null);
-        const res = await fetch(`http://localhost:5001/recipes`, { method: "GET" });
+  
+        const res = await fetch(`http://localhost:5001/recipes`);
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
-        const postedOnly = (data.recipes || []).filter((r: any) => r.posted === true);
-        setRecipes(postedOnly);
-
-        // Fetch like status for each recipe
-        const recipesWithLikes = await Promise.all(
-          (data.recipes || []).map(async (recipe: RecipeSummary) => {
+  
+        // show only posted
+        const postedOnly: RecipeSummary[] = (data.recipes || []).filter((r: any) => r.posted === true);
+  
+        // fetch likes ONLY for posted ones
+        const withLikes = await Promise.all(
+          postedOnly.map(async (recipe) => {
             try {
               const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
                 method: "POST",
@@ -53,6 +56,7 @@ export default function Dashboard() {
                 body: JSON.stringify({ recipe_id: recipe.recipe_id, user_id: user.id }),
               });
               const likeData = await likeRes.json();
+              if (!likeRes.ok) throw new Error(likeData?.error || "like fetch failed");
               return {
                 ...recipe,
                 like_count: likeData.like_count || 0,
@@ -63,16 +67,18 @@ export default function Dashboard() {
             }
           })
         );
-
-        setRecipes(recipesWithLikes);
+  
+        setRecipes(withLikes);
       } catch (err: any) {
         setRecipesError(err.message || "Failed to fetch recipes");
       } finally {
         setRecipesLoading(false);
       }
     };
+  
     fetchRecipes();
   }, [user]);
+  
 
   const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean) => {
     e.preventDefault(); // Prevent navigation to recipe page
