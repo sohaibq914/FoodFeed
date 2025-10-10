@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader } from "@mantine/core";
+import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
@@ -21,6 +22,9 @@ export default function ProfilePage() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Router
+  const router = useRouter()
 
   useEffect(() => {
     if (!profileUsername) return;
@@ -97,8 +101,6 @@ export default function ProfilePage() {
                       <Card
                         key={r.recipe_id}
                         withBorder
-                        component={Link}
-                        href={`/recipe/${r.recipe_id}`}
                         style={{ textDecoration: "none" }}
                       >
                         <Title order={4} mb={4}>
@@ -111,8 +113,9 @@ export default function ProfilePage() {
                         )}
                         {isOwner && (                       
                           <Button
-                            component={Link}
-                            href={`/edit-recipe/${r.recipe_id}`}
+                            onClick={() => {
+                              router.push(`/edit-recipe/${r.recipe_id}`)
+                            }}
                             size="compact-md"
                             variant="light"
                           >

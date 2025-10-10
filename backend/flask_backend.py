@@ -239,11 +239,11 @@ def reviews_create():
     if request.content_type and request.content_type.startswith("multipart/form-data"):
         f = request.form
         file = request.files.get("image")
-
-        name_ok = file.filename.lower().endswith(".png")
-        type_ok = (file.mimetype or "").lower() == "image/png"
-        if not (name_ok and type_ok):
-            return jsonify({"error": "Only PNG images are allowed"}), 400
+        if file:
+            name_ok = file.filename.lower().endswith(".png")
+            type_ok = (file.mimetype or "").lower() == "image/png"
+            if not (name_ok and type_ok):
+                return jsonify({"error": "Only PNG images are allowed"}), 400
 
         row = create_review(f.get("restaurant_id"), f.get(
             "author"), f.get("text"), f.get("rating"), file)
