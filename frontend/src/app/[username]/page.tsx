@@ -99,8 +99,8 @@ export default function ProfilePage() {
                       <Card
                         key={r.recipe_id}
                         withBorder
-                        component={Link}
-                        href={`/recipe/${r.recipe_id}`}
+                        //component={Link}
+                        //href={`/recipe/${r.recipe_id}`}
                         style={{ textDecoration: "none" }}
                       >
                         
@@ -117,14 +117,22 @@ export default function ProfilePage() {
                             { r.posted ? ('Posted') : ('Draft') }
                           </Text>  
                         }            
-                        {isOwner && (                       
+                        {isOwner ? (                       
                           <Button
-                            //component={Link}
-                            //href={`/edit-recipe/${r.recipe_id}`}
+                            component={Link}
+                            href={`/edit-recipe/${r.recipe_id}`}
                             size="compact-md"
                             variant="light"
                           >
                           Edit Recipe
+                          </Button>) : (                          
+                          <Button
+                            component={Link}
+                            href={`/recipe/${r.recipe_id}`}
+                            size="compact-md"
+                            variant="light"
+                          >
+                          View Recipe
                           </Button>)
                         }
                       </Card>
