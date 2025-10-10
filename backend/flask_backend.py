@@ -2,10 +2,13 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
-    fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags
+    fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags
 import os
 from dotenv import load_dotenv
 from functools import wraps
+from supabase_access_meal import *
+from supabase_access_nutrition import *
 
 load_dotenv()
 
@@ -193,6 +196,7 @@ def change_password():
         print(f"Change password exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/create_restaurants", methods=["POST"])
 def create_restaurants():
     data = request.get_json(force=True) or {}
@@ -209,12 +213,15 @@ def create_restaurants():
         return jsonify({"error": created["error"]}), 400
 
     return jsonify({"restaurant": created}), 201
+
+
 @app.route("/restaurants", methods=["GET"])
 def list_restaurants():
     rows = fetch_restaurants()
     if "error" in rows:
         return jsonify({"error": rows["error"]}), 400
     return jsonify({"restaurants": rows}), 200
+
 
 @app.route("/reviews", methods=["GET"])
 def reviews_list():
@@ -225,6 +232,7 @@ def reviews_list():
     if "error" in rows:
         return jsonify({"error": rows["error"]}), 400
     return jsonify({"reviews": rows}), 200
+
 
 @app.route("/reviews", methods=["POST"])
 def reviews_create():
@@ -237,14 +245,17 @@ def reviews_create():
         if not (name_ok and type_ok):
             return jsonify({"error": "Only PNG images are allowed"}), 400
 
-        row = create_review(f.get("restaurant_id"), f.get("author"), f.get("text"), f.get("rating"), file)
+        row = create_review(f.get("restaurant_id"), f.get(
+            "author"), f.get("text"), f.get("rating"), file)
     else:
         data = request.get_json()
-        row = create_review(data.get("restaurant_id"), data.get("author"), data.get("text"), data.get("rating"), None)
+        row = create_review(data.get("restaurant_id"), data.get(
+            "author"), data.get("text"), data.get("rating"), None)
 
     if "error" in row:
         return jsonify({"error": row["error"]}), 400
     return jsonify({"review": row}), 201
+
 
 @app.route("/restaurant_tags", methods=["GET"])
 def get_restaurant_tags():
@@ -252,11 +263,12 @@ def get_restaurant_tags():
     if not tag_id:
         return jsonify({"error": "missing id"}), 400
     ret = get_r_tags(tag_id)
-    #Reason for isinstance check: return errors with "error" key which I didn't mean to do but oh well
+    # Reason for isinstance check: return errors with "error" key which I didn't mean to do but oh well
     if "error" in ret:
         print(ret["error"])
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
+
 
 @app.route("/restaurant_tags_all", methods=["GET"])
 def get_all_restaurant_tags():
@@ -265,6 +277,7 @@ def get_all_restaurant_tags():
     if "error" in ret:
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
+
 
 @app.route("/restaurant_tags", methods=["POST"])
 def insert_restaurant_tags():
@@ -361,6 +374,7 @@ def get_conversations():
 
     return jsonify({'conversations': conversations})
 
+
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')
@@ -418,8 +432,6 @@ def handle_send_message(data):
         emit('error', {'message': 'Failed to send message'})
 
 
-
-
 # Recipe handlers
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
@@ -443,7 +455,8 @@ def update_recipe_handler():
         if not posting:
             posting = False
 
-        result = update_recipe(id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
+        result = update_recipe(
+            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -456,16 +469,19 @@ def update_recipe_handler():
         print(f"Update recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/get_recipe", methods=["POST"])
 def get_recipe_handler():
     try:
         data = request.get_json()
         id = data.get("recipe_id")
+        # Optional user ID to check if user has liked
+        user_id = data.get("user_id")
 
         if not id:
             return jsonify({"error": "Missing recipe id"}), 400
 
-        result = get_recipe(id)
+        result = get_recipe(id, user_id)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -477,7 +493,7 @@ def get_recipe_handler():
     except Exception as e:
         print(f"Get recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
 
 @app.route("/recipes", methods=["GET"])
 def list_recipes():
@@ -491,6 +507,7 @@ def list_recipes():
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 @app.route("/users/<username>/recipes", methods=["GET"])
 def list_recipes_by_username(username):
@@ -520,6 +537,8 @@ def list_recipes_by_username(username):
             .order("timestamp", desc=True)
             .execute()
         )
+
+
 
         return jsonify({"recipes": rec_res.data, "username": username}), 200
 
@@ -587,7 +606,516 @@ def delete_recipe(recipe_id):
         return jsonify({"error": "Failed to delete recipe"}), 500
 
 
+@app.route("/update_restrictions", methods=["POST"])
+def edit_restrictions_handler():
+    try:
+        data = request.get_json()
+        id = data.get("user_id")
+        tags = data.get("tags")
 
+        if not id or not tags:
+            return jsonify({"error": "Missing id or tags"}), 400
+
+        result = edit_user_tags(id, tags)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+
+    except Exception as e:
+        print(f"Update dietary restrictions exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/get_restrictions", methods=["POST"])
+def get_restrictions_handler():
+    try:
+        data = request.get_json()
+        id = data.get("user_id")
+
+        if not id:
+            return jsonify({"error": "Missing id"}), 400
+
+        result = get_user_tags(id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        print(response)
+        return response, 200
+
+    except Exception as e:
+        print(f"Get dietary restrictions exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# ==================== RECIPE LIKES ROUTES ====================
+
+@app.route("/recipes/<recipe_id>/like", methods=["POST"])
+def like_recipe_handler(recipe_id):
+    """Like a recipe"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = like_recipe(user_id, recipe_id)
+
+        if "error" in result:
+            # If already liked, return 200 with current state
+            if result["error"] == "Recipe already liked":
+                return jsonify({
+                    "message": "Recipe already liked",
+                    "like_count": result.get('like_count', 0),
+                    "liked": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": True
+        }), 200
+
+    except Exception as e:
+        print(f"Like recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/unlike", methods=["POST"])
+def unlike_recipe_handler(recipe_id):
+    """Unlike a recipe"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = unlike_recipe(user_id, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unlike recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/check-like", methods=["GET"])
+def check_like_handler(recipe_id):
+    """Check if a user has liked a recipe"""
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = check_recipe_liked(user_id, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Check like exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== RECIPE COMMENTS ROUTES ====================
+
+@app.route("/recipes/<recipe_id>/comments", methods=["GET"])
+def get_comments_handler(recipe_id):
+    """Get all comments for a recipe with replies and like information"""
+    try:
+        user_id = request.args.get("user_id")  # Optional
+        result = get_comments(recipe_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get comments exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/comments", methods=["POST"])
+def add_comment_handler(recipe_id):
+    """Add a comment to a recipe"""
+    try:
+        data = request.get_json()
+        author_id = data.get("author_id")
+        content = data.get("content")
+
+        if not author_id:
+            return jsonify({"error": "Missing author_id"}), 400
+
+        if not content:
+            return jsonify({"error": "Missing content"}), 400
+
+        result = add_comment(recipe_id, author_id, content)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 201
+
+    except Exception as e:
+        print(f"Add comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/comments/<comment_id>", methods=["DELETE"])
+def delete_comment_handler(comment_id):
+    """Delete a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = delete_comment(comment_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Delete comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== COMMENT LIKES ROUTES ====================
+
+@app.route("/comments/<comment_id>/like", methods=["POST"])
+def like_comment_handler(comment_id):
+    """Like a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = like_comment(user_id, comment_id)
+
+        if "error" in result:
+            # If already liked, return 200 with current state
+            if result["error"] == "Comment already liked":
+                return jsonify({
+                    "message": "Comment already liked",
+                    "like_count": result.get('like_count', 0),
+                    "liked": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": True
+        }), 200
+
+    except Exception as e:
+        print(f"Like comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/comments/<comment_id>/unlike", methods=["POST"])
+def unlike_comment_handler(comment_id):
+    """Unlike a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = unlike_comment(user_id, comment_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unlike comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== COMMENT REPLIES ROUTES ====================
+
+@app.route("/comments/<comment_id>/reply", methods=["POST"])
+def add_reply_handler(comment_id):
+    """Add a reply to a comment"""
+    try:
+        data = request.get_json()
+        author_id = data.get("author_id")
+        content = data.get("content")
+        recipe_id = data.get("recipe_id")
+
+        if not author_id:
+            return jsonify({"error": "Missing author_id"}), 400
+
+        if not content:
+            return jsonify({"error": "Missing content"}), 400
+
+        if not recipe_id:
+            return jsonify({"error": "Missing recipe_id"}), 400
+
+        result = add_reply(comment_id, author_id, content, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 201
+
+    except Exception as e:
+        print(f"Add reply exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+### Get meals
+@app.route("/dieting/get_meal_templates", methods=["POST"])
+def get_meal_templates():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        templates = get_user_meal_templates(user_id)
+        return jsonify({"data": [t.to_json() for t in templates]}), 200
+    except Exception as e:
+        print(f"Exception templates: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/add_meal_template", methods=["POST"])
+def add_meal_template():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        name = data.get("name")
+        calories = data.get("calories")
+        added_template = add_user_meal_template(user_id, name, calories)
+        if not added_template:
+            return jsonify({"error": "Name already exists."}), 400
+        return jsonify({"result": "Successfully added!"}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/update_meal_template", methods=["POST"])
+def update_meal_template():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        old_name = data.get("old_name")
+        new_name = data.get("new_name")
+        calories = data.get("calories")
+        updated_template = update_user_meal_template(user_id, old_name, new_name, calories)
+        if not updated_template:
+            return jsonify({"error": "Could not update. Maybe check the name?"}), 400
+        return jsonify({"result": "Successfully updated!"}), 200        
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/delete_meal_template", methods=["POST"])
+def delete_meal_template():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        name = data.get("name")
+        deleted_template = delete_meal_template_of_user(user_id, name)
+        if not deleted_template:
+            return jsonify({"error": "Could not delete."}), 400
+        return jsonify({"result": "Successfully deleted!"}), 200        
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/add_meal", methods=["POST"])
+def add_user_meal():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        name = data.get("name")
+        calories = data.get("calories")
+        ate_at = data.get("ate_at")
+        meal_id = add_meal(user_id, name, calories, ate_at)
+        if meal_id is None:
+            return jsonify({"error": "Could not add meal."}), 400
+        return jsonify({"result": "Successfully added meal!", "id": meal_id}), 200        
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/delete_meal", methods=["POST"])
+def delete_user_meal():
+    try:
+        data = request.get_json()
+        meal_id = data.get("meal_id")
+        is_deleted = delete_meal(meal_id)
+        if not is_deleted:
+            return jsonify({"error": "Could not delete meal."}), 400
+        return jsonify({"result": "Successfully deleted meal!"}), 200        
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/get_meals", methods=["POST"])
+def get_user_meals():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        meals = get_all_user_meals(user_id)
+        averages = get_hour_average(meals)
+        res = jsonify({"meals": [meal.to_json() for meal in meals],
+                "averages": [str(average) for average in averages]})
+        return res, 200        
+    except Exception as e:
+        print(f"Exception meal: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/get_meal_range", methods=["POST"])
+def get_user_meals_range():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        start = data.get("start")
+        end = data.get("end")
+        meals = get_meals(user_id, start, end)
+        averages = get_hour_average(meals)
+        return jsonify({"meals": [meal.to_json() for meal in meals],
+                "averages": [str(average) for average in averages]}), 200         
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+### Get nutrition
+@app.route("/dieting/get_food_items", methods=["POST"])
+def get_food_of_type():
+    try:
+        data = request.get_json()
+        type = data.get('type')
+        foods = get_food_items(type)
+        return jsonify({'foods': [food.to_json() for key, food in foods]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+ 
+@app.route("/dieting/add_nutrient_to_user", methods=["POST"])
+def add_nutrient_to_user():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        nutr_id = data.get('nutrient_id')
+        amount = data.get('amount')
+        add_user_nutrient(user_id, nutr_id, amount)
+        return jsonify({"result": "Added nutrient."}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/update_nutrient_amount", methods=["POST"])
+def update_nutrient_amount():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        nutr_id = data.get('nutrient_id')
+        amount = data.get('amount')
+        update_user_nutrient(user_id, nutr_id, amount)
+        return jsonify({"result": "Added nutrient."}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/remove_nutrient_from_user", methods=["POST"])
+def remove_nutrient_from_user():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        nutr_id = data.get('nutrient_id')
+        remove_user_nutrient(user_id, nutr_id)
+        return jsonify({"result": "Removed nutrient"}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/get_all_nutrients", methods=["POST"])
+def get_all_nutrients():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        nutrients = get_nutrients(user_id)
+        return jsonify({"nutrients": [nutrient.to_json() for nutrient in nutrients]}), 200
+    except Exception as e:
+        print(f"Nutr Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/dieting/get_elligible_foods", methods=["POST"])
+def get_elligible_foods():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        type = data.get('type')
+        foods = get_elligble_foods_type(user_id, type)
+        return jsonify({"foods": [food.to_json() for key, food in foods]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/dieting/get_foods_for_nutrient", methods=["POST"])
+def get_food_of_nutrient():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        nutr_id = data.get('nutrient_id')
+        foods = get_elligble_foods_nutrient(user_id, nutr_id)
+        return jsonify({"foods": [food.to_json() for key, food in foods]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)
+# Template for HTTP-based API
+# Accepts an HTTP request to the url: "[server address]/api_template"
+# Takes parameters via JSON
+# INPUT - POST
+#   parameter_1: int
+#   paremeter_2: string
+# OUTPUT
+#   HTML code - 200 for success, 400 for bad request
+#   message: string (contains error message if an error occurs)
+
+@app.route('/api_template', methods=['POST'])
+#@login_required
+def handle_api_template():
+    data = request.json
+    if 'parameter_1' in data and 'parameter_2' in data:
+        parameter_1 = request.json['parameter_1']
+        parameter_2 = request.json['parameter_2']
+
+        my_message = parameter_2 + str(parameter_1)
+        return jsonify({"message": my_message}), 200
+
+    return jsonify({"message": "Error: invalid parameters"}), 400

@@ -20,12 +20,7 @@ import { IconPencil, IconTrash, IconArchive } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type RecipeSummary = {
-  recipe_id: string;
-  title: string;
-  description?: string | null;
-  posted?: boolean;
-};
+type RecipeSummary = { recipe_id: string; title: string; description?: string; posted: boolean | null };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
@@ -139,6 +134,24 @@ export default function ProfilePage() {
         ? "My Recipes"
         : `${profileUsername}'s Recipes`
       : "Drafts";
+    const run = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes`);
+        const data = await res.json();
+        console.log(data)
+        if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
+        setRecipes(data.recipes || []);
+        console.log(data.recipes)
+      } catch (e: any) {
+        setError(e.message || "Failed to load recipes");
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [profileUsername]);
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -213,61 +226,47 @@ export default function ProfilePage() {
                 ) : (
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
                     {recipes.map((r) => (
-                      <Card key={r.recipe_id} withBorder>
-                        <Group justify="space-between" align="flex-start" mb="xs">
-                          <Title order={4} style={{ margin: 0 }}>
-                            <Link
-                              href={`/recipe/${encodeURIComponent(r.recipe_id)}`}
-                              style={{ textDecoration: "none", color: "inherit" }}
-                            >
-                              {r.title || "(untitled)"}
-                            </Link>
-                          </Title>
-
-                          {isOwner && (
-                            <Group>
-                              {/* (Optional) Edit button placeholder */}
-                              <Button size="xs" color="blue" variant="light" p={6}>
-                                <IconPencil size={14} />
-                              </Button>
-
-                              {/* Move to drafts only visible in posted view */}
-                              {view === "posted" && (
-                                <Button
-                                  size="xs"
-                                  color="blue"
-                                  variant="light"
-                                  p={6}
-                                  onClick={() => handleDraft(r.recipe_id)}
-                                  title="Move to drafts"
-                                  aria-label="Move to drafts"
-                                >
-                                  <IconArchive size={14} />
-                                </Button>
-                              )}
-
-                              {/* Delete always available to owner */}
-                              <Button
-                                size="xs"
-                                color="red"
-                                variant="light"
-                                p={6}
-                                onClick={() => openDeleteModal(r)}
-                                title="Delete recipe"
-                                aria-label="Delete recipe"
-                              >
-                                <IconTrash size={14} />
-                              </Button>
-                            </Group>
-                          )}
-                        </Group>
-
+                      <Card
+                        key={r.recipe_id}
+                        withBorder
+                        //component={Link}
+                        //href={`/recipe/${r.recipe_id}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        
+                        <Title order={4} mb={4}>
+                          {r.title || "(untitled)"}
+                        </Title>
                         {r.description && (
                           <Text c="dimmed" size="sm" lineClamp={3}>
                             {r.description}
                           </Text>
                         )}
+                        {isOwner &&
+                          <Text c="blue" size="sm">
+                            { r.posted ? ('Posted') : ('Draft') }
+                          </Text>  
+                        }            
+                        {isOwner ? (                       
+                          <Button
+                            component={Link}
+                            href={`/edit-recipe/${r.recipe_id}`}
+                            size="compact-md"
+                            variant="light"
+                          >
+                          Edit Recipe
+                          </Button>) : (                          
+                          <Button
+                            component={Link}
+                            href={`/recipe/${r.recipe_id}`}
+                            size="compact-md"
+                            variant="light"
+                          >
+                          View Recipe
+                          </Button>)
+                        }
                       </Card>
+                      
                     ))}
                   </SimpleGrid>
                 )}
