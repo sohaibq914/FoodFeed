@@ -15,7 +15,7 @@ type CreateReviewInput = {
     author: string;
     text: string;
     rating: number;
-    image?: File | null;
+    image?: File | File[] | null;
     restaurant_id?: string;
 };
 
@@ -24,31 +24,24 @@ interface RestaurantsContextType {
     loading: boolean;
     selectedId: string | null;
     setSelectedId: (id: string | null) => void;
-
     filter: string;
     setFilter: (v: string) => void;
-
     tagQuery: [];
     setTagQuery: (v: string[]) => void;
-
     allTags: string[];
     refreshAllTags: () => Promise<{ data: string[]; error: any }>;
-
     refresh: () => Promise<{ data: any; error: any }>;
     addRestaurant: (name: string, address: string, owner: string) => Promise<{ data: any; error: any }>;
-
     reviews: Review[];
     reviewsLoading: boolean;
     reviewsError: string | null;
     refreshReviews: (restaurant_id?: string) => Promise<{ data: any; error: any }>;
     createReview: (input: CreateReviewInput) => Promise<{ data: any; error: any }>;
-
     addRestaurantTags: (restaurant_id: string, tags: string[]) => Promise<{ data: any; error: any }>;
     fetchTags: (restaurant_id: string) => Promise<{ data: string[]; error: any }>;
 }
 
 const RestaurantsContext = createContext<RestaurantsContextType | undefined>(undefined);
-
 const Endpoint = "http://0.0.0.0:5001";
 
 export const RestaurantsProvider = ({ children }: { children: React.ReactNode }) => {
@@ -61,7 +54,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
     const [reviewsError, setReviewsError] = useState<string | null>(null);
 
     const [filter, setFilter] = useState("");
-
     const [tagQuery, setTagQuery] = useState([]);
     const [allTags, setAllTags] = useState<string[]>([]);
 
@@ -71,7 +63,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
             const res = await fetch(`${Endpoint}/restaurants`, { method: "GET" });
             const data = await res.json();
             if (!res.ok) return { data: null, error: data };
-
             const rows = Array.isArray(data.restaurants) ? data.restaurants : [];
             const next: Restaurant[] = [];
             for (const r of rows) {
@@ -97,7 +88,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
             const a = (address || "").trim();
             const o = (owner || "").trim();
             if (!n || !a || !o) return { data: null, error: { message: "All fields are required" } };
-
             const res = await fetch(`${Endpoint}/create_restaurants`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -105,15 +95,12 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
             });
             const data = await res.json();
             if (!res.ok) return { data: null, error: data };
-
             const row = data.restaurant;
-            if (!row)
-                return { data: null, error: { message: "Bad response from server" } };
-
+            if (!row) return { data: null, error: { message: "Bad response from server" } };
             const newItem: Restaurant = {
                 id: row.id,
                 name: row.name,
-                address:  row.address,
+                address: row.address,
                 owner: row.owner,
             };
             setItems((prev) => [newItem, ...prev]);
@@ -136,24 +123,22 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    const refreshReviews = async (restaurant_id: string) => {
+    const refreshReviews = async (restaurant_id?: string) => {
         try {
             setReviewsLoading(true);
             setReviewsError(null);
-            const rid = resolveRestaurantId(restaurant_id);
+            const rid = resolveRestaurantId(restaurant_id ?? null);
             if (!rid) return { data: null, error: { message: "missing restaurant_id" } };
-
-            const res = await fetch(
-                `${Endpoint}/reviews?restaurant_id=${encodeURIComponent(rid)}`,
-                { method: "GET" }
-            );
+            const res = await fetch(`${Endpoint}/reviews?restaurant_id=${encodeURIComponent(rid)}`, {
+                method: "GET",
+            });
             const data = await res.json();
             if (!res.ok) {
                 setReviews([]);
                 setReviewsError(data.error);
                 return { data: null, error: data };
             }
-            const rows = Array.isArray(data.reviews) ? data.reviews : [];
+            const rows = Array.isArray(data.reviews) ? (data.reviews as Review[]) : [];
             setReviews(rows);
             return { data, error: null };
         } catch {
@@ -165,34 +150,28 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
+    // CHANGED: loop through images, call backend once per file
     const createReview = async (input: CreateReviewInput) => {
         try {
-            setReviewsError(null);
             const rid = resolveRestaurantId(input.restaurant_id ?? null);
             if (!rid) return { data: null, error: { message: "missing restaurant_id" } };
-
-            const fd = new FormData();
-            fd.append("restaurant_id", rid);
-            fd.append("author", input.author.trim());
-            fd.append("text", input.text.trim());
-            fd.append("rating", String(input.rating));
-            if (input.image) fd.append("image", input.image);
-
-            const res = await fetch(`${Endpoint}/reviews`, { method: "POST", body: fd } as any);
-            const data = await res.json();
-            if (!res.ok) {
-                setReviewsError(data.error || "Failed to submit review");
-                return { data: null, error: data };
+            const images = Array.isArray(input.image) ? input.image : input.image ? [input.image] : [];
+            const allResults: any[] = [];
+            for (const img of images.length > 0 ? images : [null]) {
+                const fd = new FormData();
+                fd.append("restaurant_id", rid);
+                fd.append("author", input.author.trim());
+                fd.append("text", input.text.trim());
+                fd.append("rating", String(input.rating));
+                if (img) fd.append("image", img);
+                const res = await fetch(`${Endpoint}/reviews`, { method: "POST", body: fd } as any);
+                const data = await res.json();
+                if (!res.ok) return { data: null, error: data };
+                allResults.push(data.review);
             }
-            const row = data.review;
-            if (!row) {
-                setReviewsError("Bad response");
-                return { data: null, error: { message: "Bad response" } };
-            }
-            refreshReviews(rid);
-            return { data, error: null };
+            await refreshReviews(rid);
+            return { data: allResults, error: null };
         } catch {
-            setReviewsError("Network error");
             return { data: null, error: { message: "Network error" } };
         }
     };
@@ -213,7 +192,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    /** Tags for a single restaurant (backend returns: [{ tags: [...] }]) */
     const fetchTags = useCallback(
         async (restaurant_id: string): Promise<{ data: string[]; error: any }> => {
             const res = await fetch(
@@ -228,7 +206,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         []
     );
 
-    /** ALL tags across restaurants (backend returns: { tags: [...] }) */
     const refreshAllTags = useCallback(async (): Promise<{ data: string[]; error: any }> => {
         try {
             const res = await fetch(`${Endpoint}/restaurant_tags_all`);
@@ -255,25 +232,19 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 loading,
                 selectedId,
                 setSelectedId,
-
                 filter,
                 setFilter,
-
                 tagQuery,
                 setTagQuery,
-
                 allTags,
                 refreshAllTags,
-
                 refresh,
                 addRestaurant,
-
                 reviews,
                 reviewsLoading,
                 reviewsError,
                 refreshReviews,
                 createReview,
-
                 addRestaurantTags,
                 fetchTags,
             }}

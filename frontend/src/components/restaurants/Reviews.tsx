@@ -24,8 +24,8 @@ export default function ReviewsPage(): React.ReactElement {
     const [author, setAuthor] = useState("");
     const [text, setText] = useState("");
     const [rating, setRating] = useState<number>(0);
-    const [file, setFile] = useState<File | null>(null);
-    const [preview, setPreview] = useState<string>("");
+    const [files, setFiles] = useState<File[] | null>(null);
+    const [previews, setPreviews] = useState<string[]>([]);
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -37,19 +37,18 @@ export default function ReviewsPage(): React.ReactElement {
             const parsed = JSON.parse(raw);
             if (parsed && typeof parsed.id === "string") setRid(parsed.id);
             refreshReviews(parsed.id);
-        } catch {
-        }
+        } catch {}
     }, []);
 
     useEffect(() => {
-        if (!file) {
-            setPreview("");
+        if (!files || files.length === 0) {
+            setPreviews([]);
             return;
         }
-        const url = URL.createObjectURL(file);
-        setPreview(url);
-        return () => URL.revokeObjectURL(url);
-    }, [file]);
+        const urls = files.map((f) => URL.createObjectURL(f));
+        setPreviews(urls);
+        return () => urls.forEach((u) => URL.revokeObjectURL(u));
+    }, [files]);
 
     const canSubmit = useMemo(() => {
         return Boolean(rid) && author.length > 0 && text.length > 0 && rating >= 1 && rating <= 5;
@@ -69,17 +68,17 @@ export default function ReviewsPage(): React.ReactElement {
             author: author.trim(),
             text: text.trim(),
             rating,
-            image: file || undefined,
+            image: files ?? undefined,
         });
         if (error) {
             setErr(error.error);
         } else {
-            setOk("Review submitted");
+            setOk("Review(s) submitted");
             setAuthor("");
             setText("");
             setRating(0);
-            setFile(null);
-            setPreview("");
+            setFiles(null);
+            setPreviews([]);
         }
         setSubmitting(false);
     };
@@ -91,8 +90,14 @@ export default function ReviewsPage(): React.ReactElement {
     return (
         <Stack mt="lg" gap="md">
             <Group justify="space-between">
-                <Text fw={700} fz="lg">Reviews</Text>
-                <Button variant="light" onClick={() => void refreshReviews(rid)} loading={reviewsLoading}>
+                <Text fw={700} fz="lg">
+                    Reviews
+                </Text>
+                <Button
+                    variant="light"
+                    onClick={() => void refreshReviews(rid)}
+                    loading={reviewsLoading}
+                >
                     Refresh
                 </Button>
             </Group>
@@ -111,7 +116,9 @@ export default function ReviewsPage(): React.ReactElement {
                                 onChange={(e) => setAuthor(e.currentTarget.value)}
                             />
                             <div>
-                                <Text size="sm" fw={500} mb={4}>Rating</Text>
+                                <Text size="sm" fw={500} mb={4}>
+                                    Rating
+                                </Text>
                                 <Rating value={rating} onChange={setRating} size="lg" />
                             </div>
                         </Group>
@@ -124,11 +131,12 @@ export default function ReviewsPage(): React.ReactElement {
                         <Group align="end" gap="md">
                             <div style={{ flex: 1 }}>
                                 <FileInput
-                                    label="Image (optional)"
-                                    placeholder="Choose an image"
+                                    label="Images (optional)"
+                                    placeholder="Choose one or more images"
                                     accept="image/*"
-                                    value={file}
-                                    onChange={setFile}
+                                    multiple
+                                    value={files}
+                                    onChange={setFiles}
                                     clearable
                                 />
                             </div>
@@ -136,9 +144,19 @@ export default function ReviewsPage(): React.ReactElement {
                                 Submit
                             </Button>
                         </Group>
-                        {preview && (
+                        {previews.length > 0 && (
                             <Group>
-                                <Image src={preview} alt="preview" radius="sm" w={140} h={140} fit="cover" />
+                                {previews.map((src, i) => (
+                                    <Image
+                                        key={i}
+                                        src={src}
+                                        alt="preview"
+                                        radius="sm"
+                                        w={140}
+                                        h={140}
+                                        fit="cover"
+                                    />
+                                ))}
                             </Group>
                         )}
                     </Stack>
@@ -164,7 +182,15 @@ export default function ReviewsPage(): React.ReactElement {
                             </Text>
                             <Text mt="sm">{r.text}</Text>
                             {r.image_url ? (
-                                <Image src={r.image_url} alt="review image" mt="sm" radius="sm" w="100%" h={220} fit="cover" />
+                                <Image
+                                    src={r.image_url}
+                                    alt="review image"
+                                    mt="sm"
+                                    radius="sm"
+                                    w="100%"
+                                    h={220}
+                                    fit="cover"
+                                />
                             ) : null}
                         </Card>
                     ))}
