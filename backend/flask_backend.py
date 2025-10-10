@@ -2,7 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
-    fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags
+    fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -193,6 +194,7 @@ def change_password():
         print(f"Change password exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/create_restaurants", methods=["POST"])
 def create_restaurants():
     data = request.get_json(force=True) or {}
@@ -209,12 +211,15 @@ def create_restaurants():
         return jsonify({"error": created["error"]}), 400
 
     return jsonify({"restaurant": created}), 201
+
+
 @app.route("/restaurants", methods=["GET"])
 def list_restaurants():
     rows = fetch_restaurants()
     if "error" in rows:
         return jsonify({"error": rows["error"]}), 400
     return jsonify({"restaurants": rows}), 200
+
 
 @app.route("/reviews", methods=["GET"])
 def reviews_list():
@@ -225,6 +230,7 @@ def reviews_list():
     if "error" in rows:
         return jsonify({"error": rows["error"]}), 400
     return jsonify({"reviews": rows}), 200
+
 
 @app.route("/reviews", methods=["POST"])
 def reviews_create():
@@ -237,14 +243,17 @@ def reviews_create():
         if not (name_ok and type_ok):
             return jsonify({"error": "Only PNG images are allowed"}), 400
 
-        row = create_review(f.get("restaurant_id"), f.get("author"), f.get("text"), f.get("rating"), file)
+        row = create_review(f.get("restaurant_id"), f.get(
+            "author"), f.get("text"), f.get("rating"), file)
     else:
         data = request.get_json()
-        row = create_review(data.get("restaurant_id"), data.get("author"), data.get("text"), data.get("rating"), None)
+        row = create_review(data.get("restaurant_id"), data.get(
+            "author"), data.get("text"), data.get("rating"), None)
 
     if "error" in row:
         return jsonify({"error": row["error"]}), 400
     return jsonify({"review": row}), 201
+
 
 @app.route("/restaurant_tags", methods=["GET"])
 def get_restaurant_tags():
@@ -252,11 +261,12 @@ def get_restaurant_tags():
     if not tag_id:
         return jsonify({"error": "missing id"}), 400
     ret = get_r_tags(tag_id)
-    #Reason for isinstance check: return errors with "error" key which I didn't mean to do but oh well
+    # Reason for isinstance check: return errors with "error" key which I didn't mean to do but oh well
     if "error" in ret:
         print(ret["error"])
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
+
 
 @app.route("/restaurant_tags_all", methods=["GET"])
 def get_all_restaurant_tags():
@@ -265,6 +275,7 @@ def get_all_restaurant_tags():
     if "error" in ret:
         return jsonify({"error": ret["error"]}), 400
     return jsonify(ret), 200
+
 
 @app.route("/restaurant_tags", methods=["POST"])
 def insert_restaurant_tags():
@@ -361,6 +372,7 @@ def get_conversations():
 
     return jsonify({'conversations': conversations})
 
+
 @socketio.on('connect')
 def handle_connect():
     print(f'Client connected: {request.sid}')
@@ -418,8 +430,6 @@ def handle_send_message(data):
         emit('error', {'message': 'Failed to send message'})
 
 
-
-
 # Recipe handlers
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
@@ -443,7 +453,8 @@ def update_recipe_handler():
         if not posting:
             posting = False
 
-        result = update_recipe(id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
+        result = update_recipe(
+            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -456,16 +467,19 @@ def update_recipe_handler():
         print(f"Update recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/get_recipe", methods=["POST"])
 def get_recipe_handler():
     try:
         data = request.get_json()
         id = data.get("recipe_id")
+        # Optional user ID to check if user has liked
+        user_id = data.get("user_id")
 
         if not id:
             return jsonify({"error": "Missing recipe id"}), 400
 
-        result = get_recipe(id)
+        result = get_recipe(id, user_id)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -477,7 +491,7 @@ def get_recipe_handler():
     except Exception as e:
         print(f"Get recipe exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
 
 @app.route("/recipes", methods=["GET"])
 def list_recipes():
@@ -491,6 +505,7 @@ def list_recipes():
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 @app.route("/users/<username>/recipes", methods=["GET"])
 def list_recipes_by_username(username):
@@ -525,6 +540,248 @@ def list_recipes_by_username(username):
     except Exception as e:
         print(f"list_recipes_by_username error: {e}")
         return jsonify({"error": "Failed to fetch user's recipes"}), 500
+
+
+# ==================== RECIPE LIKES ROUTES ====================
+
+@app.route("/recipes/<recipe_id>/like", methods=["POST"])
+def like_recipe_handler(recipe_id):
+    """Like a recipe"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = like_recipe(user_id, recipe_id)
+
+        if "error" in result:
+            # If already liked, return 200 with current state
+            if result["error"] == "Recipe already liked":
+                return jsonify({
+                    "message": "Recipe already liked",
+                    "like_count": result.get('like_count', 0),
+                    "liked": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": True
+        }), 200
+
+    except Exception as e:
+        print(f"Like recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/unlike", methods=["POST"])
+def unlike_recipe_handler(recipe_id):
+    """Unlike a recipe"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = unlike_recipe(user_id, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unlike recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/check-like", methods=["GET"])
+def check_like_handler(recipe_id):
+    """Check if a user has liked a recipe"""
+    try:
+        user_id = request.args.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = check_recipe_liked(user_id, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Check like exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== RECIPE COMMENTS ROUTES ====================
+
+@app.route("/recipes/<recipe_id>/comments", methods=["GET"])
+def get_comments_handler(recipe_id):
+    """Get all comments for a recipe with replies and like information"""
+    try:
+        user_id = request.args.get("user_id")  # Optional
+        result = get_comments(recipe_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get comments exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/recipes/<recipe_id>/comments", methods=["POST"])
+def add_comment_handler(recipe_id):
+    """Add a comment to a recipe"""
+    try:
+        data = request.get_json()
+        author_id = data.get("author_id")
+        content = data.get("content")
+
+        if not author_id:
+            return jsonify({"error": "Missing author_id"}), 400
+
+        if not content:
+            return jsonify({"error": "Missing content"}), 400
+
+        result = add_comment(recipe_id, author_id, content)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 201
+
+    except Exception as e:
+        print(f"Add comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/comments/<comment_id>", methods=["DELETE"])
+def delete_comment_handler(comment_id):
+    """Delete a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = delete_comment(comment_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Delete comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== COMMENT LIKES ROUTES ====================
+
+@app.route("/comments/<comment_id>/like", methods=["POST"])
+def like_comment_handler(comment_id):
+    """Like a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = like_comment(user_id, comment_id)
+
+        if "error" in result:
+            # If already liked, return 200 with current state
+            if result["error"] == "Comment already liked":
+                return jsonify({
+                    "message": "Comment already liked",
+                    "like_count": result.get('like_count', 0),
+                    "liked": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": True
+        }), 200
+
+    except Exception as e:
+        print(f"Like comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/comments/<comment_id>/unlike", methods=["POST"])
+def unlike_comment_handler(comment_id):
+    """Unlike a comment"""
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Missing user_id"}), 400
+
+        result = unlike_comment(user_id, comment_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "like_count": result["like_count"],
+            "liked": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unlike comment exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== COMMENT REPLIES ROUTES ====================
+
+@app.route("/comments/<comment_id>/reply", methods=["POST"])
+def add_reply_handler(comment_id):
+    """Add a reply to a comment"""
+    try:
+        data = request.get_json()
+        author_id = data.get("author_id")
+        content = data.get("content")
+        recipe_id = data.get("recipe_id")
+
+        if not author_id:
+            return jsonify({"error": "Missing author_id"}), 400
+
+        if not content:
+            return jsonify({"error": "Missing content"}), 400
+
+        if not recipe_id:
+            return jsonify({"error": "Missing recipe_id"}), 400
+
+        result = add_reply(comment_id, author_id, content, recipe_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 201
+
+    except Exception as e:
+        print(f"Add reply exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 if __name__ == "__main__":

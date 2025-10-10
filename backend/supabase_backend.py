@@ -8,7 +8,7 @@ load_dotenv()
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_ANON_KEY")
-storage= "https://ckejrfkzghamajcnryga.storage.supabase.co/storage/v1/s3"
+storage = "https://ckejrfkzghamajcnryga.storage.supabase.co/storage/v1/s3"
 aws = "a5ac34c6e62607b69ce60dd528e8e02d"
 secret = "89b422e51e99adeb5a395a744129a6541de257f27fdd8af7e3be991395c63c8a"
 BUCKET = "FoodFeed"
@@ -26,34 +26,37 @@ print(f"Supabase Key exists: {bool(key)}")
 print(f"Supabase Bucket: {BUCKET}")
 
 if not url or not key:
-    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
+    raise ValueError(
+        "SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
 
 supabase: Client = create_client(url, key)
+
 
 def sign_up_user(email: str, password: str, username: str):
     try:
         print(f"Attempting to register user: {email}, username: {username}")
-        
-        existing_user = supabase.table('users').select('username').eq('username', username).execute()
+
+        existing_user = supabase.table('users').select(
+            'username').eq('username', username).execute()
         if existing_user.data:
             return {"error": "Username already exists"}
-        
+
         response = supabase.auth.sign_up({
             "email": email,
             "password": password
         })
-        
+
         print(f"Supabase auth response: {response}")
-        
+
         if response.user:
             user_data = supabase.table('users').insert({
                 "id": response.user.id,
                 "username": username,
                 "email": email
             }).execute()
-            
+
             print(f"User table insert response: {user_data}")
-            
+
             if user_data.data:
                 return {
                     "user": {
@@ -63,34 +66,37 @@ def sign_up_user(email: str, password: str, username: str):
                     },
                     "session": response.session
                 }
-                
+
         return {"error": "Failed to create user profile"}
     except Exception as e:
         print(f"Error in sign_up_user: {str(e)}")
         return {"error": str(e)}
 
+
 def sign_in_user(login: str, password: str):
     try:
         print(f"Attempting to sign in user: {login}")
-        
+
         if "@" in login:
             response = supabase.auth.sign_in_with_password({
                 "email": login,
                 "password": password
             })
         else:
-            user_data = supabase.table('users').select('email').eq('username', login).execute()
+            user_data = supabase.table('users').select(
+                'email').eq('username', login).execute()
             if not user_data.data:
                 return {"error": "Invalid username or password"}
-            
+
             email = user_data.data[0]['email']
             response = supabase.auth.sign_in_with_password({
                 "email": email,
                 "password": password
             })
-        
+
         if response.user:
-            user_profile = supabase.table('users').select('username').eq('id', response.user.id).execute()
+            user_profile = supabase.table('users').select(
+                'username').eq('id', response.user.id).execute()
             if user_profile.data:
                 return {
                     "user": {
@@ -100,11 +106,12 @@ def sign_in_user(login: str, password: str):
                     },
                     "session": response.session
                 }
-                
+
         return {"error": "Failed to get user profile"}
     except Exception as e:
         print(f"Error in sign_in_user: {str(e)}")
         return {"error": str(e)}
+
 
 def sign_out_user():
     try:
@@ -114,34 +121,35 @@ def sign_out_user():
         print(f"Error in sign_out_user: {str(e)}")
         return {"error": str(e)}
 
+
 def change_user_password(email: str, current_password: str, new_password: str):
     try:
         print(f"Attempting to change password for user: {email}")
-        
+
         sign_in_response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": current_password
         })
-        
+
         if not sign_in_response.user:
             return {"error": "Current password is incorrect"}
-        
+
         update_response = supabase.auth.update_user({
             "password": new_password
         })
-        
+
         print(f"Password change response: {update_response}")
-        
+
         if update_response.user:
             supabase.auth.sign_out()
             return {"message": "Password changed successfully"}
         else:
             return {"error": "Failed to change password"}
-            
+
     except Exception as e:
         print(f"Error in change_user_password: {str(e)}")
         return {"error": str(e)}
-    
+
 
 def add_restaurant(name: str, address: str, owner: str):
     try:
@@ -164,10 +172,12 @@ def add_restaurant(name: str, address: str, owner: str):
 
 def fetch_restaurants():
     try:
-        res = supabase.table("restaurant").select("id,name,address,owner").order("name").execute()
+        res = supabase.table("restaurant").select(
+            "id,name,address,owner").order("name").execute()
         return res.data
     except Exception as e:
         return {"error": str(e)}
+
 
 def fetch_reviews(restaurant_id: str):
     try:
@@ -182,6 +192,7 @@ def fetch_reviews(restaurant_id: str):
         return res.data or []
     except Exception as e:
         return {"error": str(e)}
+
 
 def create_review(restaurant_id, author, text, rating, image_file):
     try:
@@ -229,6 +240,7 @@ def get_r_tags(row_id):
     except Exception as e:
         return {"error": str(e)}
 
+
 def get_all_r_tags():
     try:
         res = supabase.table("restaurant_tags").select("tags").execute()
@@ -270,19 +282,21 @@ def insert_r_tags(restaurant_id, tags):
         return {"error": str(e)}
 
 # Recipe methods
+
+
 def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
     try:
         print(id)
         if id == "new":
             print("new row")
             response = supabase.table('recipes').insert({
-            "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+                "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
         else:
             print("update")
             response = supabase.table('recipes').upsert({
-            "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-            "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+                "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
 
         print(f"Recipe upsert response: {response}")
 
@@ -296,25 +310,391 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
         print(f"Error in update_recipe: {str(e)}")
         return {"error": str(e)}
 
-def get_recipe(id: str):
+
+def get_recipe(id: str, user_id: str = None):
     try:
         if id:
             if id == "new":
                 return {"error": "Recipe not in database"}
-            response = supabase.table('recipes').select("*, users!recipes_author_id_fkey(username)").eq("recipe_id", id).single().execute()
+            response = supabase.table('recipes').select(
+                "*, users!recipes_author_id_fkey(username)").eq("recipe_id", id).single().execute()
 
             print("Full recipe response:", response.data)
 
             if response.data and "users" in response.data:
-                print("Author username:", response.data["users"].get("username"))
+                print("Author username:",
+                      response.data["users"].get("username"))
             else:
                 print("No users.username found")
 
-        
+            # Get actual like count from recipe_likes table
+            like_count_result = supabase.table('recipe_likes').select(
+                'id', count='exact').eq('recipe_id', id).execute()
+            actual_like_count = like_count_result.count if like_count_result.count is not None else 0
+            response.data['like_count'] = actual_like_count
+            print(f"Actual like count for recipe {id}: {actual_like_count}")
+
+            # Check if user has liked this recipe
+            if user_id and response.data:
+                liked_response = supabase.table('recipe_likes').select(
+                    'id').eq('recipe_id', id).eq('user_id', user_id).execute()
+                response.data['user_has_liked'] = len(liked_response.data) > 0
+            else:
+                response.data['user_has_liked'] = False
+
             return response.data
         else:
             return {"error": "Failed to get recipe"}
 
     except Exception as e:
         print(f"Error in get_recipe: {str(e)}")
+        return {"error": str(e)}
+
+
+def like_recipe(user_id: str, recipe_id: str):
+    """Add a like to a recipe"""
+    try:
+        print(f"Like attempt - user_id: {user_id}, recipe_id: {recipe_id}")
+
+        # Check if already liked
+        existing = supabase.table('recipe_likes').select('id').eq(
+            'user_id', user_id).eq('recipe_id', recipe_id).execute()
+        print(f"Existing likes: {existing.data}")
+
+        if existing.data:
+            # Get current like count
+            recipe = supabase.table('recipes').select('like_count').eq(
+                'recipe_id', recipe_id).single().execute()
+            return {"error": "Recipe already liked", "like_count": recipe.data.get('like_count', 0)}
+
+        # Insert like
+        response = supabase.table('recipe_likes').insert({
+            'user_id': user_id,
+            'recipe_id': recipe_id
+        }).execute()
+        print(f"Insert response: {response.data}")
+
+        if response.data:
+            # Count likes directly (more reliable than waiting for trigger)
+            like_count_result = supabase.table('recipe_likes').select(
+                'id', count='exact').eq('recipe_id', recipe_id).execute()
+            like_count = like_count_result.count if like_count_result.count is not None else 0
+            print(f"Direct count of likes: {like_count}")
+
+            # Also get the like_count column value to verify trigger
+            recipe = supabase.table('recipes').select('like_count').eq(
+                'recipe_id', recipe_id).single().execute()
+            print(
+                f"Like count from column: {recipe.data.get('like_count', 0)}")
+
+            return {"message": "Recipe liked", "like_count": like_count}
+
+        return {"error": "Failed to like recipe"}
+
+    except Exception as e:
+        print(f"Error in like_recipe: {str(e)}")
+        return {"error": str(e)}
+
+
+def unlike_recipe(user_id: str, recipe_id: str):
+    """Remove a like from a recipe"""
+    try:
+        print(f"Unlike attempt - user_id: {user_id}, recipe_id: {recipe_id}")
+
+        # Check if like exists first
+        existing = supabase.table('recipe_likes').select('id').eq(
+            'user_id', user_id).eq('recipe_id', recipe_id).execute()
+        print(f"Existing likes found: {existing.data}")
+
+        if not existing.data:
+            return {"error": "Like not found"}
+
+        # Delete the like
+        response = supabase.table('recipe_likes').delete().eq(
+            'user_id', user_id).eq('recipe_id', recipe_id).execute()
+        print(f"Delete response: {response.data}")
+
+        # Count likes directly (more reliable than waiting for trigger)
+        like_count_result = supabase.table('recipe_likes').select(
+            'id', count='exact').eq('recipe_id', recipe_id).execute()
+        like_count = like_count_result.count if like_count_result.count is not None else 0
+        print(f"Direct count of likes after unlike: {like_count}")
+
+        # Also get the like_count column value to verify trigger
+        recipe = supabase.table('recipes').select('like_count').eq(
+            'recipe_id', recipe_id).single().execute()
+        print(f"Like count from column: {recipe.data.get('like_count', 0)}")
+
+        return {"message": "Recipe unliked", "like_count": like_count}
+
+    except Exception as e:
+        print(f"Error in unlike_recipe: {str(e)}")
+        return {"error": str(e)}
+
+
+def check_recipe_liked(user_id: str, recipe_id: str):
+    """Check if a user has liked a specific recipe"""
+    try:
+        response = supabase.table('recipe_likes').select('id').eq(
+            'user_id', user_id).eq('recipe_id', recipe_id).execute()
+        return {"liked": len(response.data) > 0}
+    except Exception as e:
+        print(f"Error in check_recipe_liked: {str(e)}")
+        return {"error": str(e)}
+
+# Comment methods
+
+
+def add_comment(recipe_id: str, author_id: str, content: str):
+    """Add a comment to a recipe"""
+    try:
+        print(f"Add comment - recipe_id: {recipe_id}, author_id: {author_id}")
+
+        if not content or not content.strip():
+            return {"error": "Comment content cannot be empty"}
+
+        # Insert comment (explicitly set parent_comment_id to None for root comments)
+        response = supabase.table('recipe_comments').insert({
+            'recipe_id': recipe_id,
+            'author_id': author_id,
+            'content': content.strip(),
+            'parent_comment_id': None
+        }).execute()
+
+        print(f"Comment insert response: {response.data}")
+
+        if response.data:
+            # Fetch the comment with author username
+            comment_id = response.data[0]['comment_id']
+            comment = supabase.table('recipe_comments').select(
+                '*, users!recipe_comments_author_id_fkey(username, email)'
+            ).eq('comment_id', comment_id).single().execute()
+
+            return {"message": "Comment added", "comment": comment.data}
+
+        return {"error": "Failed to add comment"}
+
+    except Exception as e:
+        print(f"Error in add_comment: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_comments(recipe_id: str, user_id: str = None):
+    """Get all comments for a recipe with replies, sorted by newest first"""
+    try:
+        print(f"Fetching comments for recipe: {recipe_id}")
+
+        # Fetch all comments (parent and replies)
+        response = supabase.table('recipe_comments').select(
+            '*, users!recipe_comments_author_id_fkey(username, email)'
+        ).eq('recipe_id', recipe_id).order('created_at', desc=False).execute()
+
+        all_comments = response.data
+
+        print(f"All comments raw data: {all_comments}")
+
+        # Separate parents and replies (handle None, null, and missing key)
+        parent_comments = [
+            c for c in all_comments if not c.get('parent_comment_id')]
+        replies = [c for c in all_comments if c.get('parent_comment_id')]
+
+        print(
+            f"Parent comments: {len(parent_comments)}, Replies: {len(replies)}")
+
+        # Add like information and replies to each parent comment
+        for comment in parent_comments:
+            # Get like count and user's like status
+            like_count_result = supabase.table('comment_likes').select(
+                'id', count='exact').eq('comment_id', comment['comment_id']).execute()
+            comment['like_count'] = like_count_result.count if like_count_result.count is not None else 0
+
+            if user_id:
+                liked_response = supabase.table('comment_likes').select('id').eq(
+                    'comment_id', comment['comment_id']).eq('user_id', user_id).execute()
+                comment['user_has_liked'] = len(liked_response.data) > 0
+            else:
+                comment['user_has_liked'] = False
+
+            # Add replies for this comment
+            comment['replies'] = [r for r in replies if r.get(
+                'parent_comment_id') == comment['comment_id']]
+
+            # Add like info to each reply
+            for reply in comment['replies']:
+                like_count_result = supabase.table('comment_likes').select(
+                    'id', count='exact').eq('comment_id', reply['comment_id']).execute()
+                reply['like_count'] = like_count_result.count if like_count_result.count is not None else 0
+
+                if user_id:
+                    liked_response = supabase.table('comment_likes').select('id').eq(
+                        'comment_id', reply['comment_id']).eq('user_id', user_id).execute()
+                    reply['user_has_liked'] = len(liked_response.data) > 0
+                else:
+                    reply['user_has_liked'] = False
+
+        # Sort parent comments by newest first
+        parent_comments.sort(key=lambda x: x['created_at'], reverse=True)
+
+        print(f"Found {len(parent_comments)} parent comments with replies")
+
+        return {"comments": parent_comments}
+
+    except Exception as e:
+        print(f"Error in get_comments: {str(e)}")
+        return {"error": str(e)}
+
+
+def delete_comment(comment_id: str, user_id: str):
+    """Delete a comment (only if user is the author)"""
+    try:
+        print(f"Delete comment - comment_id: {comment_id}, user_id: {user_id}")
+
+        # Check if comment exists and belongs to user
+        existing = supabase.table('recipe_comments').select('author_id').eq(
+            'comment_id', comment_id).execute()
+
+        if not existing.data:
+            return {"error": "Comment not found"}
+
+        if existing.data[0]['author_id'] != user_id:
+            return {"error": "Unauthorized: You can only delete your own comments"}
+
+        # Delete the comment
+        response = supabase.table('recipe_comments').delete().eq(
+            'comment_id', comment_id).execute()
+
+        print(f"Comment deleted: {response.data}")
+
+        return {"message": "Comment deleted successfully"}
+
+    except Exception as e:
+        print(f"Error in delete_comment: {str(e)}")
+        return {"error": str(e)}
+
+# Comment likes methods
+
+
+def like_comment(user_id: str, comment_id: str):
+    """Add a like to a comment"""
+    try:
+        print(f"Like comment - user_id: {user_id}, comment_id: {comment_id}")
+
+        # Check if already liked
+        existing = supabase.table('comment_likes').select('id').eq(
+            'user_id', user_id).eq('comment_id', comment_id).execute()
+
+        if existing.data:
+            # Get current like count
+            comment = supabase.table('recipe_comments').select('like_count').eq(
+                'comment_id', comment_id).single().execute()
+            return {"error": "Comment already liked", "like_count": comment.data.get('like_count', 0)}
+
+        # Insert like
+        response = supabase.table('comment_likes').insert({
+            'user_id': user_id,
+            'comment_id': comment_id
+        }).execute()
+
+        if response.data:
+            # Count likes directly
+            like_count_result = supabase.table('comment_likes').select(
+                'id', count='exact').eq('comment_id', comment_id).execute()
+            like_count = like_count_result.count if like_count_result.count is not None else 0
+            print(f"Direct count of comment likes: {like_count}")
+
+            return {"message": "Comment liked", "like_count": like_count}
+
+        return {"error": "Failed to like comment"}
+
+    except Exception as e:
+        print(f"Error in like_comment: {str(e)}")
+        return {"error": str(e)}
+
+
+def unlike_comment(user_id: str, comment_id: str):
+    """Remove a like from a comment"""
+    try:
+        print(f"Unlike comment - user_id: {user_id}, comment_id: {comment_id}")
+
+        # Check if like exists
+        existing = supabase.table('comment_likes').select('id').eq(
+            'user_id', user_id).eq('comment_id', comment_id).execute()
+
+        if not existing.data:
+            return {"error": "Like not found"}
+
+        # Delete the like
+        response = supabase.table('comment_likes').delete().eq(
+            'user_id', user_id).eq('comment_id', comment_id).execute()
+
+        # Count likes directly
+        like_count_result = supabase.table('comment_likes').select(
+            'id', count='exact').eq('comment_id', comment_id).execute()
+        like_count = like_count_result.count if like_count_result.count is not None else 0
+        print(f"Direct count of comment likes after unlike: {like_count}")
+
+        return {"message": "Comment unliked", "like_count": like_count}
+
+    except Exception as e:
+        print(f"Error in unlike_comment: {str(e)}")
+        return {"error": str(e)}
+
+
+def add_reply(comment_id: str, author_id: str, content: str, recipe_id: str):
+    """Add a reply to a comment"""
+    try:
+        print(
+            f"Add reply - parent_comment_id: {comment_id}, author_id: {author_id}")
+
+        if not content or not content.strip():
+            return {"error": "Reply content cannot be empty"}
+
+        # Insert reply
+        response = supabase.table('recipe_comments').insert({
+            'recipe_id': recipe_id,
+            'author_id': author_id,
+            'content': content.strip(),
+            'parent_comment_id': comment_id
+        }).execute()
+
+        print(f"Reply insert response: {response.data}")
+
+        if response.data:
+            # Fetch the reply with author username
+            reply_id = response.data[0]['comment_id']
+            reply = supabase.table('recipe_comments').select(
+                '*, users!recipe_comments_author_id_fkey(username, email)'
+            ).eq('comment_id', reply_id).single().execute()
+
+            return {"message": "Reply added", "reply": reply.data}
+
+        return {"error": "Failed to add reply"}
+
+    except Exception as e:
+        print(f"Error in add_reply: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_comment_with_likes(comment_id: str, user_id: str = None):
+    """Get a comment with its like status for a user"""
+    try:
+        # Get like count directly
+        like_count_result = supabase.table('comment_likes').select(
+            'id', count='exact').eq('comment_id', comment_id).execute()
+        like_count = like_count_result.count if like_count_result.count is not None else 0
+
+        # Check if user has liked this comment
+        user_has_liked = False
+        if user_id:
+            liked_response = supabase.table('comment_likes').select('id').eq(
+                'comment_id', comment_id).eq('user_id', user_id).execute()
+            user_has_liked = len(liked_response.data) > 0
+
+        return {
+            "like_count": like_count,
+            "user_has_liked": user_has_liked
+        }
+
+    except Exception as e:
+        print(f"Error in get_comment_with_likes: {str(e)}")
         return {"error": str(e)}
