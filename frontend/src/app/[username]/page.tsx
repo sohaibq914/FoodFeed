@@ -109,7 +109,18 @@ export default function ProfilePage() {
                             {r.description}
                           </Text>
                         )}
+                        {isOwner && (                       
+                          <Button
+                            component={Link}
+                            href={`/edit-recipe/${r.recipe_id}`}
+                            size="compact-md"
+                            variant="light"
+                          >
+                          Edit Recipe
+                          </Button>)
+                        }
                       </Card>
+                      
                     ))}
                   </SimpleGrid>
                 )}
