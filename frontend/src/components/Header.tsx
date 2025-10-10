@@ -85,9 +85,6 @@ export default function CommonHeader({
                 Account Settings
               </Button>
             )}
-
-            
-
             {user?.username && (
               <Button
                 component={Link}

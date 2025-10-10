@@ -285,8 +285,7 @@ export default function RecipePage() {
       </AppShell>
     );
 
-  if (!recipe) {
-    console.log("Recipe is missing:", recipe);
+  if (!recipe)
     return (
       <AppShell header={{ height: 70 }} padding="md">
         <Header />
@@ -297,9 +296,13 @@ export default function RecipePage() {
         </AppShell.Main>
       </AppShell>
     );
-  }
 
   return (
+    <AppShell header={{ height: 64 }} padding="md">
+      {/* ✅ Shared header */}
+      <AppShell.Header>
+        <CommonHeader />
+      </AppShell.Header>
     <Container size="md" py="xl">
       <Group justify="space-between" align="flex-start">
         <div style={{ flex: 1 }}>
@@ -340,34 +343,39 @@ export default function RecipePage() {
         </Group>
       </Group>
 
-      <Paper shadow="xs" p="md" mt="xl">
-        <Stack>
-          <Text fw={600}>Description</Text>
-          <Text>{recipe.description}</Text>
-
-          <Text fw={600} mt="md">
-            Ingredients
+      <AppShell.Main>
+        <Container size="md" py="xl">
+          <Title order={2}>{recipe.title}</Title>
+          <Text c="dimmed" mt="sm">
+            By{" "}
+            <Link
+              href={`/${recipe.users?.username || recipe.author_id}`}
+              style={{
+                color: "blue",
+                textDecoration: "none",
+                fontWeight: 500,
+              }}
+            >
+              {recipe.users?.username || "Unknown"}
+            </Link>
           </Text>
-          <Text>{recipe.ingredients}</Text>
 
-          <Text fw={600} mt="md">
-            Instructions
-          </Text>
-          <Text>{recipe.instructions}</Text>
+          <Paper shadow="xs" p="md" mt="xl">
+            <Stack>
+              <Text fw={600}>Description</Text>
+              <Text>{recipe.description}</Text>
 
           {recipe.nutrition_facts && (
             <>
               <Text fw={600} mt="md">
-                Nutrition
+                Ingredients
               </Text>
               <Text>{recipe.nutrition_facts}</Text>
             </>
           )}
 
-          {recipe.allergens && (
-            <>
               <Text fw={600} mt="md">
-                Allergens
+                Instructions
               </Text>
               <Text>{recipe.allergens}</Text>
             </>

@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon } from "@mantine/core";
 import { IconHeart, IconHeartFilled } from "@tabler/icons-react";
@@ -40,6 +40,8 @@ export default function Dashboard() {
         const res = await fetch(`http://localhost:5001/recipes`, { method: "GET" });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
+        const postedOnly = (data.recipes || []).filter((r: any) => r.posted === true);
+        setRecipes(postedOnly);
 
         // Fetch like status for each recipe
         const recipesWithLikes = await Promise.all(
