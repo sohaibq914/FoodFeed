@@ -1,7 +1,7 @@
 'use client';
 
 import { Meal, MealTemplate, add_meal, add_meal_template, delete_meal_template, get_meal_templates, get_user_meals, update_meal_template, delete_meal } from "@/services/DietService";
-import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text } from "@mantine/core";
+import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text, Divider } from "@mantine/core";
 import { DateInput, DateTimePicker } from "@mantine/dates"
 import { create } from "domain";
 import { useEffect, useState } from "react";
@@ -171,20 +171,25 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                 create_meal()
                             }}>Add New Meal</Button>
                         </form>
+                        <Divider/>
                         <Title>Meals</Title>
                         {
                             meals.map((value, index) => {
-                                return <Group key={index}>
-                                    <MealItem meal={value}></MealItem>
-                                    <Button onClick={() => {
-                                        remove_meal(value.id)
-                                    }}>Delete Meal</Button>
-                                </Group>
+                                return <Container key={index}>
+                                    <Group>
+                                        <MealItem meal={value}></MealItem>
+                                        <Button onClick={() => {
+                                            remove_meal(value.id)
+                                        }}>Delete Meal</Button>
+                                    </Group>
+                                    <Divider/>
+                                </Container>
                             })
                         }
                     </Stack>
                 }
             </Stack>
+            <Divider orientation="vertical"/>
             {/* Templates */}
             <Stack>
                 {loading ? <></>: 
@@ -219,6 +224,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                 }>Add New Template</Button>
                             </Group>
                         </form>
+                        <Divider/>
                         <Title>Templates</Title>
                         {meal_templates.map((value, index) => {
                         return (
@@ -257,6 +263,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                             set_meal_params(index)
                                         }}>Set</Button>
                                 </Group>
+                                <Divider/>
                             </Container>
                         )
                     })}

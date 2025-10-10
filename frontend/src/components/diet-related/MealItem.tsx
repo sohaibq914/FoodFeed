@@ -1,7 +1,7 @@
 'use client';
 
 import {Meal} from '@/services/DietService'
-import { Container, Group, Stack, Text, Title } from '@mantine/core'
+import { Card, Container, Divider, Group, Stack, Text, Title } from '@mantine/core'
 import { useState } from 'react'
 
 interface MealItemInfo {

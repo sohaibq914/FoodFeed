@@ -78,7 +78,6 @@ export default function MealAverage({user_id}: MealAverageInfo) {
 
     return (<Container>
         <Stack>
-            <Text>{user_id}</Text>
             <Checkbox 
                 label='Is Visible:'
                 checked={visible}
