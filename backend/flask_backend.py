@@ -526,6 +526,65 @@ def list_recipes_by_username(username):
     except Exception as e:
         print(f"list_recipes_by_username error: {e}")
         return jsonify({"error": "Failed to fetch user's recipes"}), 500
+    
+@app.route("/recipes/<recipe_id>/draft", methods=["POST"])
+@require_auth
+def move_to_draft(recipe_id):
+    try:
+        user_id = request.headers.get("X-User-ID")
+        if not user_id:
+            return jsonify({"error": "Missing user ID"}), 401
+
+        # Ensure the recipe belongs to this user
+        check = (
+            supabase.table("recipes")
+            .select("author_id")
+            .eq("recipe_id", recipe_id)
+            .single()
+            .execute()
+        )
+
+        if not check.data or check.data["author_id"] != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        # Update the recipe: set posted = False
+        res = (
+            supabase.table("recipes")
+            .update({"posted": False})
+            .eq("recipe_id", recipe_id)
+            .execute()
+        )
+
+        return jsonify({"message": "Recipe moved to draft", "data": res.data}), 200
+
+    except Exception as e:
+        print(f"move_to_draft error: {e}")
+        return jsonify({"error": "Failed to move recipe to draft"}), 500
+
+
+@app.route("/recipes/<recipe_id>", methods=["DELETE"])
+@require_auth
+def delete_recipe(recipe_id):
+    try:
+        # Optional: ensure the recipe belongs to the requester (defense-in-depth
+        # even if RLS already enforces it)
+        owned = (
+            supabase.table("recipes")
+            .select("recipe_id, author_id")
+            .eq("recipe_id", recipe_id)
+            .single()
+            .execute()
+        )
+        if not owned.data:
+            return jsonify({"error": "Recipe not found"}), 404
+        if owned.data["author_id"] != request.current_user_id:
+            return jsonify({"error": "Not authorized"}), 403
+
+        supabase.table("recipes").delete().eq("recipe_id", recipe_id).execute()
+        return jsonify({"message": "Recipe deleted"}), 200
+    except Exception as e:
+        print(f"delete_recipe error: {e}")
+        return jsonify({"error": "Failed to delete recipe"}), 500
 
 
 if __name__ == "__main__":

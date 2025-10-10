@@ -10,11 +10,12 @@ import {
   Button,
   Center,
   Loader,
+  Group,
 } from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
-import { IconPencil } from "@tabler/icons-react";
+import { IconPencil, IconTrash, IconArchive } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -23,6 +24,8 @@ type RecipeSummary = {
   title: string;
   description?: string | null;
 };
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
@@ -35,6 +38,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // fetch posted recipes for this profile
   useEffect(() => {
     if (!profileUsername) return;
     const run = async () => {
@@ -42,17 +46,14 @@ export default function ProfilePage() {
         setLoading(true);
         setError(null);
         const res = await fetch(
-          `http://localhost:5001/users/${encodeURIComponent(
-            profileUsername
-          )}/recipes`
+          `${API_BASE}/users/${encodeURIComponent(profileUsername)}/recipes?posted=true`
         );
-        
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
-        const postedOnly = (data.recipes || []).filter(
-          (r: any) => r.posted === true
+  
+        setRecipes(
+          (data.recipes || []).filter((r: any) => r.posted !== false)
         );
-        setRecipes(postedOnly);
       } catch (e: any) {
         setError(e.message || "Failed to load recipes");
       } finally {
@@ -61,6 +62,48 @@ export default function ProfilePage() {
     };
     run();
   }, [profileUsername]);
+  
+
+  // delete handler (no modal)
+  const handleDelete = async (recipeId: string) => {
+    try {
+      // include user id for @require_auth (header, query, or body).
+      const res = await fetch(`${API_BASE}/recipes/${recipeId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id || "", // your decorator checks this header
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to delete recipe");
+
+      // remove from local state
+      setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "Failed to delete recipe");
+    }
+  };
+
+  const handleDraft = async (recipeId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/recipes/${recipeId}/draft`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user?.id || "",
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Failed to draft recipe");
+
+      setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "Failed to draft recipe");
+    }
+  };
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -70,7 +113,6 @@ export default function ProfilePage() {
 
       <AppShell.Main>
         <Container size="xl">
-          {/* Profile Header */}
           <Title order={1} style={{ marginBottom: 4 }}>
             @{profileUsername}
           </Title>
@@ -80,7 +122,6 @@ export default function ProfilePage() {
               : "Public view."}
           </Text>
 
-          {/* Edit Controls (Only for Owner) */}
           {isOwner && (
             <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
               <Button
@@ -96,7 +137,6 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* User's Recipes */}
           <section style={{ marginTop: 48 }}>
             <Title order={2} mb="md">
               {isOwner ? "My Recipes" : `${profileUsername}'s Recipes`}
@@ -120,13 +160,55 @@ export default function ProfilePage() {
                       <Card
                         key={r.recipe_id}
                         withBorder
-                        component={Link}
-                        href={`/recipe/${r.recipe_id}`}
                         style={{ textDecoration: "none" }}
                       >
-                        <Title order={4} mb={4}>
-                          {r.title || "(untitled)"}
-                        </Title>
+                        <Group
+                          justify="space-between"
+                          align="flex-start"
+                          mb="xs"
+                        >
+                          <Title order={4} style={{ margin: 0 }}>
+                            <Link
+                              href={`/recipe/${r.recipe_id}`}
+                              style={{
+                                textDecoration: "none",
+                                color: "inherit",
+                              }}
+                            >
+                              {r.title || "(untitled)"}
+                            </Link>
+                          </Title>
+                          <Group
+                            justify="space-between"
+                            align="flex-start"
+                            mb="xs"
+                          >
+                            {/* Delete button only for owner */}
+                            {isOwner && (
+                              <Button
+                                size="xs"
+                                color="blue"
+                                variant="light"
+                                p={6}
+                                onClick={() => handleDraft(r.recipe_id)}
+                              >
+                                <IconArchive size={14} />
+                              </Button>
+                            )}
+                            {isOwner && (
+                              <Button
+                                size="xs"
+                                color="red"
+                                variant="light"
+                                p={6}
+                                onClick={() => handleDelete(r.recipe_id)}
+                              >
+                                <IconTrash size={14} />
+                              </Button>
+                            )}
+                          </Group>
+                        </Group>
+
                         {r.description && (
                           <Text c="dimmed" size="sm" lineClamp={3}>
                             {r.description}
