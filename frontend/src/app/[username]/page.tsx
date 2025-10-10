@@ -20,7 +20,12 @@ import { IconPencil, IconTrash, IconArchive } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-type RecipeSummary = { recipe_id: string; title: string; description?: string; posted: boolean | null };
+type RecipeSummary = {
+  recipe_id: string;
+  title: string;
+  description?: string;
+  posted: boolean | null;
+};
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
@@ -38,27 +43,30 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // For the delete confirmation modal
+  // Delete modal
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(null);
 
-  // Reusable fetcher
+  // -- API helpers --
   const fetchRecipes = async (mode: ViewMode) => {
     try {
       setLoading(true);
       setError(null);
       const postedQuery = mode === "posted" ? "true" : "false";
       const res = await fetch(
-        `${API_BASE}/users/${encodeURIComponent(profileUsername)}/recipes?posted=${postedQuery}`
+        `${API_BASE}/users/${encodeURIComponent(
+          profileUsername
+        )}/recipes?posted=${postedQuery}`
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
 
-      // Safety belt filter
-      const list: RecipeSummary[] = (data.recipes || []).filter((r: RecipeSummary) =>
-        mode === "posted" ? r.posted !== false : r.posted === false
+      // Safety filter (if backend returns mixed)
+      const filtered: RecipeSummary[] = (data.recipes || []).filter(
+        (r: RecipeSummary) =>
+          mode === "posted" ? r.posted !== false : r.posted === false
       );
-      setRecipes(list);
+      setRecipes(filtered);
     } catch (e: any) {
       setError(e.message || "Failed to load recipes");
     } finally {
@@ -66,14 +74,11 @@ export default function ProfilePage() {
     }
   };
 
-  // fetch whenever username or view changes
   useEffect(() => {
     if (!profileUsername) return;
     fetchRecipes(view);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileUsername, view]);
 
-  // delete handler
   const handleDelete = async (recipeId: string) => {
     try {
       const res = await fetch(`${API_BASE}/recipes/${recipeId}`, {
@@ -85,6 +90,7 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to delete recipe");
+
       setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
     } catch (e: any) {
       console.error(e);
@@ -92,7 +98,6 @@ export default function ProfilePage() {
     }
   };
 
-  // archive handler (move to drafts)
   const handleDraft = async (recipeId: string) => {
     try {
       const res = await fetch(`${API_BASE}/recipes/${recipeId}/draft`, {
@@ -105,8 +110,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to draft recipe");
 
-      // If we're on the posted view, remove it from the list immediately.
-      // If we're on drafts view (future publish flow), you'd refetch or adjust accordingly.
+      // Remove from current list to reflect state change
       setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
     } catch (e: any) {
       console.error(e);
@@ -114,13 +118,11 @@ export default function ProfilePage() {
     }
   };
 
-  // open confirmation modal
+  // Delete modal handlers
   const openDeleteModal = (recipe: RecipeSummary) => {
     setPendingDelete(recipe);
     setModalOpen(true);
   };
-
-  // confirm delete
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     await handleDelete(pendingDelete.recipe_id);
@@ -134,24 +136,6 @@ export default function ProfilePage() {
         ? "My Recipes"
         : `${profileUsername}'s Recipes`
       : "Drafts";
-    const run = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes`);
-        const data = await res.json();
-        console.log(data)
-        if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
-        setRecipes(data.recipes || []);
-        console.log(data.recipes)
-      } catch (e: any) {
-        setError(e.message || "Failed to load recipes");
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-  }, [profileUsername]);
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -187,7 +171,6 @@ export default function ProfilePage() {
             <Group justify="space-between" mb="md">
               <Title order={2}>{headerTitle}</Title>
 
-              {/* View toggle: My Recipes / Drafts */}
               <Group>
                 <Button
                   variant={view === "posted" ? "filled" : "light"}
@@ -219,9 +202,7 @@ export default function ProfilePage() {
               <>
                 {recipes.length === 0 ? (
                   <Text c="dimmed">
-                    {view === "posted"
-                      ? "No recipes yet."
-                      : "No drafts yet."}
+                    {view === "posted" ? "No recipes yet." : "No drafts yet."}
                   </Text>
                 ) : (
                   <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
@@ -229,44 +210,75 @@ export default function ProfilePage() {
                       <Card
                         key={r.recipe_id}
                         withBorder
-                        //component={Link}
-                        //href={`/recipe/${r.recipe_id}`}
                         style={{ textDecoration: "none" }}
                       >
-                        
-                        <Title order={4} mb={4}>
-                          {r.title || "(untitled)"}
-                        </Title>
+                        <Group justify="space-between" align="start" mb="xs">
+                          <Title order={4} style={{ margin: 0 }}>
+                            {r.title || "(untitled)"}
+                          </Title>
+
+                          {isOwner && (
+                            <Group gap="xs">
+                              {/* Archive / Move to drafts (only show on posted view) */}
+                              {view === "posted" && (
+                                <Button
+                                  variant="light"
+                                  size="compact-sm"
+                                  leftSection={<IconArchive size={16} />}
+                                  onClick={() => handleDraft(r.recipe_id)}
+                                >
+                                  Draft
+                                </Button>
+                              )}
+
+                              {/* Delete */}
+                              <Button
+                                variant="light"
+                                color="red"
+                                size="compact-sm"
+                                leftSection={<IconTrash size={16} />}
+                                onClick={() => openDeleteModal(r)}
+                              >
+                                Delete
+                              </Button>
+                            </Group>
+                          )}
+                        </Group>
+
                         {r.description && (
                           <Text c="dimmed" size="sm" lineClamp={3}>
                             {r.description}
                           </Text>
                         )}
-                        {isOwner &&
-                          <Text c="blue" size="sm">
-                            { r.posted ? ('Posted') : ('Draft') }
-                          </Text>  
-                        }            
-                        {isOwner ? (                       
-                          <Button
-                            component={Link}
-                            href={`/edit-recipe/${r.recipe_id}`}
-                            size="compact-md"
-                            variant="light"
-                          >
-                          Edit Recipe
-                          </Button>) : (                          
-                          <Button
-                            component={Link}
-                            href={`/recipe/${r.recipe_id}`}
-                            size="compact-md"
-                            variant="light"
-                          >
-                          View Recipe
-                          </Button>)
-                        }
+
+                        {isOwner && (
+                          <Text c="blue" size="sm" mt="xs">
+                            {r.posted ? "Posted" : "Draft"}
+                          </Text>
+                        )}
+
+                        <Group mt="md">
+                          {isOwner ? (
+                            <Button
+                              component={Link}
+                              href={`/edit-recipe/${r.recipe_id}`}
+                              size="compact-md"
+                              variant="light"
+                            >
+                              Edit Recipe
+                            </Button>
+                          ) : (
+                            <Button
+                              component={Link}
+                              href={`/recipe/${r.recipe_id}`}
+                              size="compact-md"
+                              variant="light"
+                            >
+                              View Recipe
+                            </Button>
+                          )}
+                        </Group>
                       </Card>
-                      
                     ))}
                   </SimpleGrid>
                 )}
@@ -276,7 +288,7 @@ export default function ProfilePage() {
         </Container>
       </AppShell.Main>
 
-      {/* Mantine Delete Confirmation Modal with blur + animation */}
+      {/* Delete Confirmation Modal */}
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}

@@ -74,7 +74,7 @@ export default function CommonHeader({
                 Diet Page
               </Button>
 
-            <Text c="dimmed">@{user?.username}</Text>
+            
             {showSettingsButton && (
               <Button
                 component={Link}
