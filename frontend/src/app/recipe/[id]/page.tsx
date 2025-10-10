@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { Container, Title, Text, Loader, Center, Paper, Stack, Group, ActionIcon, Textarea, Button, Card, Divider, Modal } from "@mantine/core";
+import { Container, Title, Text, Loader, Center, Paper, Stack, Group, ActionIcon, Textarea, Button, Card, Divider, Modal, AppShell } from "@mantine/core";
 import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
+import Header from "@/components/Header";
 
 export default function RecipePage() {
   const params = useParams();
@@ -274,17 +275,27 @@ export default function RecipePage() {
 
   if (error)
     return (
-      <Container>
-        <Text c="red">{error}</Text>
-      </Container>
+      <AppShell header={{ height: 70 }} padding="md">
+        <Header />
+        <AppShell.Main>
+          <Container>
+            <Text c="red">{error}</Text>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
     );
 
   if (!recipe) {
     console.log("Recipe is missing:", recipe);
     return (
-      <Container>
-        <Text c="dimmed">Recipe not found.</Text>
-      </Container>
+      <AppShell header={{ height: 70 }} padding="md">
+        <Header />
+        <AppShell.Main>
+          <Container>
+            <Text c="dimmed">Recipe not found.</Text>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
     );
   }
 
@@ -344,12 +355,12 @@ export default function RecipePage() {
           </Text>
           <Text>{recipe.instructions}</Text>
 
-          {recipe.nutrition && (
+          {recipe.nutrition_facts && (
             <>
               <Text fw={600} mt="md">
                 Nutrition
               </Text>
-              <Text>{recipe.nutrition}</Text>
+              <Text>{recipe.nutrition_facts}</Text>
             </>
           )}
 

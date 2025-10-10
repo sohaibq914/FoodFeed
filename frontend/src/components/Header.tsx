@@ -46,16 +46,15 @@ export default function CommonHeader({
               Add Recipe
             </Button>
 
-            {user?.username && (
-              <Button
-                component={Link}
-                href={`/${user.username}`}
-                variant="subtle"
-                color="gray"
-              >
-                @{user.username}
-              </Button>
-            )}
+            <Button
+                component="a"
+                variant="light"
+                href="/restaurants"
+            >
+              Restaurants
+            </Button>
+
+            
 
             <Button
               component={Link}
@@ -77,13 +76,19 @@ export default function CommonHeader({
               </Button>
             )}
 
-            <Button
-                component="a"
-                variant="light"
-                href="/restaurants"
-            >
-              Restaurants
-            </Button>
+            
+
+            {user?.username && (
+              <Button
+                component={Link}
+                href={`/${user.username}`}
+                variant="subtle"
+                color="gray"
+              >
+                @{user.username}
+              </Button>
+            )}
+
             <Button onClick={signOut} color="red" variant="filled">
               Logout
             </Button>
