@@ -27,7 +27,6 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [meals, set_meals] = useState([] as Meal[])
     const [old_names, set_old_names] = useState([] as string[])
     const [loading, set_loading] = useState(true);
-    console.log("Template id: " + user_id)
     useEffect(() => {
         const runner = async () => {
             set_loading(true)
@@ -129,19 +128,17 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [name_of_new_template, set_new_template_name] = useState('')
     const [calories_of_new_template, set_calories_new_template] = useState(0)
     return (<Container>
-        <Group>
+        <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
             {/* Meals */}
             <Stack>
-                {loading ? <>Loading templates...</>:
+                {loading ? <>Loading meals...</>:
                     <Stack>
                         <Title>Add Meal</Title>
-                        <form onSubmit={() => {
-                            create_meal()
-                        }}>
+                        <form>
                             <TextInput
                                     label='New Name:'
                                     placeholder='Enter name:'
-                                    value={name_of_new_template}
+                                    value={meal_name}
                                     onChange={(new_name) => {
                                         set_meal_name(new_name.currentTarget.value);
                                     }}
@@ -149,7 +146,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                             <NumberInput
                                 label='Calories:'
                                 placeholder='Enter calories:'
-                                value={calories_of_new_template}
+                                value={meal_calories}
                                 onChange={(num) => {
                                     if (typeof num === 'number') {
                                         set_meal_calories(num)
@@ -170,12 +167,14 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                         set_meal_date(new Date(value))
                                     }
                                 }}></DateTimePicker>
-                            <Button type='submit'>Add New Meal</Button>
+                            <Button onClick={() => {
+                                create_meal()
+                            }}>Add New Meal</Button>
                         </form>
                         <Title>Meals</Title>
                         {
-                            meals.map((value) => {
-                                return <Group>
+                            meals.map((value, index) => {
+                                return <Group key={index}>
                                     <MealItem meal={value}></MealItem>
                                     <Button onClick={() => {
                                         remove_meal(value.id)
@@ -191,9 +190,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                 {loading ? <></>: 
                     <Stack>
                         <Title>Add Template</Title>
-                        <form onSubmit={() => {
-                            add_template(name_of_new_template, calories_of_new_template)
-                        }}>
+                        <form>
                             <Group>
                                 <TextInput
                                     label='New Name:'
@@ -215,13 +212,17 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                             set_calories_new_template(0)
                                         }
                                     }}/>
-                                <Button type='submit'>Add New Template</Button>
+                                <Button onClick={
+                                    () => {
+                                        add_template(name_of_new_template, calories_of_new_template)
+                                    }
+                                }>Add New Template</Button>
                             </Group>
                         </form>
                         <Title>Templates</Title>
                         {meal_templates.map((value, index) => {
                         return (
-                            <Container>
+                            <Container key={index}>
                                 <Group>
                                     <Stack>
                                         <TextInput
@@ -254,7 +255,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                         }}>Delete</Button>
                                     <Button onClick={(event) => {
                                             set_meal_params(index)
-                                        }}>Delete</Button>
+                                        }}>Set</Button>
                                 </Group>
                             </Container>
                         )

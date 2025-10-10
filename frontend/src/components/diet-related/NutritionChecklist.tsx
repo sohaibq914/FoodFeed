@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 interface ChecklistInfo {
     user_id: string
 }
+
 export default function NutritionChecklist({user_id}: ChecklistInfo) {
     const [loading, set_loading] = useState(true);
     const [items, set_items] = useState([] as NutritionItem[]);
@@ -16,6 +17,7 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
         const runner = async () => {
             set_loading(true);
             const {success, message, nutrients} = await get_all_nutrients(user_id);
+            console.log("Found: " + String(success) + ", " + String(message) + ", " + String(nutrients))
             if (success) {
                 set_items(nutrients!);
                 set_old_item_states(nutrients!.map((nutr) => nutr.is_eaten));
@@ -64,8 +66,8 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
                         submit_item(index)
                     };
 
-                    return (<Container>
-                        <form onSubmit={submit}>
+                    return (<Container key={index}>
+                        <form>
                             <Group>
                                 <Link 
                                     href={`/diet-page/nutrient/${item.id}`}
@@ -90,7 +92,9 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
                                         }
                                     }}
                                     />
-                                <Button type='submit'>
+                                <Button onClick={() => {
+                                    submit()
+                                }}>
                                     Save
                                 </Button>
                             </Group>

@@ -17,8 +17,8 @@ if not url or not key:
     raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
 
 def update_names(csv_file):
-    data = read_csv(csv_file, index_col=False)
-    for row in data:
+    data = read_csv(csv_file, header=0, index_col=False)
+    for index, row in data.iterrows():
         supabase.table('food_item') \
             .update({'name': row['new']}) \
             .eq('name', row['old']) \
@@ -26,12 +26,12 @@ def update_names(csv_file):
 
 def insert_food_items(csv_file):
     data = read_csv(csv_file, index_col=False)
-    for row in data:
+    for index, row in data.iterrows():
         res = supabase.table('food_item') \
             .select('*') \
             .eq('name', row['name']) \
             .execute()
-        if len(res['data']) == 0:
+        if len(res.data) == 0:
             supabase.table('food_item') \
                 .insert({
                     'name': row['name'],
@@ -49,13 +49,12 @@ def insert_food_items(csv_file):
         
 def insert_nutrients(csv_file):
     data = read_csv(csv_file, index_col=False)
-    for row in data:
-        nutrient = row['name']
+    for index, row in data.iterrows():
         res = supabase.table('nutrients') \
             .select('*') \
             .eq('name', row['name']) \
             .execute()
-        if res['data'] == 0:
+        if len(res.data) == 0:
             res = supabase.table('nutrients') \
                 .insert({
                     'name': row['name'],
@@ -68,7 +67,7 @@ def insert_nutrients(csv_file):
                 }) \
                 .eq('name', row['name']) \
                 .execute()
-        id = res['data'][0]['id']
+        id = res.data[0]['id']
         foods = row['foods'].split(' ')
         supabase.table('item_has_nutrient') \
             .delete() \
@@ -78,20 +77,20 @@ def insert_nutrients(csv_file):
             food_id = supabase.table('food_item') \
                 .select('id') \
                 .eq('name', food) \
-                .execute()['data'][0]['id']
+                .execute().data[0]['id']
             supabase.table('item_has_nutrient') \
                 .insert({
                     'nutrient_id': id,
                     'food_id': food_id
-                })
+                }).execute()
 
 def add_restrictions(csv_file):
     data = read_csv(csv_file, index_col=False)
-    for row in data:
+    for index, row in data.iterrows():
         food_id = supabase.table('food_item') \
             .select('id') \
             .eq('name', row['food']) \
-            .execute()['data'][0]['id']
+            .execute().data[0]['id']
         restrictions = row['restrictions'].split(' ')
         supabase.table('food_with_restriction') \
             .delete() \
@@ -101,7 +100,7 @@ def add_restrictions(csv_file):
             restr_id = supabase.table('restrictions') \
                 .select('id') \
                 .eq('name', restr) \
-                .execute()['data'][0]['id']
+                .execute().data[0]['id']
             supabase.table('food_with_restriction') \
                 .insert({
                     'food_id': food_id,
@@ -110,7 +109,14 @@ def add_restrictions(csv_file):
                 .execute()
 
 if __name__ == '__main__':
-    update_names('update_food_names.csv')
-    insert_food_items('food_items')
-    insert_nutrients('nutrients.csv')
-    add_restrictions('food_to_restr.csv')
+    try:
+        update_names('update_food_names.csv')
+        print("Updated names.")
+        insert_food_items('food_items.csv')
+        print("Added food items.")
+        insert_nutrients('nutrients.csv')
+        print("Added nutrients.")
+        add_restrictions('food_to_restr.csv')
+        print("Added restrictions.")
+    except Exception as e:
+        print("Error: " + str(e))

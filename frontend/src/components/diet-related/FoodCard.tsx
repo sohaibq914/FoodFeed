@@ -19,7 +19,7 @@ interface FoodCardInfo {
 export default function FoodCard({food_name, description}: FoodCardInfo) {
     return (
         <Container>
-            <Title order={2}>{food_name}</Title>
+            <Title order={4}>{food_name}</Title>
             <Text>{description}</Text>
         </Container>
     )

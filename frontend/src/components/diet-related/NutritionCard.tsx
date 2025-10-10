@@ -27,7 +27,6 @@ class NutrItemHolder implements NutritionItem {
 }
 
 export default function NutritionCard({user_id, item}: NutritionInfo) {
-
     const [food_items, set_food_items] = useState([] as FoodItem[])
     const [loading, setLoading] = useState(true);
     if (item.id.length != 0 && user_id.length != 0) {
@@ -35,6 +34,7 @@ export default function NutritionCard({user_id, item}: NutritionInfo) {
             const runner = async () => {
                 setLoading(true)
                 const {success, message, foods} = await get_food_of_nutrient(user_id, item.id);
+                console.log("Obtained foods: " + ", " + String(message) + ", " + String(foods))
                 if (success) {
                     set_food_items(foods!);
                 }
@@ -50,10 +50,11 @@ export default function NutritionCard({user_id, item}: NutritionInfo) {
             <Text>Elligible Foods:</Text>
             {loading ? <Text>Still loading...</Text>: 
                 <Stack>
-                    {food_items.map((value) => {
-                        return <FoodCard 
+                    {food_items.map((value, index) => {
+                        return <FoodCard
                             food_name={String(value.name)} 
-                            description={String(value.description)}></FoodCard>
+                            description={String(value.description)}
+                            key={index}></FoodCard>
                     })}
                 </Stack>}
         </Container>

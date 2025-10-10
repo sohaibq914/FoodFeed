@@ -12,16 +12,19 @@ class FoodItem:
         return {
             'id': self.id,
             'name': self.name,
-            'desc': self.description,
+            'description': self.description,
         }
+    
+    def __str__(self):
+        return "[" + self.id + ", " + self.name + ", " + self.description + "]"
 
 class NutrientItem:
-    def __init__(self, id, name, description, amount, user_has):
+    def __init__(self, id, name, description, amount, is_eaten):
         self.id = id
         self.name = name
         self.description = description
         self.amount = amount
-        self.user_has = user_has
+        self.is_eaten = is_eaten
 
     def to_json(self):
         return {
@@ -29,22 +32,22 @@ class NutrientItem:
             'name': self.name,
             'description': self.description,
             'amount': self.amount,
-            'user_has': self.user_has,
+            'is_eaten': self.is_eaten,
         }
     
 class Meal:
-    def __init__(self, id, name, calories, time):
+    def __init__(self, id, name, calories, time_aten):
         self.id = id
         self.name = name
         self.calories = calories
-        self.time = time
+        self.time_aten = time_aten
 
     def to_json(self):
         return {
             'id': self.id,
             'name': self.name,
             'calories': self.calories,
-            'time': self.time
+            'time_aten': self.time_aten
         }
     
 class MealTemplate:

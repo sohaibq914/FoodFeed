@@ -2,7 +2,7 @@ import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from storage_objs import Meal, MealTemplate
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 load_dotenv()
 
@@ -19,13 +19,11 @@ supabase: Client = create_client(url, key)
 
 def get_user_meal_templates(user_id):
     try: 
-        print('Executing on id ' + user_id) 
         res = supabase.table('meal_template') \
             .select('*') \
             .eq('owner', user_id) \
             .execute()
         templates = []
-        print(res)
         for row in res.data:
             templates.append(MealTemplate(row['name'], row['calories']))
         return templates
@@ -33,33 +31,36 @@ def get_user_meal_templates(user_id):
         print("Template error: " + str(e))
         return []
     
-def add_meal_template(user_id, name, calories):
+def add_user_meal_template(user_id, name, calories):
     try: 
         if has_meal_name(user_id, name):
             return False
         res = supabase.table('meal_template') \
             .insert({
-                'owner_id': user_id,
+                'owner': user_id,
                 'name': name,
                 'calories': calories
             }) \
             .execute()
         return True
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return False
     
 def has_meal_name(user_id, name):
     try: 
         res = supabase.table('meal_template') \
             .select('*') \
-            .eq('owner_id', user_id) \
+            .eq('owner', user_id) \
             .eq('name', name) \
             .execute()
+        print("Res: " + str(res))
         return len(res.data) != 0
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return False
     
-def update_meal_template(user_id, old_name, new_name, calories):
+def update_user_meal_template(user_id, old_name, new_name, calories):
     try: 
         if old_name != new_name:
             if not has_meal_name(user_id, old_name) or has_meal_name(user_id, new_name):
@@ -69,30 +70,32 @@ def update_meal_template(user_id, old_name, new_name, calories):
                 'name': new_name,
                 'calories': calories
             }) \
-            .eq('owner_id', user_id) \
+            .eq('owner', user_id) \
             .eq('name', old_name) \
             .execute()
         return True
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return False
     
 def delete_meal_template_of_user(user_id, name):
     try: 
-        if not has_meal_name(name):
+        if not has_meal_name(user_id, name):
             return False
         supabase.table('meal_template') \
             .delete() \
-            .eq('owner_id', user_id) \
+            .eq('owner', user_id) \
             .eq('name', name) \
             .execute()
         return True
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return False
 
 def add_meal(user_id, name, calories, ate_at):
     try: 
-        now = datetime.now().isoformat()
-        if datetime.fromisoformat(now) - datetime.fromisoformat(ate_at) < 0:
+        now = datetime.now(tz=timezone.utc)
+        if now < datetime.fromisoformat(ate_at):
             return None
         res = supabase.table('meal') \
             .insert({
@@ -103,7 +106,8 @@ def add_meal(user_id, name, calories, ate_at):
             }) \
             .execute()
         return res.data[0]['id']
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return None  
     
 def delete_meal(meal_id):
@@ -112,14 +116,17 @@ def delete_meal(meal_id):
             .select("*") \
             .eq('id', meal_id) \
             .execute()
-        if datetime.fromisoformat(res.data[0]['ate_at']) > (datetime(hour=24) + datetime.now()):
+        print(datetime.fromisoformat(res.data[0]['ate_at']))
+        print(timedelta(days=1) + datetime.now(tz=timezone.utc))
+        if datetime.fromisoformat(res.data[0]['ate_at']) < (datetime.now(tz=timezone.utc) - timedelta(days=1)):
             return False
         supabase.table('meal') \
             .delete() \
             .eq('id', meal_id) \
             .execute()
         return True
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return False  
     
 def get_all_user_meals(user_id):
@@ -148,7 +155,8 @@ def get_meals(user_id, start, end):
         for row in res.data:
             meals.append(Meal(row['id'], row['name'], row['calories'], row['ate_at']))
         return meals
-    except:
+    except Exception as e:
+        print("Error: " + str(e))
         return [Meal('', '', 0, datetime.now().isoformat())]
     
 def get_hour_average(meals):
@@ -156,7 +164,7 @@ def get_hour_average(meals):
     for i in range(24):
         total.append([0, 0])
     for meal in meals:
-        timestamp = datetime.fromisoformat(meal.ate_at)
+        timestamp = datetime.fromisoformat(meal.time_aten)
         total[timestamp.hour][0] += meal.calories
         total[timestamp.hour][1] += 1
     average = []

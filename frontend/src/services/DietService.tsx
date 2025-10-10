@@ -78,13 +78,16 @@ export const get_meal_templates = async (user_id: string): Promise<{success: boo
     
     try {
         if (response.ok) {
-            let templates: { data: MealTemplate[] } = JSON.parse(data.toString())
+            let templates: { data: MealTemplate[] } = data
             return {success: true, message: null, templates: templates.data}
         }
+        else {
+            return {success: false, message: data.error, templates: null};
+        }
     }
-    finally {
-        return {success: false, message: data.error, templates: null};
+    catch {
     }
+    return {success: false, message: 'Some error', templates: null};
 }
 
 export const add_meal_template = async (user_id: string, name: string, calories: number): Promise<{success: boolean, message: string}> => {    
@@ -177,17 +180,22 @@ export const get_user_meals = async (user_id: string): Promise<{success: boolean
     );
     try {
         if (response.ok) {
-            let items: { meals: Meal[], averages: number[] } = JSON.parse(data.toString())
+            let items: { meals: Meal[], averages: number[] } = data
+            items.meals = items.meals.map((value, index) => {
+                value.time_aten = new Date(Date.parse(value.time_aten as unknown as string))
+                return value
+            }) as Meal[]
+            console.log("Averages in all: " + String(items.averages))
             return {success: true, message: null, meals: items.meals, averages: items.averages}
         }
     }
-    finally {
-        let averages = []
-        for (let i = 0; i < 24; i++) {
-            averages.push(0)
-        }
-        return {success: false, message: data.error, meals: null, averages: averages};
+    catch {     
     }
+    let averages = []
+    for (let i = 0; i < 24; i++) {
+        averages.push(0)
+    }
+    return {success: false, message: data.error, meals: null, averages: averages};
 }
 
 export const get_user_meals_range = async (user_id: string, start: Date, end: Date): Promise<{success: boolean, message: string|null, meals: Meal[]|null, averages: number[]|null}> => {    
@@ -202,13 +210,19 @@ export const get_user_meals_range = async (user_id: string, start: Date, end: Da
       
     try {
         if (response.ok) {
-            let items: { meals: Meal[], averages: number[] } = JSON.parse(data.toString())
+            let items: { meals: Meal[], averages: number[] } = data
+            items.meals = items.meals.map((value, index) => {
+                value.time_aten = new Date(Date.parse(value.time_aten as unknown as string))
+                return value
+            }) as Meal[]
+            console.log("Meals: " + String(items.meals))
+            console.log("Averages: " + String(items.averages))
             return {success: true, message: null, meals: items.meals, averages: items.averages}
         }
     }
-    finally {
-        return {success: false, message: data.error, meals: null, averages: null};
+    catch {
     }
+    return {success: false, message: data.error, meals: null, averages: null};
 }
 
 export const get_food_items = async (type: string): Promise<{success: boolean, message: string|null, foods: FoodItem[]|null}> => {    
@@ -221,13 +235,17 @@ export const get_food_items = async (type: string): Promise<{success: boolean, m
         
     try {
         if (response.ok) {
-            let items: { foods: FoodItem[] } = JSON.parse(data.toString())
+            console.log("EE")
+            let items: { foods: FoodItem[] } = data
+            console.log("Res: " + String(items));
             return {success: true, message: null, foods: items.foods};
         }
     }
-    finally {
-        return {success: false, message: data.error, foods: null};
+    catch (e) {
+        console.log(e)
     }
+    return {success: false, message: data.error, foods: null};
+
 }
 
 export const add_nutrient = async (nutrient_id: string, user_id: string, amount: number): Promise<{success: boolean, message: string}> => {    
@@ -288,13 +306,13 @@ export const get_all_nutrients = async (user_id: string): Promise<{success: bool
     
     try {
         if (response.ok) {
-            let items: { nutrients: NutritionItem[] } = JSON.parse(data.toString())
+            let items: { nutrients: NutritionItem[] } = data
             return {success: true, message: null, nutrients: items.nutrients}
         }
     }
-    finally {
-        return {success: false, message: data.error, nutrients: null};
+    catch {
     }
+    return {success: false, message: data.error, nutrients: null};
 }
 
 export const get_food_of_type = async (user_id: string, type: string): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
@@ -308,13 +326,14 @@ export const get_food_of_type = async (user_id: string, type: string): Promise<{
         
     try {
         if (response.ok) {
-            let items: { foods: FoodItem[] } = JSON.parse(data.toString())
+            console.log()
+            let items: { foods: FoodItem[] } = data
             return {success: true, message: null, foods: items.foods}
         }
     }
-    finally {
-        return {success: false, message: data.error, foods: null};
+    catch {
     }
+    return {success: false, message: data.error, foods: null};
 }
 
 export const get_food_of_nutrient = async (user_id: string, nutrient_id: string): Promise<{success: boolean, message: string|null, foods: FoodItem[] | null}> => {    
@@ -328,11 +347,13 @@ export const get_food_of_nutrient = async (user_id: string, nutrient_id: string)
     
     try {
         if (response.ok) {
-            let items: { foods: [] } = JSON.parse(data.toString())
+            let items: { foods: FoodItem[] } = data
+            console.log("Found foods: ")
+            console.log(data)
             return {success: true, message: null, foods: items.foods}
         }
     }
-    finally {
-        return {success: false, message: data.error, foods: null};
+    catch {
     }
+    return {success: false, message: data.error, foods: null};
 }

@@ -22,7 +22,7 @@ export default function DietPage() {
                     <MealTemplateList user_id={user_id!}/>
                     <MealAverage user_id={user_id!}/>
                     <NutritionChecklist user_id={user_id!}/>
-                    <Group>
+                    <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
                         <Stack>
                             <Title order={3}>Fruits</Title>
                             <Menu user_id={user_id!} type={"fruit"} />

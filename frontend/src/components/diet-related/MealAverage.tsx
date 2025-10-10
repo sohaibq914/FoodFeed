@@ -5,7 +5,8 @@ import { Button, Checkbox, Container, Group, Stack, Text } from "@mantine/core"
 import { BarChart } from "@mantine/charts"
 import { useEffect, useState } from "react"
 import { DateTimePicker } from "@mantine/dates"
-import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter } from "next/navigation";
 
 interface MealAverageInfo {
     user_id: string
@@ -14,6 +15,7 @@ interface MealAverageInfo {
 type MealRecord = Record<string, any>
 
 export default function MealAverage({user_id}: MealAverageInfo) {
+    user_id = useAuth().user!.id
     const [loading, is_loading] = useState(false)
     const [visible, set_visible] = useState(true)
 
@@ -21,13 +23,14 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     for (let i = 0; i < 24; i++) {
         const record: MealRecord = {
             time: `${i}:00`,
-            Average: 0
+            average: 0
         }
         base.push(record)
     }
-    const [averages, set_averages] = useState(base);
+    const [avgs, set_averages] = useState(base);
     const [start, set_start] = useState(new Date(Date.now()))
     const [end, set_end] = useState(new Date(Date.now()))
+    const router = useRouter();
 
     const get_all_meals = async () => {
         const {success, message, averages} = await get_user_meals(user_id)
@@ -36,10 +39,15 @@ export default function MealAverage({user_id}: MealAverageInfo) {
             const records = averages!.map((value, index) => {
                 const record: MealRecord = {
                     time: `${index}:00`,
-                    Average: value
+                    average: value
                 }
+                console.log("Given record: " + record.average + ", " + record.time)
                 return record
             })
+            console.log(String(records) + ", " + records.length) 
+            console.log("Given records: " + records.forEach((value, index) => {
+                console.log("{" + value.time + ", " + value.average + "}")
+            }))
             set_averages(records)
         }
     }
@@ -47,15 +55,17 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     const get_meals_within_range = async () => {
         const {success, message, averages} = await get_user_meals_range(user_id, start, end)
         if (success) {
+            console.log("Given averages: ")
             console.log(averages)
             const records = averages!.map((value, index) => {
                 const record: MealRecord = {
                     time: `${index}:00`,
-                    Average: value
+                    average: value
                 }
                 return record
             })
             set_averages(records)
+            console.log("Given records: " + String(records))
         }
     }
 
@@ -77,10 +87,21 @@ export default function MealAverage({user_id}: MealAverageInfo) {
                 }}/>
             { !visible || loading ? <></>:
                 <Stack>
-                    <Group>
-                        <form onSubmit={() => {
-                            get_meals_within_range()
-                        }}>
+
+                    <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
+                        <BarChart 
+                            h={300}
+                            w={500}
+                            data={avgs} 
+                            type='default'
+                            series={[
+                                { name: 'average', color: 'violet.6'}
+                            ]} 
+                            dataKey='time'
+                            xAxisLabel="Time"
+                            yAxisLabel="Average Calories Eaten"
+                            />
+                        <form>
                             <DateTimePicker 
                                 label="Start Time:"
                                 placeholder="Enter start:"
@@ -105,20 +126,14 @@ export default function MealAverage({user_id}: MealAverageInfo) {
                                         set_end(new Date(value))
                                     }
                                 }}></DateTimePicker>
-                            <Button type='submit'>Search Within Range</Button>
+                            <Button onClick={() => {
+                                get_meals_within_range()
+                            }}>Search Within Range</Button>
                         </form>
                         <Button onClick={() => {
                             get_all_meals();
                         }}>Get Total Average</Button>
                     </Group>
-                    <BarChart data={averages} 
-                        series={[
-                            { name: 'Average', color: 'violet.6'}
-                        ]} 
-                        dataKey={"time"}
-                        xAxisLabel="Time"
-                        yAxisLabel="Average Calories Eaten"
-                        />
                 </Stack>}
         </Stack>
     </Container>)

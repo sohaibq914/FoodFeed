@@ -15,13 +15,17 @@ class TempMeal implements Meal {
     time_aten: Date = new Date(0)
 }
 export default function MealItem({meal}: MealItemInfo) {
+    console.log(meal.time_aten)
     return (<Container>
         <Group>
             <Stack>
-                <Title>{meal.name}</Title>
+                <Title order={3}>{meal.name}</Title>
                 <Text>{meal.calories}</Text>
             </Stack>
-            <Text>{meal.time_aten.toString()}</Text>
+            <Stack>
+                <Text>{meal.time_aten.toLocaleDateString()}</Text>
+                <Text>{meal.time_aten.toLocaleTimeString()}</Text>
+            </Stack>
         </Group>
     </Container>)
 }

@@ -77,13 +77,22 @@ def get_nutrients(user_id):
             .execute()
         given_nutrients = []
         for row in res.data:
-            given_nutrients.append(
-                NutrientItem(row['id'],
-                    row['name'],
-                    row['description'],
-                    selected_nutrients[row['id']],
-                    row['id'] in selected_nutrients)
-            )
+            if row['id'] in selected_nutrients:
+                given_nutrients.append(
+                    NutrientItem(row['id'],
+                        row['name'],
+                        row['description'],
+                        selected_nutrients[row['id']],
+                        True)
+                )
+            else:
+                given_nutrients.append(
+                    NutrientItem(row['id'],
+                        row['name'],
+                        row['description'],
+                        0,
+                        False)
+                )
         return given_nutrients
     except Exception as e:
         print("Nutrient Exception: " + str(e))
@@ -102,10 +111,11 @@ def get_foods_with_nutrient(nutr_id):
                 .eq('id', row['food_id']) \
                 .execute()
             foods.append(
-                FoodItem(info['id'], info['name'], info['description'])
+                FoodItem(info.data[0]['id'], info.data[0]['name'], info.data[0]['description'])
             )
         return foods
     except Exception as e:
+        print("Problem: " + str(e))
         return [FoodItem('', '', '')]
 
 
@@ -159,7 +169,8 @@ def get_elligble_foods(user_id, foods):
         return []
 
 def get_elligble_foods_type(user_id, type):
-    return get_elligble_foods(user_id, get_food_items(type))
+    food_items = get_food_items(type)
+    return get_elligble_foods(user_id, food_items)
 
 def get_elligble_foods_nutrient(user_id, nutr_id):
     return get_elligble_foods(user_id, get_foods_with_nutrient(nutr_id))

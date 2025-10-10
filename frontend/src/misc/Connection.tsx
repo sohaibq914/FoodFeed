@@ -3,7 +3,6 @@
 export class API_Caller {
     private link: string = 'http://localhost:5001/'
     public call_function = async (command: string, body: string): Promise<{response: Response, data: any}> => {
-        console.log("For command: " + command + ": sending " + body)
         const response = await fetch(this.link.concat(command), { 
             method: 'POST',
             headers: {

@@ -147,10 +147,9 @@ def change_password():
 def get_meal_templates():
     try:
         data = request.get_json()
-        print("Template data: " + str(data))
         user_id = data.get("user_id")
         templates = get_user_meal_templates(user_id)
-        return jsonify({"data": [jsonify(t.to_json()) for t in templates]}), 200
+        return jsonify({"data": [t.to_json() for t in templates]}), 200
     except Exception as e:
         print(f"Exception templates: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -162,7 +161,7 @@ def add_meal_template():
         user_id = data.get("user_id")
         name = data.get("name")
         calories = data.get("calories")
-        added_template = add_meal_template(user_id, name, calories)
+        added_template = add_user_meal_template(user_id, name, calories)
         if not added_template:
             return jsonify({"error": "Name already exists."}), 400
         return jsonify({"result": "Successfully added!"}), 200
@@ -178,7 +177,7 @@ def update_meal_template():
         old_name = data.get("old_name")
         new_name = data.get("new_name")
         calories = data.get("calories")
-        updated_template = update_meal_template(user_id, old_name, new_name, calories)
+        updated_template = update_user_meal_template(user_id, old_name, new_name, calories)
         if not updated_template:
             return jsonify({"error": "Could not update. Maybe check the name?"}), 400
         return jsonify({"result": "Successfully updated!"}), 200        
@@ -236,11 +235,11 @@ def get_user_meals():
         user_id = data.get("user_id")
         meals = get_all_user_meals(user_id)
         averages = get_hour_average(meals)
-        res = jsonify({"meals": [jsonify(meal.to_json()) for meal in meals],
+        res = jsonify({"meals": [meal.to_json() for meal in meals],
                 "averages": [str(average) for average in averages]})
         return res, 200        
     except Exception as e:
-        print(f"Exception meals: {str(e)}")
+        print(f"Exception meal: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
     
 @app.route("/dieting/get_meal_range", methods=["POST"])
@@ -252,7 +251,7 @@ def get_user_meals_range():
         end = data.get("end")
         meals = get_meals(user_id, start, end)
         averages = get_hour_average(meals)
-        return jsonify({"meals": [jsonify(meal) for meal in meals],
+        return jsonify({"meals": [meal.to_json() for meal in meals],
                 "averages": [str(average) for average in averages]}), 200         
     except Exception as e:
         print(f"Exception: {str(e)}")
@@ -265,7 +264,7 @@ def get_food_of_type():
         data = request.get_json()
         type = data.get('type')
         foods = get_food_items(type)
-        return jsonify({'foods': [jsonify(food.to_json()) for food in foods]}), 200
+        return jsonify({'foods': [food.to_json() for key, food in foods]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -290,7 +289,7 @@ def update_nutrient_amount():
         user_id = data.get('user_id')
         nutr_id = data.get('nutrient_id')
         amount = data.get('amount')
-        update_nutrient_amount(user_id, nutr_id, amount)
+        update_user_nutrient(user_id, nutr_id, amount)
         return jsonify({"result": "Added nutrient."}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
@@ -314,8 +313,7 @@ def get_all_nutrients():
         data = request.get_json()
         user_id = data.get('user_id')
         nutrients = get_nutrients(user_id)
-        print("All: " + str(nutrients))
-        return jsonify({"nutrients": [jsonify(nutrient.to_json()) for nutrient in nutrients]}), 200
+        return jsonify({"nutrients": [nutrient.to_json() for nutrient in nutrients]}), 200
     except Exception as e:
         print(f"Nutr Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -324,11 +322,10 @@ def get_all_nutrients():
 def get_elligible_foods():
     try:
         data = request.get_json()
-        print("Foods: " + str(data))
         user_id = data.get('user_id')
         type = data.get('type')
         foods = get_elligble_foods_type(user_id, type)
-        return jsonify({"foods": [jsonify(food.to_json()) for food in foods]}), 200
+        return jsonify({"foods": [food.to_json() for key, food in foods]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -338,9 +335,9 @@ def get_food_of_nutrient():
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        nutr_id = data.get('nutr_id')
+        nutr_id = data.get('nutrient_id')
         foods = get_elligble_foods_nutrient(user_id, nutr_id)
-        return jsonify({"foods": [jsonify(food.to_json()) for food in foods]}), 200
+        return jsonify({"foods": [food.to_json() for key, food in foods]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500

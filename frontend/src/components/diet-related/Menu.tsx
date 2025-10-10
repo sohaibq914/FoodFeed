@@ -26,11 +26,12 @@ export default function Menu({user_id, type}: MenuInfo) {
     
     return (<Container>
         {loading ? <Text>Still loading...</Text>: 
-            <Stack>
-                {food_items.map((value) => {
+            <Stack align='flex-start'>
+                {food_items.map((value, index) => {
                     return <FoodCard 
                         food_name={String(value.name)} 
-                        description={String(value.description)}></FoodCard>
+                        description={String(value.description)}
+                        key={index}></FoodCard>
                 })}
             </Stack>}
     </Container>)
