@@ -91,6 +91,16 @@ export default function AccountSettings() {
 
                 <Button
                   component={Link}
+                  href="/restrictions"
+                  fullWidth
+                  size="md"
+                  color="blue"
+                >
+                  Dietary Restrictions
+                </Button>
+
+                <Button
+                  component={Link}
                   href="/dashboard"
                   variant="light"
                   leftSection={<IconArrowLeft size={16} />}

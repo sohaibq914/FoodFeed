@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
-    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -541,6 +541,51 @@ def list_recipes_by_username(username):
         print(f"list_recipes_by_username error: {e}")
         return jsonify({"error": "Failed to fetch user's recipes"}), 500
 
+@app.route("/update_restrictions", methods=["POST"])
+def edit_restrictions_handler():
+    try:
+        data = request.get_json()
+        id = data.get("user_id")
+        tags = data.get("tags")
+
+        if not id or not tags:
+            return jsonify({"error": "Missing id or tags"}), 400
+
+        result = edit_user_tags(id, tags)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 200
+
+    except Exception as e:
+        print(f"Update dietary restrictions exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/get_restrictions", methods=["POST"])
+def get_restrictions_handler():
+    try:
+        data = request.get_json()
+        id = data.get("user_id")
+
+        if not id:
+            return jsonify({"error": "Missing id"}), 400
+
+        result = get_user_tags(id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        response = jsonify(result)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        print(response)
+        return response, 200
+
+    except Exception as e:
+        print(f"Get dietary restrictions exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # ==================== RECIPE LIKES ROUTES ====================
 

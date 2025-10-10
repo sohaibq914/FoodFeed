@@ -11,12 +11,11 @@ import {
   AppShell
 } from '@mantine/core';
 import Header from '@/components/Header';
-import RecipeEditor from "@/components/RecipeEditor";
+import RestrictionsForm from "@/components/RestrictionsForm";
 
 
 
-export default function EditRecipe() {
-  const params = useParams<{ recipe_id: string }>();
+export default function Restrictions() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -24,8 +23,8 @@ export default function EditRecipe() {
     if (!loading && !user) {
       router.push("/login");
     }
-    window.addEventListener('beforeunload', alertUser)
 
+    window.addEventListener('beforeunload', alertUser)
     return () => {
         window.removeEventListener('beforeunload', alertUser)
     }
@@ -60,9 +59,7 @@ export default function EditRecipe() {
         <Header showSettingsButton={true} showBackButton={false} />
 
         <AppShell.Main>
-          <RecipeEditor 
-            recipe_id={params.recipe_id}
-          />
+          <RestrictionsForm/>
         </AppShell.Main>
       </AppShell>
     </div>

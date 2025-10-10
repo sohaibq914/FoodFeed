@@ -698,3 +698,36 @@ def get_comment_with_likes(comment_id: str, user_id: str = None):
     except Exception as e:
         print(f"Error in get_comment_with_likes: {str(e)}")
         return {"error": str(e)}
+
+def edit_user_tags(user_id: str, tags ):
+    try:
+        print(tags)
+        response = supabase.table('users').update({"dietary_restrictions": tags}).eq("id", user_id).execute()
+
+        print(f"Response: {response}")
+
+        if response.data:
+            return {"message": "Restrictions changed successfully"}
+        else:
+            return {"error": "Failed to change restrictions"}
+
+    except Exception as e:
+        print(f"Error in edit_user_tags: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_user_tags(id: str):
+    try:
+        if id:
+            response = supabase.table('users').select("dietary_restrictions").eq("id", id).execute()
+
+            print("Response:", response.data)
+
+            return response.data
+        else:
+            return {"error": "Failed to get recipe"}
+
+    except Exception as e:
+        print(f"Error in get_recipe: {str(e)}")
+        return {"error": str(e)}
+
