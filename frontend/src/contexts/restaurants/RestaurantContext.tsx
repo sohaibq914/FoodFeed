@@ -26,7 +26,7 @@ interface RestaurantsContextType {
     setSelectedId: (id: string | null) => void;
     filter: string;
     setFilter: (v: string) => void;
-    tagQuery: [];
+    tagQuery: string[];
     setTagQuery: (v: string[]) => void;
     allTags: string[];
     refreshAllTags: () => Promise<{ data: string[]; error: any }>;
@@ -54,7 +54,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
     const [reviewsError, setReviewsError] = useState<string | null>(null);
 
     const [filter, setFilter] = useState("");
-    const [tagQuery, setTagQuery] = useState([]);
+    const [tagQuery, setTagQuery] = useState([] as string[]);
     const [allTags, setAllTags] = useState<string[]>([]);
 
     const refresh = async () => {

@@ -45,7 +45,7 @@ export default function RestaurantSearchBar(): React.ReactElement {
             </Group>
 
             <AllTagsRow
-                label="Sort"
+                // label="Sort"
                 selectedTags={(tagQuery ?? []) as string[]}
                 onToggle={toggleTag}>
             </AllTagsRow>

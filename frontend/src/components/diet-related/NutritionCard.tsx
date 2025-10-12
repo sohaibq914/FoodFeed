@@ -29,20 +29,19 @@ class NutrItemHolder implements NutritionItem {
 export default function NutritionCard({user_id, item}: NutritionInfo) {
     const [food_items, set_food_items] = useState([] as FoodItem[])
     const [loading, setLoading] = useState(true);
-    if (item.id.length != 0 && user_id.length != 0) {
-        useEffect(() => {
-            const runner = async () => {
-                setLoading(true)
-                const {success, message, foods} = await get_food_of_nutrient(user_id, item.id);
-                console.log("Obtained foods: " + ", " + String(message) + ", " + String(foods))
-                if (success) {
-                    set_food_items(foods!);
-                }
-                setLoading(false);
+    useEffect(() => {
+        const runner = async () => {
+            setLoading(true)
+            const {success, message, foods} = await get_food_of_nutrient(user_id, item.id);
+            console.log("Obtained foods: " + ", " + String(message) + ", " + String(foods))
+            if (success) {
+                set_food_items(foods!);
             }
-            runner();
-        }, ['nutrition']);
-    }
+            setLoading(false);
+        }
+        runner();
+    }, ['nutrition']);
+    
     return (
         <Container>
             <Title order={1}>{item.name}</Title>

@@ -8,7 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AppShell, Container, Group, Stack, Title, Text } from "@mantine/core";
 
 export default function DietPage() {
-    let user_id = useAuth().user?.id
+    const user_id = useAuth().user?.id
     return (<div style={{ minHeight: '100vh' }}>
           <AppShell
             header={{ height: 70 }}

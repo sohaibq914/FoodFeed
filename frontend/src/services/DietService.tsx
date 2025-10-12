@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { time } from 'console';
 import { API_Caller, get_caller } from '@/misc/Connection'
 
-let caller = get_caller()
+const caller = get_caller()
 
 export interface FoodItem {
     id: string;
@@ -78,7 +78,7 @@ export const get_meal_templates = async (user_id: string): Promise<{success: boo
     
     try {
         if (response.ok) {
-            let templates: { data: MealTemplate[] } = data
+            const templates: { data: MealTemplate[] } = data
             return {success: true, message: null, templates: templates.data}
         }
         else {
@@ -180,7 +180,7 @@ export const get_user_meals = async (user_id: string): Promise<{success: boolean
     );
     try {
         if (response.ok) {
-            let items: { meals: Meal[], averages: number[] } = data
+            const items: { meals: Meal[], averages: number[] } = data
             items.meals = items.meals.map((value, index) => {
                 value.time_aten = new Date(Date.parse(value.time_aten as unknown as string))
                 return value
@@ -191,7 +191,7 @@ export const get_user_meals = async (user_id: string): Promise<{success: boolean
     }
     catch {     
     }
-    let averages = []
+    const averages = []
     for (let i = 0; i < 24; i++) {
         averages.push(0)
     }
@@ -210,7 +210,7 @@ export const get_user_meals_range = async (user_id: string, start: Date, end: Da
       
     try {
         if (response.ok) {
-            let items: { meals: Meal[], averages: number[] } = data
+            const items: { meals: Meal[], averages: number[] } = data
             items.meals = items.meals.map((value, index) => {
                 value.time_aten = new Date(Date.parse(value.time_aten as unknown as string))
                 return value
@@ -236,7 +236,7 @@ export const get_food_items = async (type: string): Promise<{success: boolean, m
     try {
         if (response.ok) {
             console.log("EE")
-            let items: { foods: FoodItem[] } = data
+            const items: { foods: FoodItem[] } = data
             console.log("Res: " + String(items));
             return {success: true, message: null, foods: items.foods};
         }
@@ -306,7 +306,7 @@ export const get_all_nutrients = async (user_id: string): Promise<{success: bool
     
     try {
         if (response.ok) {
-            let items: { nutrients: NutritionItem[] } = data
+            const items: { nutrients: NutritionItem[] } = data
             return {success: true, message: null, nutrients: items.nutrients}
         }
     }
@@ -327,7 +327,7 @@ export const get_food_of_type = async (user_id: string, type: string): Promise<{
     try {
         if (response.ok) {
             console.log()
-            let items: { foods: FoodItem[] } = data
+            const items: { foods: FoodItem[] } = data
             return {success: true, message: null, foods: items.foods}
         }
     }
@@ -347,7 +347,7 @@ export const get_food_of_nutrient = async (user_id: string, nutrient_id: string)
     
     try {
         if (response.ok) {
-            let items: { foods: FoodItem[] } = data
+            const items: { foods: FoodItem[] } = data
             console.log("Found foods: ")
             console.log(data)
             return {success: true, message: null, foods: items.foods}

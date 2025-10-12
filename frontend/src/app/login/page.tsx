@@ -8,7 +8,7 @@ export default function LoginPage() {
       <LoginForm />
       <Container size="xs" style={{ position: 'absolute', bottom: '2rem', left: '50%', transform: 'translateX(-50%)' }}>
         <Text ta="center" c="dimmed" size="sm">
-          Don't have an account?{' '}
+          Don&apos;t have an account?{" "}
           <Anchor component={Link} href="/register" c="blue">
             Sign up here
           </Anchor>

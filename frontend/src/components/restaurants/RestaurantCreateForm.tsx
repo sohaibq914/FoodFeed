@@ -16,7 +16,7 @@ import {
 } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
 
-const toMsg = (e: unknown): string => {
+const toMsg = (e: any): string => {
     if (!e) return "";
     try {
         return JSON.stringify(e.error);

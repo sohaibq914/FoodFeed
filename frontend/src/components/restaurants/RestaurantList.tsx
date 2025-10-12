@@ -63,7 +63,7 @@ export default function RestaurantList(): React.ReactElement {
     useEffect(() => {
         let alive = true;
         const run = async () => {
-            const selected = (tagQuery ?? []).map((t) => t.toLowerCase().trim());
+            const selected = (tagQuery ?? []).map((t) => (t as string).toLowerCase().trim());
             if (selected.length === 0) {
                 if (alive) {
                     setTagMatches(new Set());
