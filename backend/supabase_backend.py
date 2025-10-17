@@ -1,4 +1,5 @@
 import os
+import time
 
 import boto3
 from supabase import create_client, Client
@@ -8,6 +9,7 @@ load_dotenv()
 
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_ANON_KEY")
+service_key: str = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 storage = "https://ckejrfkzghamajcnryga.storage.supabase.co/storage/v1/s3"
 aws = "a5ac34c6e62607b69ce60dd528e8e02d"
 secret = "89b422e51e99adeb5a395a744129a6541de257f27fdd8af7e3be991395c63c8a"
@@ -30,6 +32,13 @@ if not url or not key:
         "SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
 
 supabase: Client = create_client(url, key)
+
+admin_supabase: Client = None
+if service_key:
+    admin_supabase = create_client(url, service_key)
+    print("Admin client created successfully")
+else:
+    print("Warning: SUPABASE_SERVICE_ROLE_KEY not found.")
 
 
 def sign_up_user(email: str, password: str, username: str):
@@ -149,6 +158,99 @@ def change_user_password(email: str, current_password: str, new_password: str):
     except Exception as e:
         print(f"Error in change_user_password: {str(e)}")
         return {"error": str(e)}
+
+
+def deactivate_user_account(email: str, password: str):
+    try:
+        print(f"Attempting to deactivate account for user: {email}")
+        
+        sign_in_response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
+        if not sign_in_response.user:
+            return {"error": "Password is incorrect"}
+
+        user_id = sign_in_response.user.id
+        print(f"Verified user {user_id} with email {email}")
+
+        try:
+            supabase.table('recipes').delete().eq('user_id', user_id).execute()
+            print(f"Deleted recipes for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete recipes: {e}")
+        
+        try:
+            supabase.table('comments').delete().eq('user_id', user_id).execute()
+            print(f"Deleted comments for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete comments: {e}")
+        
+        try:
+            supabase.table('recipe_likes').delete().eq('user_id', user_id).execute()
+            print(f"Deleted likes for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete likes: {e}")
+        
+        try:
+            supabase.table('messages').delete().eq('sender_id', user_id).execute()
+            supabase.table('messages').delete().eq('receiver_id', user_id).execute()
+            print(f"Deleted messages for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete messages: {e}")
+        
+        try:
+            supabase.table('reviews').delete().eq('user_id', user_id).execute()
+            supabase.table('restaurants').delete().eq('owner', email).execute()
+            print(f"Deleted restaurants and reviews for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete restaurants/reviews: {e}")
+        
+        try:
+            supabase.table('user_restrictions').delete().eq('user_id', user_id).execute()
+            print(f"Deleted dietary restrictions for user {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete dietary restrictions: {e}")
+        
+        try:
+            supabase.table('users').delete().eq('id', user_id).execute()
+            print(f"Deleted user profile for {user_id}")
+        except Exception as e:
+            print(f"Warning: Could not delete user profile: {e}")
+
+        supabase.auth.sign_out()
+
+        if admin_supabase:
+            try:
+                admin_response = admin_supabase.auth.admin.delete_user(user_id)
+                print(f"Successfully deleted user {user_id} from Supabase Auth")
+                return {"message": "Account permanently deleted"}
+            except Exception as e:
+                print(f"Error deleting user from auth: {e}")
+                return {"error": "Failed to completely delete account from authentication system"}
+        else:
+            # Fallback: Update email to prevent login (if no service role key)
+            try:
+                sign_in_response = supabase.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                
+                deactivated_email = f"deactivated_{user_id}_{int(time.time())}@deleted.local"
+                supabase.auth.update_user({
+                    "email": deactivated_email
+                })
+                supabase.auth.sign_out()
+                print(f"Fallback: Updated email to {deactivated_email}")
+                return {"message": "Account deactivated (email method)"}
+            except Exception as e:
+                print(f"Warning: Could not update email: {e}")
+                return {"error": "Account data deleted but authentication may still be active"}
+
+    except Exception as e:
+        print(f"Error in deactivate_user_account: {str(e)}")
+        return {"error": "Failed to deactivate account"}
 
 
 def add_restaurant(name: str, address: str, owner: str):

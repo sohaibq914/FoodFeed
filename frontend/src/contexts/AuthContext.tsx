@@ -15,6 +15,7 @@ interface AuthContextType {
   signIn: (login: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<any>;
+  deactivateAccount: (password: string) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -150,8 +151,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const deactivateAccount = async (password: string) => {
+    try {
+      const response = await fetch('http://localhost:5001/deactivate-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: user?.email,
+          password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.removeItem('foodfeed_user');
+        setUser(null);
+        router.push('/');
+        return { data, error: null };
+      } else {
+        return { data: null, error: data };
+      }
+    } catch (error) {
+      return { data: null, error: { message: 'Network error occurred' } };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, changePassword }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, changePassword, deactivateAccount }}>
       {children}
     </AuthContext.Provider>
   );
