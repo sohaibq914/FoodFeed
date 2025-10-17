@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, update_recipe, get_recipe, add_restaurant, \
+from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes
 import os
@@ -194,6 +194,28 @@ def change_password():
 
     except Exception as e:
         print(f"Change password exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/deactivate-account", methods=["POST"])
+def deactivate_account():
+    try:
+        data = request.get_json()
+        email = data.get("email")
+        password = data.get("password")
+
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+
+        result = deactivate_user_account(email, password)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({"message": "Account deactivated successfully"}), 200
+
+    except Exception as e:
+        print(f"Deactivate account exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 

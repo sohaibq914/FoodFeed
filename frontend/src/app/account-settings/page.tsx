@@ -1,7 +1,7 @@
 "use client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
   Container, 
@@ -14,20 +14,45 @@ import {
   AppShell,
   Paper,
   Stack,
-  Divider
+  Divider,
+  Modal,
+  PasswordInput,
+  Alert
 } from '@mantine/core';
-import { IconArrowLeft, IconUser, IconMail, IconKey } from '@tabler/icons-react';
+import { IconArrowLeft, IconUser, IconMail, IconKey, IconTrash, IconAlertTriangle } from '@tabler/icons-react';
 import Header from '@/components/Header';
 
 export default function AccountSettings() {
-  const { user, loading } = useAuth();
+  const { user, loading, deactivateAccount } = useAuth();
   const router = useRouter();
+  const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivateError, setDeactivateError] = useState('');
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  const handleDeactivateAccount = async () => {
+    if (!deactivatePassword) {
+      setDeactivateError('Password is required');
+      return;
+    }
+
+    setIsDeactivating(true);
+    setDeactivateError('');
+
+    const { error } = await deactivateAccount(deactivatePassword);
+    
+    if (error) {
+      setDeactivateError(error.error || error.message || 'Failed to deactivate account');
+      setIsDeactivating(false);
+    }
+    // If successful, the deactivateAccount function will redirect to home
+  };
 
   if (loading) {
     return (
@@ -99,6 +124,19 @@ export default function AccountSettings() {
                   Dietary Restrictions
                 </Button>
 
+                <Divider />
+
+                <Button
+                  onClick={() => setDeactivateModalOpen(true)}
+                  variant="outline"
+                  leftSection={<IconTrash size={16} />}
+                  fullWidth
+                  size="md"
+                  color="red"
+                >
+                  Deactivate Account
+                </Button>
+
                 <Button
                   component={Link}
                   href="/dashboard"
@@ -115,6 +153,69 @@ export default function AccountSettings() {
           </Container>
         </AppShell.Main>
       </AppShell>
+
+      <Modal
+        opened={deactivateModalOpen}
+        onClose={() => {
+          setDeactivateModalOpen(false);
+          setDeactivatePassword('');
+          setDeactivateError('');
+        }}
+        title="Deactivate Account"
+        size="md"
+        centered
+      >
+        <Stack gap="md">
+          <Alert
+            icon={<IconAlertTriangle size={16} />}
+            color="red"
+            variant="light"
+          >
+            <Text size="sm" fw={500}>Warning: This action cannot be undone</Text>
+            <Text size="sm">
+              Deactivating your account will permanently delete all your data and you will no longer be able to log in.
+            </Text>
+          </Alert>
+
+          <PasswordInput
+            label="Enter your password to confirm"
+            placeholder="Password"
+            value={deactivatePassword}
+            onChange={(e) => setDeactivatePassword(e.currentTarget.value)}
+            required
+            size="md"
+          />
+
+          {deactivateError && (
+            <Alert color="red" variant="filled">
+              {deactivateError}
+            </Alert>
+          )}
+
+          <Group justify="space-between" mt="lg">
+            <Button
+              variant="light"
+              onClick={() => {
+                setDeactivateModalOpen(false);
+                setDeactivatePassword('');
+                setDeactivateError('');
+              }}
+              disabled={isDeactivating}
+            >
+              Cancel
+            </Button>
+            
+            <Button
+              color="red"
+              onClick={handleDeactivateAccount}
+              loading={isDeactivating}
+              leftSection={<IconTrash size={16} />}
+            >
+              {isDeactivating ? 'Deactivating...' : 'Deactivate Account'}
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </div>
   );
 }

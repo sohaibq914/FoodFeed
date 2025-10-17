@@ -10,6 +10,7 @@ For running, run `python -m flask --app flask_backend run --port 5001`
 ```
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 ## Dev note for creating accounts
