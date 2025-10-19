@@ -1,5 +1,6 @@
 import os
 import time
+import uuid
 
 import boto3
 from supabase import create_client, Client
@@ -61,7 +62,8 @@ def sign_up_user(email: str, password: str, username: str):
             user_data = supabase.table('users').insert({
                 "id": response.user.id,
                 "username": username,
-                "email": email
+                "email": email,
+                "profile_picture_url": None
             }).execute()
 
             print(f"User table insert response: {user_data}")
@@ -71,7 +73,8 @@ def sign_up_user(email: str, password: str, username: str):
                     "user": {
                         "id": response.user.id,
                         "email": response.user.email,
-                        "username": username
+                        "username": username,
+                        "profile_picture_url": None
                     },
                     "session": response.session
                 }
@@ -105,13 +108,14 @@ def sign_in_user(login: str, password: str):
 
         if response.user:
             user_profile = supabase.table('users').select(
-                'username').eq('id', response.user.id).execute()
+                'username, profile_picture_url').eq('id', response.user.id).execute()
             if user_profile.data:
                 return {
                     "user": {
                         "id": response.user.id,
                         "email": response.user.email,
-                        "username": user_profile.data[0]['username']
+                        "username": user_profile.data[0]['username'],
+                        "profile_picture_url": user_profile.data[0].get('profile_picture_url')
                     },
                     "session": response.session
                 }
@@ -869,5 +873,58 @@ def get_user_tags(id: str):
 
     except Exception as e:
         print(f"Error in get_recipe: {str(e)}")
+        return {"error": str(e)}
+
+
+def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, content_type: str):
+    """Upload profile picture to Supabase storage and update user profile"""
+    try:
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        if content_type not in allowed_types:
+            return {"error": "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed."}
+
+        import uuid
+        file_extension = file_name.split('.')[-1] if '.' in file_name else 'jpg'
+        unique_filename = f"profile_pictures/{user_id}_{uuid.uuid4().hex}.{file_extension}"
+
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=unique_filename,
+            Body=file_content,
+            ContentType=content_type,
+            ACL='public-read'
+        )
+
+        profile_picture_url = f"https://ckejrfkzghamajcnryga.supabase.co/storage/v1/object/public/{BUCKET}/{unique_filename}"
+
+        update_response = supabase.table('users').update({
+            'profile_picture_url': profile_picture_url
+        }).eq('id', user_id).execute()
+        
+        if update_response.data:
+            return {
+                "message": "Profile picture uploaded successfully",
+                "profile_picture_url": profile_picture_url
+            }
+        else:
+            return {"error": "Failed to update user profile"}
+            
+    except Exception as e:
+        print(f"Error in upload_profile_picture: {str(e)}")
+        return {"error": f"Failed to upload profile picture: {str(e)}"}
+
+
+def get_user_profile(user_id: str):
+    """Get user profile including profile picture URL"""
+    try:
+        response = supabase.table('users').select('id, username, email, profile_picture_url').eq('id', user_id).execute()
+        
+        if response.data:
+            return {"user": response.data[0]}
+        else:
+            return {"error": "User not found"}
+            
+    except Exception as e:
+        print(f"Error in get_user_profile: {str(e)}")
         return {"error": str(e)}
 
