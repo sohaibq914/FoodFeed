@@ -6,6 +6,7 @@ interface User {
   id: string;
   email: string;
   username: string;
+  profile_picture_url?: string;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<any>;
   deactivateAccount: (password: string) => Promise<any>;
+  uploadProfilePicture: (file: File) => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +34,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (storedUser) {
           const userData = JSON.parse(storedUser);
+
+          setUser(userData);
           
+          // Verify session in background
           const response = await fetch('http://localhost:5001/verify-session', { //note the port number -andrew
             method: 'POST',
             headers: {
@@ -44,14 +49,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const data = await response.json();
           
           if (response.ok && data.valid) {
-            setUser(data.user);
+            // Update with fresh data from server if different
+            if (JSON.stringify(data.user) !== JSON.stringify(userData)) {
+              setUser(data.user);
+              localStorage.setItem('foodfeed_user', JSON.stringify(data.user));
+            }
           } else {
             localStorage.removeItem('foodfeed_user');
+            setUser(null);
           }
         }
       } catch (error) {
         console.error('Error verifying session:', error);
-        localStorage.removeItem('foodfeed_user');
       } finally {
         setLoading(false);
       }
@@ -179,8 +188,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const uploadProfilePicture = async (file: File) => {
+    try {
+      if (!user?.id) {
+        return { error: { message: 'User not authenticated' } };
+      }
+
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        return { error: { message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.' } };
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        return { error: { message: 'File size must be less than 5MB' } };
+      }
+
+      const formData = new FormData();
+      formData.append('profile_picture', file);
+      formData.append('user_id', user.id);
+
+      const response = await fetch('http://localhost:5001/upload-profile-picture', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        const updatedUser = {
+          ...user,
+          profile_picture_url: data.profile_picture_url
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem('foodfeed_user', JSON.stringify(updatedUser));
+        
+        return { data, error: null };
+      } else {
+        return { data: null, error: data };
+      }
+    } catch (error) {
+      return { data: null, error: { message: 'Network error occurred' } };
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, changePassword, deactivateAccount }}>
+    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, changePassword, deactivateAccount, uploadProfilePicture }}>
       {children}
     </AuthContext.Provider>
   );

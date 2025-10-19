@@ -3,7 +3,8 @@ from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
-    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes
+    add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
+    upload_profile_picture, get_user_profile
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -216,6 +217,73 @@ def deactivate_account():
 
     except Exception as e:
         print(f"Deactivate account exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/upload-profile-picture", methods=["POST"])
+def upload_user_profile_picture():
+    try:
+        if 'profile_picture' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['profile_picture']
+        user_id = request.form.get('user_id')
+        
+        if not user_id:
+            return jsonify({"error": "User ID is required"}), 400
+            
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
+            return jsonify({"error": "Invalid file type. Only PNG, JPG, JPEG, GIF, and WebP files are allowed"}), 400
+        
+        file_content = file.read()
+
+        if len(file_content) > 5 * 1024 * 1024:
+            return jsonify({"error": "File size too large. Maximum size is 5MB"}), 400
+        
+        result = upload_profile_picture(user_id, file_content, file.filename, file.content_type)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"Upload profile picture exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/<user_id>/profile", methods=["GET"])
+def get_user_profile_endpoint(user_id):
+    try:
+        result = get_user_profile(user_id)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 404
+        
+        return jsonify(result), 200
+        
+    except Exception as e:
+        print(f"Get user profile exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/by-username/<username>", methods=["GET"])
+def get_user_by_username(username):
+    try:
+        from supabase_backend import supabase
+        response = supabase.table('users').select('id, username, profile_picture_url').eq('username', username).execute()
+        
+        if response.data:
+            return jsonify({"user": response.data[0]}), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
+            
+    except Exception as e:
+        print(f"Get user by username exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 

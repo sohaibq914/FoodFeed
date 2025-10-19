@@ -13,13 +13,17 @@ import {
   Loader,
   Group,
   Modal,
+  Avatar,
+  FileInput,
+  Alert,
+  Stack,
 } from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
-import { IconPencil, IconTrash, IconArchive } from "@tabler/icons-react";
+import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser } from "@tabler/icons-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 type RecipeSummary = {
   recipe_id: string;
@@ -32,7 +36,7 @@ type ViewMode = "posted" | "drafts" | "liked";
 
 export default function ProfilePage() {
   const params = useParams<{ username: string }>();
-  const { user } = useAuth();
+  const { user, uploadProfilePicture, loading: authLoading } = useAuth();
 
   const profileUsername = params.username;
   const isOwner = !!user?.username && user.username === profileUsername;
@@ -49,6 +53,25 @@ export default function ProfilePage() {
   const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(
     null
   );
+
+  // Profile picture upload states
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<any>(null);
+  const [profilePictureLoading, setProfilePictureLoading] = useState(true);
+
+  const profilePictureUrl = useMemo(() => {
+    if (profilePictureLoading) {
+      return null;
+    }
+
+    if (isOwner) {
+      return user?.profile_picture_url || profileUser?.profile_picture_url || null;
+    }
+    
+    return profileUser?.profile_picture_url || null;
+  }, [isOwner, user?.profile_picture_url, profileUser?.profile_picture_url, profilePictureLoading]);
 
   // -- API helpers --
   const fetchRecipes = async (mode: ViewMode) => {
@@ -107,6 +130,44 @@ export default function ProfilePage() {
     fetchRecipes(view);
   }, [profileUsername, view]);
 
+  useEffect(() => {
+    if (profileUsername) {
+      fetchProfileUser();
+    }
+  }, [profileUsername]);
+
+  useEffect(() => {
+    setProfilePictureLoading(true);
+  }, [profileUsername]);
+
+  useEffect(() => {
+    if (isOwner) {
+      if (!authLoading && user && user.username === profileUsername) {
+        setProfilePictureLoading(false);
+      }
+    } else {
+      if (profileUser !== null) {
+        setProfilePictureLoading(false);
+      }
+    }
+  }, [authLoading, user, profileUser, isOwner, profileUsername]);
+
+  const fetchProfileUser = async () => {
+    try {
+      const response = await fetch(`http://localhost:5001/user/by-username/${encodeURIComponent(profileUsername)}`);
+      const data = await response.json();
+      
+      if (response.ok) {
+        setProfileUser(data.user);
+      } else {
+        setProfileUser({ username: profileUsername, profile_picture_url: null });
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile user:', error);
+      setProfileUser({ username: profileUsername, profile_picture_url: null });
+    }
+  };
+
   const handleDelete = async (recipeId: string) => {
     try {
       const res = await fetch(`http://localhost:5001/recipes/${recipeId}`, {
@@ -161,6 +222,23 @@ export default function ProfilePage() {
     setModalOpen(false);
   };
 
+  const handleProfilePictureUpload = async () => {
+    if (!profilePictureFile) return;
+
+    setUploadingPicture(true);
+    setUploadError(null);
+
+    const { error, data } = await uploadProfilePicture(profilePictureFile);
+
+    if (error) {
+      setUploadError(error.error || error.message || 'Failed to upload profile picture');
+    } else {
+      setProfilePictureFile(null);
+    }
+
+    setUploadingPicture(false);
+  };
+
   const headerTitle =
     view === "posted"
       ? isOwner
@@ -170,6 +248,23 @@ export default function ProfilePage() {
       ? "Drafts"
       : "Likes";
 
+  if (authLoading) {
+    return (
+      <AppShell header={{ height: 64 }} padding="md">
+        <AppShell.Header>
+          <CommonHeader />
+        </AppShell.Header>
+        <AppShell.Main>
+          <Container size="xl">
+            <Center py="xl">
+              <Loader size="lg" />
+            </Center>
+          </Container>
+        </AppShell.Main>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell header={{ height: 64 }} padding="md">
       <AppShell.Header>
@@ -178,27 +273,71 @@ export default function ProfilePage() {
 
       <AppShell.Main>
         <Container size="xl">
-          <Title order={1} style={{ marginBottom: 4 }}>
-            @{profileUsername}
-          </Title>
-          <Text c="dimmed" mb="md">
-            {isOwner ? "This is your profile" : "Public view."}
-          </Text>
-
-          {isOwner && (
-            <div style={{ marginTop: 16, display: "grid", gap: 8 }}>
-              <Button
-                leftSection={<IconPencil size={16} />}
-                variant="light"
+          {/* Profile Header */}
+          <Group align="start" gap="xl" mb="xl">
+            <div>
+              <Avatar
+                src={profilePictureLoading ? undefined : (profilePictureUrl || undefined)}
+                size={120}
+                radius="xl"
                 color="blue"
-                radius="md"
-                style={{ width: "fit-content" }}
-                onClick={() => alert("Edit profile coming soon")}
               >
-                Edit Profile
-              </Button>
+                {profilePictureLoading ? <Loader size={30} /> : <IconUser size={60} />}
+              </Avatar>
+              
+              {isOwner && (
+                <Stack gap="xs" mt="md" style={{ maxWidth: 200 }}>
+                  <FileInput
+                    placeholder="Choose profile picture"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    value={profilePictureFile}
+                    onChange={setProfilePictureFile}
+                    leftSection={<IconCamera size={16} />}
+                    size="xs"
+                  />
+                  
+                  {profilePictureFile && (
+                    <Button
+                      size="xs"
+                      leftSection={<IconUpload size={14} />}
+                      onClick={handleProfilePictureUpload}
+                      loading={uploadingPicture}
+                      disabled={uploadingPicture}
+                    >
+                      Upload
+                    </Button>
+                  )}
+                  
+                  {uploadError && (
+                    <Alert color="red" variant="filled">
+                      <Text size="xs">{uploadError}</Text>
+                    </Alert>
+                  )}
+                </Stack>
+              )}
             </div>
-          )}
+            
+            <div style={{ flex: 1 }}>
+              <Title order={1} style={{ marginBottom: 4 }}>
+                @{profileUsername}
+              </Title>
+              <Text c="dimmed" mb="md">
+                {isOwner ? "This is your profile" : "Public view."}
+              </Text>
+
+              {isOwner && (
+                <Button
+                  leftSection={<IconPencil size={16} />}
+                  variant="light"
+                  color="blue"
+                  radius="md"
+                  onClick={() => alert("Edit profile coming soon")}
+                >
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </Group>
 
           <section style={{ marginTop: 48 }}>
             <Group justify="space-between" mb="md">
