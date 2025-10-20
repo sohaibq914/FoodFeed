@@ -90,7 +90,7 @@ export default function ProfilePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to load likes");
 
         // data.likes: [{ recipe_id, title, author_id, posted }]
-        const liked: RecipeSummary[] = (data.likes || []).map((r: any) => ({
+        const liked: RecipeSummary[] = (data.likes || []).map((r: RecipeSummary) => ({
           recipe_id: r.recipe_id,
           title: r.title,
           posted: r.posted ?? true,
@@ -115,7 +115,9 @@ export default function ProfilePage() {
       );
       setRecipes(filtered);
     } catch (e: any) {
-      setError(e.message || "Failed to load recipes");
+      // if (typeof e === "Error") {
+        setError(e.message || "Failed to load recipes");
+      // }
     } finally {
       setLoading(false);
     }
@@ -180,7 +182,7 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to delete recipe");
 
-      setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
+      setRecipes((prev) => prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId));
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to delete recipe");
@@ -203,7 +205,7 @@ export default function ProfilePage() {
       if (!res.ok) throw new Error(data?.error || "Failed to draft recipe");
 
       // Remove from current list to reflect state change
-      setRecipes((prev) => prev.filter((r) => r.recipe_id !== recipeId));
+      setRecipes((prev) => prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId));
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to draft recipe");

@@ -15,7 +15,6 @@ interface MealAverageInfo {
 type MealRecord = Record<string, any>
 
 export default function MealAverage({user_id}: MealAverageInfo) {
-    user_id = useAuth().user!.id
     const [loading, is_loading] = useState(false)
     const [visible, set_visible] = useState(true)
 

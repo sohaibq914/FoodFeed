@@ -24,7 +24,7 @@ export default function ReviewsPage(): React.ReactElement {
     const [author, setAuthor] = useState("");
     const [text, setText] = useState("");
     const [rating, setRating] = useState<number>(0);
-    const [files, setFiles] = useState<File[] | null>(null);
+    const [files, setFiles] = useState<File[] | undefined>(undefined);
     const [previews, setPreviews] = useState<string[]>([]);
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
@@ -77,7 +77,7 @@ export default function ReviewsPage(): React.ReactElement {
             setAuthor("");
             setText("");
             setRating(0);
-            setFiles(null);
+            setFiles(undefined);
             setPreviews([]);
         }
         setSubmitting(false);

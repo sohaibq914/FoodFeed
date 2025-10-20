@@ -9,11 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@mantine/charts": "^8.3.1",
     "@mantine/core": "^8.3.4",
-    "@mantine/dates": "^8.3.1",
     "@mantine/form": "^8.3.1",
     "@mantine/hooks": "^8.3.1",
+    "@mantine/charts": "^8.3.1",
+    "@mantine/dates": "^8.3.1",
     "@mantine/notifications": "^8.3.4",
     "@supabase/supabase-js": "^2.39.0",
     "@tabler/icons-react": "^3.35.0",
