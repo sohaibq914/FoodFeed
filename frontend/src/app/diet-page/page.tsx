@@ -6,9 +6,31 @@ import NutritionChecklist from "@/components/diet-related/NutritionChecklist";
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { AppShell, Container, Group, Stack, Title, Text } from "@mantine/core";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function DietPage() {
-    const user_id = useAuth().user?.id
+    const { user, loading } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      if (!loading && !user) {
+        router.push("/login");
+      }
+      window.addEventListener('beforeunload', alertUser)
+
+      return () => {
+          window.removeEventListener('beforeunload', alertUser)
+      }
+    }, [user, loading, router]);
+
+    const alertUser = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    if (!user) return null;
+
     return (<div style={{ minHeight: '100vh' }}>
           <AppShell
             header={{ height: 70 }}
@@ -19,21 +41,21 @@ export default function DietPage() {
               <Container size="lg" py="xl">
                 <Stack>
                     <Title order={2}>Diet Page</Title>
-                    <MealTemplateList user_id={user_id!}/>
-                    <MealAverage user_id={user_id!}/>
-                    <NutritionChecklist user_id={user_id!}/>
+                    <MealTemplateList user_id={user?.id ?? ''}/>
+                    <MealAverage user_id={user?.id ?? ''}/>
+                    <NutritionChecklist user_id={user?.id ?? ''}/>
                     <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
                         <Stack>
                             <Title order={3}>Fruits</Title>
-                            <Menu user_id={user_id!} type={"fruit"} />
+                            <Menu user_id={user?.id ?? ''} type={"fruit"} />
                         </Stack>
                         <Stack>
                             <Title order={3}>Vegetables</Title>
-                            <Menu user_id={user_id!} type={"vegetable"} />
+                            <Menu user_id={user?.id ?? ''} type={"vegetable"} />
                         </Stack>
                         <Stack>
                             <Title order={3}>Proteins</Title>
-                            <Menu user_id={user_id!} type={"protein"} />
+                            <Menu user_id={user?.id ?? ''} type={"protein"} />
                         </Stack>
                     </Group>
                 </Stack>             

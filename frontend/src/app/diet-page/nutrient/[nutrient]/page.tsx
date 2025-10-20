@@ -7,18 +7,36 @@ import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { get_all_nutrients, NutritionItem } from "@/services/DietService";
 import { AppShell, Container, Stack, Title, Group, Menu, Text } from "@mantine/core";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 export default function NutrientPage() {
-    const user_id = useAuth().user?.id
+    const { user, loading: loadingUser } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+      if (!loadingUser && !user) {
+        router.push("/login");
+      }
+      window.addEventListener('beforeunload', alertUser)
+
+      return () => {
+          window.removeEventListener('beforeunload', alertUser)
+      }
+    }, [user, loadingUser, router]);    
+    
+    const alertUser = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
     const params = useParams<{ nutrient: string }>()
     const [item, set_item] = useState(null as NutritionItem|null)
     const [loading, set_loading] = useState(true)
     useEffect(() => { 
         const runner = async () => {
             set_loading(true)
-            const {success, message, nutrients} = await get_all_nutrients(user_id!)
+            const {success, message, nutrients} = await get_all_nutrients(user?.id ?? '')
             if (success) {
                 set_item(nutrients!.filter((value) => { console.log(value); return value.id === params.nutrient })[0])
             }
@@ -29,6 +47,9 @@ export default function NutrientPage() {
         }
         runner()
     }, ['nutrition_card'])
+
+    if (!user) return null;
+
     // params
     return (<div style={{ minHeight: '100vh' }}>
             <AppShell
@@ -39,7 +60,7 @@ export default function NutrientPage() {
             <AppShell.Main>
                 <Container size="lg" py="xl">
                 {loading || item == null ? <></> : 
-                    <NutritionCard user_id={user_id!} item={item!}/> }          
+                    <NutritionCard user_id={user?.id ?? ''} item={item!}/> }          
                 </Container>
             </AppShell.Main>
             </AppShell>
