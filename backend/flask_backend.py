@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from functools import wraps
 from supabase_access_meal import *
 from supabase_access_nutrition import *
+from password_reset_handler import create_password_reset_token, validate_reset_token, mark_token_as_used, reset_user_password
+from email_service import send_password_reset_email
 
 load_dotenv()
 
@@ -1201,6 +1203,93 @@ def get_food_of_nutrient():
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)
+
+@app.route('/forgot-password', methods=['POST'])
+def handle_forgot_password():
+    try:
+        data = request.json
+        if not data or 'email' not in data:
+            return jsonify({"error": "Email is required"}), 400
+        
+        email = data['email']
+
+        result = create_password_reset_token(email)
+        
+        if not result.get('success'):
+            return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
+
+        email_result = send_password_reset_email(
+            to_email=result['email'],
+            reset_token=result['token'],
+            username=result['username']
+        )
+        
+        if not email_result.get('success'):
+            print(f"Failed to send email: {email_result.get('error')}")
+            return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
+        
+        return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
+        
+    except Exception as e:
+        print(f"Error in forgot password: {str(e)}")
+        return jsonify({"error": "An error occurred processing your request"}), 500
+
+
+@app.route('/validate-reset-token', methods=['POST'])
+def handle_validate_reset_token():
+    try:
+        data = request.json
+        if not data or 'token' not in data:
+            return jsonify({"error": "Token is required"}), 400
+        
+        token = data['token']
+        
+        result = validate_reset_token(token)
+        
+        if not result.get('valid'):
+            return jsonify({"error": result.get('error', 'Invalid token')}), 400
+        
+        return jsonify({"message": "Token is valid", "valid": True}), 200
+        
+    except Exception as e:
+        print(f"Error validating token: {str(e)}")
+        return jsonify({"error": "An error occurred validating the token"}), 500
+
+
+@app.route('/reset-password', methods=['POST'])
+def handle_reset_password():
+    try:
+        data = request.json
+        if not data or 'token' not in data or 'new_password' not in data:
+            return jsonify({"error": "Token and new password are required"}), 400
+        
+        token = data['token']
+        new_password = data['new_password']
+
+        if len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters long"}), 400
+
+        validation_result = validate_reset_token(token)
+        
+        if not validation_result.get('valid'):
+            return jsonify({"error": validation_result.get('error', 'Invalid or expired token')}), 400
+        
+        user_id = validation_result['user_id']
+
+        reset_result = reset_user_password(user_id, new_password)
+        
+        if not reset_result.get('success'):
+            return jsonify({"error": reset_result.get('error', 'Failed to reset password')}), 500
+
+        mark_token_as_used(token)
+        
+        return jsonify({"message": "Password reset successfully"}), 200
+        
+    except Exception as e:
+        print(f"Error resetting password: {str(e)}")
+        return jsonify({"error": "An error occurred resetting your password"}), 500
+
+
 # Template for HTTP-based API
 # Accepts an HTTP request to the url: "[server address]/api_template"
 # Takes parameters via JSON

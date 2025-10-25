@@ -13,6 +13,12 @@ export default function LoginPage() {
             Sign up here
           </Anchor>
         </Text>
+        <Text ta="center" c="dimmed" size="sm" mt="xs">
+          Forgot your password?{" "}
+          <Anchor component={Link} href="/forgot-password" c="blue">
+            Reset it here
+          </Anchor>
+        </Text>
       </Container>
     </div>
   );
