@@ -11,7 +11,8 @@ from functools import wraps
 from supabase_access_meal import *
 from supabase_access_nutrition import *
 from password_reset_handler import create_password_reset_token, validate_reset_token, mark_token_as_used, reset_user_password
-from email_service import send_password_reset_email
+from email_service import send_password_reset_email, send_verification_email
+from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
 
 load_dotenv()
 
@@ -1288,6 +1289,74 @@ def handle_reset_password():
     except Exception as e:
         print(f"Error resetting password: {str(e)}")
         return jsonify({"error": "An error occurred resetting your password"}), 500
+
+@app.route('/send-verification-code', methods=['POST'])
+def handle_send_verification_code():
+    try:
+        data = request.json
+        if not data or 'email' not in data or 'username' not in data:
+            return jsonify({"error": "Email and username are required"}), 400
+        
+        email = data['email']
+        username = data['username']
+
+        if '@' not in email:
+            return jsonify({"error": "Invalid email format"}), 400
+
+        if len(username) < 3:
+            return jsonify({"error": "Username must be at least 3 characters long"}), 400
+
+        result = create_verification_code(email, username)
+        
+        if not result.get('success'):
+            return jsonify({"error": result.get('error', 'Failed to create verification code')}), 400
+
+        email_result = send_verification_email(
+            to_email=result['email'],
+            verification_code=result['code'],
+            username=result['username']
+        )
+        
+        if not email_result.get('success'):
+            print(f"Failed to send verification email: {email_result.get('error')}")
+            return jsonify({"error": "Failed to send verification email"}), 500
+        
+        return jsonify({"message": "Verification code sent to your email"}), 200
+        
+    except Exception as e:
+        print(f"Error sending verification code: {str(e)}")
+        return jsonify({"error": "An error occurred sending the verification code"}), 500
+
+
+@app.route('/verify-code', methods=['POST'])
+def handle_verify_code():
+    try:
+        data = request.json
+        if not data or 'email' not in data or 'code' not in data:
+            return jsonify({"error": "Email and code are required"}), 400
+        
+        email = data['email']
+        code = data['code'].strip()
+
+        if not code.isdigit() or len(code) != 6:
+            return jsonify({"error": "Verification code must be 6 digits"}), 400
+
+        result = validate_verification_code(email, code)
+        
+        if not result.get('valid'):
+            return jsonify({"error": result.get('error', 'Invalid verification code')}), 400
+
+        mark_code_as_used(email, code)
+        
+        return jsonify({
+            "message": "Email verified successfully",
+            "email": result['email'],
+            "username": result['username']
+        }), 200
+        
+    except Exception as e:
+        print(f"Error verifying code: {str(e)}")
+        return jsonify({"error": "An error occurred verifying the code"}), 500
 
 
 # Template for HTTP-based API
