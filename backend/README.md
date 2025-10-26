@@ -16,3 +16,5 @@ SUPABASE_SERVICE_ROLE_KEY=
 ## Dev note for creating accounts
 
 Accounts are created and managed with Supabase auth. This means that the account email has to be at least somewhat legitimate (e.g. not just test@gmail.com) or Supabase will automatically reject the email. Furthermore, this means that you will not be able to see each account's password so, for testing purposes, just make each account's password `password`.
+
+Email verification can be bypassed by entering `111111`.
