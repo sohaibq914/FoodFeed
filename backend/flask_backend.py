@@ -529,16 +529,39 @@ def handle_send_message(data):
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
     try:
-        data = request.get_json()
-        id = data.get("recipe_id")
-        author = data.get("author")
-        title = data.get("title")
-        desc = data.get("description")
-        ingredients = data.get("ingredients")
-        instructions = data.get("instructions")
-        nutrition = data.get("nutrition")
-        allergens = data.get("allergens")
-        posting = data.get("posting")
+        if request.content_type and request.content_type.startswith("multipart/form-data"):
+            print("form")
+            f = request.form
+            file = request.files.get("image")
+            #if file:
+                #name_ok = file.filename.lower().endswith(".png")
+                #type_ok = (file.mimetype or "").lower() == "image/png"
+                #if not (name_ok and type_ok):
+                #    return jsonify({"error": "Only PNG images are allowed"}), 400
+
+            id = f.get("recipe_id")
+            author = f.get("author")
+            title = f.get("title")
+            desc = f.get("description")
+            ingredients = f.get("ingredients")
+            instructions = f.get("instructions")
+            nutrition = f.get("nutrition")
+            allergens = f.get("allergens")
+            posting = f.get("posting")
+            images = file
+        else:
+            print("data")
+            data = request.get_json()
+            id = data.get("recipe_id")
+            author = data.get("author")
+            title = data.get("title")
+            desc = data.get("description")
+            ingredients = data.get("ingredients")
+            instructions = data.get("instructions")
+            nutrition = data.get("nutrition")
+            allergens = data.get("allergens")
+            posting = data.get("posting")
+            images = None
 
         if not author or not title or not desc or not ingredients or not instructions:
             return jsonify({"error": "Missing author, title, description, ingredients, or instructions"}), 400
@@ -549,7 +572,7 @@ def update_recipe_handler():
             posting = False
 
         result = update_recipe(
-            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting)
+            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400

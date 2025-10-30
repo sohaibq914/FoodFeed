@@ -390,19 +390,28 @@ def insert_r_tags(restaurant_id, tags):
 # Recipe methods
 
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images):
     try:
+        image_url = None
+        if images:
+            key = images.filename.lstrip("/")
+            data = images.read()
+            s3.put_object(Bucket=BUCKET, Key=key, Body=data)
+            # FIX: missing slash after {url}
+            image_url = f"{url}/storage/v1/object/public/{BUCKET}/{key}"
+            print(image_url)
+
         print(id)
         if id == "new":
             print("new row")
             response = supabase.table('recipes').insert({
                 "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
         else:
             print("update")
             response = supabase.table('recipes').upsert({
                 "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting}).execute()
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
 
         print(f"Recipe upsert response: {response}")
 

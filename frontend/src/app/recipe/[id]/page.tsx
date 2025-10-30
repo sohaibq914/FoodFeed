@@ -20,6 +20,7 @@ import {
   Divider,
   Modal,
   AppShell,
+  Image
 } from "@mantine/core";
 import Header from "@/components/Header";
 import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
@@ -36,6 +37,7 @@ type Recipe = {
   users?: { username?: string | null } | null;
   like_count?: number;
   user_has_liked?: boolean;
+  image?: string;
 };
 
 type RecipeComment = {
@@ -374,6 +376,17 @@ export default function RecipePage() {
                   {authorUsername}
                 </Link>
               </Text>
+              {recipe.image && <Image
+                  src={recipe.image}
+                  alt="preview"
+                  radius="sm"
+                  w="auto"
+                  h={140}
+                  fit="contain"
+                  mt="sm"
+              >
+              </Image>
+              }
             </div>
 
             <Group gap="xs" align="center">
