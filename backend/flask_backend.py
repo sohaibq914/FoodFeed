@@ -1427,8 +1427,8 @@ def restaurant_reviews_create():
     body = (data.get("text") or "").strip()
     rating = data.get("rating")
 
-    if not rid or not author or not body:
-        return jsonify({"error": "restaurant_id, author, and text are required"}), 400
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
 
     try:
         rating = int(rating)
@@ -1443,6 +1443,33 @@ def restaurant_reviews_create():
         return jsonify({"error": row["error"]}), 400
 
     return jsonify({"review": row}), 201
+
+@app.route("/restaurant_reviews/average", methods=["GET"])
+def restaurant_reviews_average():
+    rid = (request.args.get("restaurant_id") or "").strip()
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    try:
+        result = supabase.table("about_restuarant_review") \
+            .select("rating") \
+            .eq("r_id", rid) \
+            .execute()
+
+        rows = result.data or []
+        if not rows:
+            return jsonify({"avg_rating": None, "count": 0}), 200
+
+        ratings = [r["rating"] for r in rows if isinstance(r.get("rating"), (int, float))]
+        if not ratings:
+            return jsonify({"avg_rating": None, "count": 0}), 200
+
+        avg = sum(ratings) / len(ratings)
+        return jsonify({"avg_rating": round(avg, 2), "count": len(ratings)}), 200
+
+    except Exception as e:
+        print("AVG rating error:", e)
+        return jsonify({"error": "failed to compute average"}), 500
 
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,

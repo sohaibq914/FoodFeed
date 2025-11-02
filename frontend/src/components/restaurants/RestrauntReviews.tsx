@@ -45,8 +45,8 @@ export default function RestaurantReviews(): React.ReactElement {
     }, []);
 
     const canSubmit = useMemo(
-        () => Boolean(rid) && author.trim() && text.trim() && rating >= 1 && rating <= 5,
-        [rid, author, text, rating]
+        () => Boolean(rid) && rating >= 1 && rating <= 5,
+        [rid, rating]
     );
 
     const onSubmit = async (e: React.FormEvent) => {
@@ -55,15 +55,18 @@ export default function RestaurantReviews(): React.ReactElement {
         setOk(null);
 
         if (!canSubmit) {
-            setErr("Author, rating, and review text are required.");
+            setErr("A star rating is required.");
             return;
         }
+
+        const finalAuthor = author.trim() || "Anonymous";
+        const finalText = text.trim() || "";
 
         setSubmitting(true);
         const { error } = await createRestaurantReview({
             restaurant_id: rid,
-            author: author.trim(),
-            text: text.trim(),
+            author: finalAuthor,
+            text: finalText,
             rating,
         });
 
@@ -98,24 +101,22 @@ export default function RestaurantReviews(): React.ReactElement {
                         </Group>
 
                         {(restaurantReviewsError || err) && (
-                            <Alert color="red">
-                                {restaurantReviewsError || err}
-                            </Alert>
+                            <Alert color="red">{restaurantReviewsError || err}</Alert>
                         )}
                         {ok && <Alert color="green">{ok}</Alert>}
 
                         <Divider />
 
                         <TextInput
-                            label="Author"
+                            label="Author (optional)"
                             placeholder="Your name"
                             value={author}
                             onChange={(e) => setAuthor(e.currentTarget.value)}
                         />
 
                         <Textarea
-                            label="Review"
-                            placeholder="Share your overall experience…"
+                            label="Review (optional)"
+                            placeholder="Share your experience…"
                             autosize
                             minRows={4}
                             maxRows={10}
@@ -158,13 +159,13 @@ export default function RestaurantReviews(): React.ReactElement {
                         {restaurantReviews.map((r: any) => (
                             <Card key={r.id} withBorder radius="md" p="md">
                                 <Group justify="space-between" align="center">
-                                    <Text fw={600}>{r.author}</Text>
+                                    <Text fw={600}>{r.author || "Anonymous"}</Text>
                                     <Rating value={r.rating} readOnly />
                                 </Group>
                                 <Text size="xs" c="dimmed" mt={4}>
                                     {r.timestamp ? new Date(r.timestamp).toLocaleString() : ""}
                                 </Text>
-                                <Text mt="sm">{r.text}</Text>
+                                {r.text && <Text mt="sm">{r.text}</Text>}
                             </Card>
                         ))}
                     </SimpleGrid>

@@ -1,20 +1,37 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Card, Group, Text, Stack, Button, Divider, Badge } from "@mantine/core";
+import {
+    Card,
+    Group,
+    Text,
+    Stack,
+    Button,
+    Divider,
+    Badge,
+    Rating
+} from "@mantine/core";
 import { useRouter } from "next/navigation";
-import { IconMapPin, IconUser, IconArrowLeft, IconTags } from "@tabler/icons-react";
+import {
+    IconMapPin,
+    IconUser,
+    IconArrowLeft,
+    IconTags
+} from "@tabler/icons-react";
 import { useRestaurants } from "@/contexts/restaurants/RestaurantContext";
 
 type Restaurant = { id: string; name: string; address: string; owner: string };
 
 export default function RestaurantInformationCard(): React.ReactElement {
     const router = useRouter();
-    const { fetchTags } = useRestaurants();
+    const { fetchTags, fetchRestaurantAverageRating } = useRestaurants();
 
     const [r, setR] = useState<Restaurant | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [tagsLoading, setTagsLoading] = useState(false);
     const [tagsError, setTagsError] = useState<string | null>(null);
+
+    const [avg, setAvg] = useState<number | null>(null);
+    const [count, setCount] = useState<number>(0);
 
     useEffect(() => {
         try {
@@ -26,7 +43,7 @@ export default function RestaurantInformationCard(): React.ReactElement {
     }, []);
 
     useEffect(() => {
-        const load = async () => {
+        const loadTags = async () => {
             if (!r?.id) return;
             setTagsLoading(true);
             setTagsError(null);
@@ -39,8 +56,25 @@ export default function RestaurantInformationCard(): React.ReactElement {
             }
             setTagsLoading(false);
         };
-        load();
+        loadTags();
     }, [r?.id, fetchTags]);
+
+    useEffect(() => {
+        if (!r?.id) return;
+
+        const loadAvg = async () => {
+            const res = await fetchRestaurantAverageRating(r.id);
+            if (res && typeof res.avg_rating === "number") {
+                setAvg(res.avg_rating);
+                setCount(res.count ?? 0);
+            } else {
+                setAvg(null);
+                setCount(0);
+            }
+        };
+
+        loadAvg();
+    }, [r?.id]);
 
     if (!r) {
         return (
@@ -67,6 +101,14 @@ export default function RestaurantInformationCard(): React.ReactElement {
                     <Text fw={700} fz="xl">
                         {r.name}
                     </Text>
+
+                    {avg !== null && (
+                        <Group gap={6} align="center">
+                            <Text fw={600}>{avg.toFixed(1)}</Text>
+                            <Rating value={avg} readOnly fractions={2} />
+                            <Text size="xs" c="dimmed">({count})</Text>
+                        </Group>
+                    )}
                 </Group>
 
                 <Divider my="xs" />

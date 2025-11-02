@@ -254,8 +254,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 rating: Number(input.rating),
             };
 
-            if (!payload.author || !payload.text || !(payload.rating >= 1 && payload.rating <= 5)) {
-                return { data: null, error: { message: "author, text, and rating (1..5) are required" } };
+            if (!(payload.rating >= 1 && payload.rating <= 5)) {
+                return { data: null, error: { message: "Rating required" } };
             }
 
             const res = await fetch(`${Endpoint}/restaurant_reviews`, {
@@ -306,6 +306,11 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
+    const fetchRestaurantAverageRating = async (rid: string) => {
+        const url = `${Endpoint}/restaurant_reviews/average?restaurant_id=${rid}`;
+        const res = await fetch(url);
+        return res.json();
+    };
 
     useEffect(() => {
         refresh();
@@ -339,6 +344,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 restaurantReviewsLoading,
                 restaurantReviewsError,
                 refreshRestaurantReviews,
+                fetchRestaurantAverageRating
             }}
         >
             {children}
