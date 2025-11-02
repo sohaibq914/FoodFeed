@@ -4,7 +4,7 @@ from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
-    upload_profile_picture, get_user_profile
+    upload_profile_picture, get_user_profile, fetch_restaurant_reviews, insert_restaurant_review
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -1224,9 +1224,7 @@ def get_food_of_nutrient():
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
     
-if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', debug=True,
-                 port=5001, allow_unsafe_werkzeug=True)
+
 
 @app.route('/forgot-password', methods=['POST'])
 def handle_forgot_password():
@@ -1404,3 +1402,48 @@ def handle_api_template():
         return jsonify({"message": my_message}), 200
 
     return jsonify({"message": "Error: invalid parameters"}), 400
+
+@app.route("/restaurant_reviews", methods=["GET"])
+def restaurant_reviews_list():
+
+    rid = (request.args.get("restaurant_id") or "").strip()
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    rows = fetch_restaurant_reviews(rid)
+    if isinstance(rows, dict) and "error" in rows:
+        return jsonify({"error": rows["error"]}), 400
+
+    return jsonify({"reviews": rows}), 200
+
+
+@app.route("/restaurant_reviews", methods=["POST"])
+def restaurant_reviews_create():
+
+    data = request.get_json(silent=True) or {}
+    rid = (data.get("restaurant_id") or "").strip()
+    author = (data.get("author") or "").strip()
+    print(author)
+    body = (data.get("text") or "").strip()
+    rating = data.get("rating")
+
+    if not rid or not author or not body:
+        return jsonify({"error": "restaurant_id, author, and text are required"}), 400
+
+    try:
+        rating = int(rating)
+    except Exception:
+        return jsonify({"error": "rating must be an integer 1..5"}), 400
+
+    if rating < 1 or rating > 5:
+        return jsonify({"error": "rating must be between 1 and 5"}), 400
+
+    row = insert_restaurant_review(rid, author, body, rating)
+    if isinstance(row, dict) and "error" in row:
+        return jsonify({"error": row["error"]}), 400
+
+    return jsonify({"review": row}), 201
+
+if __name__ == "__main__":
+    socketio.run(app, host='0.0.0.0', debug=True,
+                 port=5001, allow_unsafe_werkzeug=True)

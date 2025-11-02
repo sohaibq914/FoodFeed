@@ -18,7 +18,18 @@ type CreateReviewInput = {
     image?: File | File[] | null;
     restaurant_id?: string;
 };
-
+type CreateRestaurantRestaurantReviewInput = {
+    author: string;
+    text: string;
+    rating: number;
+    restaurant_id: string;
+};
+type RestaurantReview = {
+    author: string;
+    text: string;
+    rating: number;
+    restaurant_id: string;
+};
 interface RestaurantsContextType {
     items: Restaurant[];
     loading: boolean;
@@ -39,6 +50,12 @@ interface RestaurantsContextType {
     createReview: (input: CreateReviewInput) => Promise<{ data: any; error: any }>;
     addRestaurantTags: (restaurant_id: string, tags: string[]) => Promise<{ data: any; error: any }>;
     fetchTags: (restaurant_id: string) => Promise<{ data: string[]; error: any }>;
+    createRestaurantReview: (input: CreateRestaurantRestaurantReviewInput) => Promise<{ data: any; error: any }>;
+    restaurantReviews: RestaurantReview[];
+    restaurantReviewsLoading: boolean;
+    restaurantReviewsError: string | null;
+    refreshRestaurantReviews: (restaurant_id?: string) => Promise<{ data: any; error: any }>;
+
 }
 
 const RestaurantsContext = createContext<RestaurantsContextType | undefined>(undefined);
@@ -56,6 +73,10 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
     const [filter, setFilter] = useState("");
     const [tagQuery, setTagQuery] = useState([] as string[]);
     const [allTags, setAllTags] = useState<string[]>([]);
+
+    const [restaurantReviews, setRestaurantReviews] = useState<RestaurantReview[]>([]);
+    const [restaurantReviewsLoading, setRestaurantReviewsLoading] = useState(false);
+    const [restaurantReviewsError, setRestaurantReviewsError] = useState<string | null>(null);
 
     const refresh = async () => {
         try {
@@ -150,7 +171,6 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    // CHANGED: loop through images, call backend once per file
     const createReview = async (input: CreateReviewInput) => {
         try {
             const rid = resolveRestaurantId(input.restaurant_id ?? null);
@@ -220,6 +240,73 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     }, []);
 
+    const createRestaurantReview = async (
+        input: CreateRestaurantRestaurantReviewInput
+    ): Promise<{ data: any; error: any }> => {
+        try {
+            const rid = resolveRestaurantId(input.restaurant_id ?? null);
+            if (!rid) return { data: null, error: { message: "missing restaurant_id" } };
+
+            const payload = {
+                restaurant_id: rid,
+                author: (input.author ?? "").trim(),
+                text: (input.text ?? "").trim(),
+                rating: Number(input.rating),
+            };
+
+            if (!payload.author || !payload.text || !(payload.rating >= 1 && payload.rating <= 5)) {
+                return { data: null, error: { message: "author, text, and rating (1..5) are required" } };
+            }
+
+            const res = await fetch(`${Endpoint}/restaurant_reviews`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) return { data: null, error: data };
+
+            await refreshReviews(rid);
+
+            return { data, error: null };
+        } catch {
+            return { data: null, error: { message: "Network error" } };
+        }
+    };
+
+    const refreshRestaurantReviews = async (restaurant_id?: string) => {
+        try {
+            setRestaurantReviewsLoading(true);
+            setRestaurantReviewsError(null);
+
+            const rid = resolveRestaurantId(restaurant_id ?? null);
+            if (!rid) return { data: null, error: { message: "missing restaurant_id" } };
+
+            const res = await fetch(`${Endpoint}/restaurant_reviews?restaurant_id=${encodeURIComponent(rid)}`, {
+                method: "GET",
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                setRestaurantReviews([]);
+                setRestaurantReviewsError(data?.error ?? "Server error");
+                return { data: null, error: data };
+            }
+
+            const rows = Array.isArray(data.reviews) ? (data.reviews as RestaurantReview[]) : [];
+            setRestaurantReviews(rows);
+            return { data, error: null };
+        } catch {
+            setRestaurantReviews([]);
+            setRestaurantReviewsError("Network error");
+            return { data: null, error: { message: "Network error" } };
+        } finally {
+            setRestaurantReviewsLoading(false);
+        }
+    };
+
+
     useEffect(() => {
         refresh();
         refreshAllTags();
@@ -247,6 +334,11 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 createReview,
                 addRestaurantTags,
                 fetchTags,
+                createRestaurantReview,
+                restaurantReviews,
+                restaurantReviewsLoading,
+                restaurantReviewsError,
+                refreshRestaurantReviews,
             }}
         >
             {children}
