@@ -1,23 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import {
-  Container,
-  Paper,
-  TextInput,
-  Textarea,
-  Button,
-  Title,
-  Alert,
-  Stack,
-  Center,
-  Flex,
-  Checkbox,
-  Tooltip,
-  FileInput,
-  Image,
-  Group,
-  CloseButton
-} from "@mantine/core";
+import { Container, Paper, TextInput, Textarea, Button, Title, Alert, Stack, Center, Flex, Checkbox, Tooltip, FileInput, Image, Group, CloseButton, SegmentedControl, Text } from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -34,6 +17,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [visibility, setVisibility] = useState<"public" | "private">("public");
 
   const { user } = useAuth();
   const router = useRouter();
@@ -47,19 +31,19 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   }, [params.recipe_id, isNew]);
 
   useEffect(() => {
-      if (!files) {
-          setPreviews("");
-          return;
-      }
-      const urls =  URL.createObjectURL(files);
-      setPreviews(urls);
-      return () => URL.revokeObjectURL(urls);
+    if (!files) {
+      setPreviews("");
+      return;
+    }
+    const urls = URL.createObjectURL(files);
+    setPreviews(urls);
+    return () => URL.revokeObjectURL(urls);
   }, [files]);
 
   function removeImage() {
-    console.log("pressed")
-    setPreviews("")
-    setFiles(null)
+    console.log("pressed");
+    setPreviews("");
+    setFiles(null);
   }
 
   // --- API helpers ---
@@ -69,7 +53,10 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       const response = await fetch("http://localhost:5001/get_recipe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipe_id }),
+        body: JSON.stringify({
+          recipe_id,
+          user_id: user?.id, // Include user_id for privacy checks
+        }),
       });
 
       const data = await response.json();
@@ -78,11 +65,13 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setDesc(data.description || "");
         setIngredients(data.ingredients || "");
         setInstructions(data.instructions || "");
-        setNutrition(data.nutrition || "");
+        setNutrition(data.nutrition_facts || "");
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
+        setVisibility(data.visibility || "public");
       } else {
-        router.push("/edit-recipe/new");
+        console.error("Failed to load recipe:", data.error);
+        setError(data.error || "Failed to load recipe");
       }
     } catch (err) {
       console.error(err);
@@ -90,18 +79,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     }
   };
 
-  const update_recipe = async (
-    recipe_id: string,
-    author: string,
-    title: string,
-    description: string,
-    ingredients: string,
-    instructions: string,
-    nutrition: string,
-    allergens: string,
-    posting: boolean,
-    image: File | null
-  ) => {
+  const update_recipe = async (recipe_id: string, author: string, title: string, description: string, ingredients: string, instructions: string, nutrition: string, allergens: string, posting: boolean, image: File | null, visibility: string) => {
     try {
       if (image) {
         const fd = new FormData();
@@ -114,16 +92,15 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         fd.append("nutrition", nutrition);
         fd.append("allergens", allergens);
         fd.append("posting", String(posting));
-        fd.append("image", image)
+        fd.append("visibility", visibility);
+        fd.append("image", image);
 
         const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || "Failed to update");
-        else 
-          // ✅ Redirect to dashboard after success
-          router.push("/edit-recipe/" + data.recipe_id);
-      }
-      else {
+        // ✅ Redirect to user profile after success
+        else router.push(`/${user.username}`);
+      } else {
         const response = await fetch("http://localhost:5001/update_recipe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -137,19 +114,18 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             nutrition,
             allergens,
             posting,
-            image
+            visibility,
+            image,
           }),
         });
 
         const data = await response.json();
-        console.log("data:" + data.recipe_id)
+        console.log("data:" + data.recipe_id);
 
-        if (!response.ok) throw new Error(data?.error || "Failed to update")
-        else 
-          // ✅ Redirect to dashboard after success
-          router.push("/edit-recipe/" + data.recipe_id);
+        if (!response.ok) throw new Error(data?.error || "Failed to update");
+        // ✅ Redirect to user profile after success
+        else router.push(`/${user.username}`);
       }
-
     } catch (err) {
       console.error(err);
       setError("Network error while updating recipe");
@@ -161,7 +137,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     setLoading(true);
     setError("");
 
-    console.log("Posting: " + posting)
+    console.log("Posting: " + posting);
 
     if (!user) {
       setError("User not logged in");
@@ -169,27 +145,14 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       return;
     }
 
-    const confirmMsg = posting
-      ? "Are you sure you want to post this recipe to your profile?"
-      : "Save this recipe as a draft?";
+    const confirmMsg = posting ? "Are you sure you want to post this recipe to your profile?" : "Save this recipe as a draft?";
     const confirmed = confirm(confirmMsg);
     if (!confirmed) {
       setLoading(false);
       return;
     }
 
-    await update_recipe(
-      params.recipe_id,
-      user.id,
-      title,
-      description,
-      ingredients,
-      instructions,
-      nutrition,
-      allergens,
-      posting,
-      files
-    );
+    await update_recipe(params.recipe_id, user.id, title, description, ingredients, instructions, nutrition, allergens, posting, files, visibility);
 
     setLoading(false);
   };
@@ -212,98 +175,46 @@ export default function RecipeEditor(params: { recipe_id: string }) {
 
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
-            <TextInput
-              label="Title"
-              placeholder="Your recipe's title"
-              value={title}
-              onChange={(e) => setTitle(e.currentTarget.value)}
-              required
-              size="md"
-            />
+            <TextInput label="Title" placeholder="Your recipe's title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required size="md" />
 
-            <Textarea
-              label="Description"
-              placeholder="Your recipe's description"
-              autosize
-              minRows={2}
-              maxRows={3}
-              value={description}
-              onChange={(e) => setDesc(e.currentTarget.value)}
-              required
-              size="md"
-            />
+            <Textarea label="Description" placeholder="Your recipe's description" autosize minRows={2} maxRows={3} value={description} onChange={(e) => setDesc(e.currentTarget.value)} required size="md" />
 
+            <Textarea label="Ingredients" placeholder="Your recipe's ingredient list" value={ingredients} autosize minRows={2} maxRows={8} onChange={(e) => setIngredients(e.currentTarget.value)} required size="md" />
 
-            <Textarea
-              label="Ingredients"
-              placeholder="Your recipe's ingredient list"
-              value={ingredients}
-              autosize
-              minRows={2}
-              maxRows={8}
-              onChange={(e) => setIngredients(e.currentTarget.value)}
-              required
-              size="md"
-            />
+            <Textarea label="Instructions" placeholder="Your recipe's directions" autosize minRows={4} maxRows={10} value={instructions} onChange={(e) => setInstructions(e.currentTarget.value)} required size="md" />
 
-            <Textarea
-              label="Instructions"
-              placeholder="Your recipe's directions"
-              autosize
-              minRows={4}
-              maxRows={10}
-              value={instructions}
-              onChange={(e) => setInstructions(e.currentTarget.value)}
-              required
-              size="md"
-            />
+            <Textarea label="Nutrition Facts" placeholder="Your recipe's nutritional information" autosize minRows={2} maxRows={6} value={nutrition} onChange={(e) => setNutrition(e.currentTarget.value)} size="md" />
 
-            <Textarea
-              label="Nutrition Facts"
-              placeholder="Your recipe's nutritional information"
-              autosize
-              minRows={2}
-              maxRows={6}
-              value={nutrition}
-              onChange={(e) => setNutrition(e.currentTarget.value)}
-              size="md"
-            />
+            <Textarea label="Allergens" placeholder="Your recipe's allergens" value={allergens} autosize minRows={2} maxRows={6} onChange={(e) => setAllergens(e.currentTarget.value)} size="md" />
 
-            <Textarea
-              label="Allergens"
-              placeholder="Your recipe's allergens"
-              value={allergens}
-              autosize
-              minRows={2}
-              maxRows={6}
-              onChange={(e) => setAllergens(e.currentTarget.value)}
-              size="md"
-            />
-
-            <FileInput
-              label="Add an Image"
-              placeholder="Click to upload an image"
-              accept="image/*"
-              value={files}
-              onChange={setFiles}
-              clearable
-            />
+            <FileInput label="Add an Image" placeholder="Click to upload an image" accept="image/*" value={files} onChange={setFiles} clearable />
 
             {previews && (
-                <Group>
-                  <Image
-                    src={previews}
-                    alt="preview"
-                    radius="sm"
-                    w="auto"
-                    h={140}
-                    fit="contain"
-                  />
-                  <CloseButton type="button" size="sm"
-                    onClick={() => removeImage()}>
-                  </CloseButton>
-                </Group>
+              <Group>
+                <Image src={previews} alt="preview" radius="sm" w="auto" h={140} fit="contain" />
+                <CloseButton type="button" size="sm" onClick={() => removeImage()}></CloseButton>
+              </Group>
             )}
+
+            {/* Privacy Settings */}
+            <div>
+              <Text size="sm" fw={500} mb={4}>
+                Recipe Visibility
+              </Text>
+              <SegmentedControl
+                value={visibility}
+                onChange={(value) => setVisibility(value as "public" | "private")}
+                data={[
+                  { label: "🌍 Public - Everyone can see", value: "public" },
+                  { label: "🔒 Private - Followers only", value: "private" },
+                ]}
+                fullWidth
+                color="blue"
+              />
+              <Text size="xs" c="dimmed" mt={4}>
+                {visibility === "public" ? "This recipe will be visible to everyone" : "Only your followers can view this recipe"}
+              </Text>
+            </div>
 
             {error && (
               <Alert color="red" variant="filled">
@@ -312,13 +223,10 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             )}
 
             <Flex justify="center" gap="xl" align="center">
-              <Button type="submit" loading={loading} size="md"
-                onClick={() => setPosting(false)}>
+              <Button type="submit" loading={loading} size="md" onClick={() => setPosting(false)}>
                 {loading ? "Loading..." : "Save Draft"}
-                
               </Button>
-              <Button type="submit"  loading={loading} size="md" 
-                onClick={() => setPosting(true)}>
+              <Button type="submit" loading={loading} size="md" onClick={() => setPosting(true)}>
                 {loading ? "Loading..." : "Post"}
               </Button>
             </Flex>

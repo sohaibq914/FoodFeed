@@ -4,7 +4,8 @@ from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
-    upload_profile_picture, get_user_profile
+    upload_profile_picture, get_user_profile, follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
+    block_user, unblock_user, check_is_blocked, get_blocked_users
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -228,32 +229,33 @@ def upload_user_profile_picture():
     try:
         if 'profile_picture' not in request.files:
             return jsonify({"error": "No file provided"}), 400
-        
+
         file = request.files['profile_picture']
         user_id = request.form.get('user_id')
-        
+
         if not user_id:
             return jsonify({"error": "User ID is required"}), 400
-            
+
         if file.filename == '':
             return jsonify({"error": "No file selected"}), 400
-        
+
         allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
         if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in allowed_extensions):
             return jsonify({"error": "Invalid file type. Only PNG, JPG, JPEG, GIF, and WebP files are allowed"}), 400
-        
+
         file_content = file.read()
 
         if len(file_content) > 5 * 1024 * 1024:
             return jsonify({"error": "File size too large. Maximum size is 5MB"}), 400
-        
-        result = upload_profile_picture(user_id, file_content, file.filename, file.content_type)
-        
+
+        result = upload_profile_picture(
+            user_id, file_content, file.filename, file.content_type)
+
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
-        
+
         return jsonify(result), 200
-        
+
     except Exception as e:
         print(f"Upload profile picture exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -263,12 +265,12 @@ def upload_user_profile_picture():
 def get_user_profile_endpoint(user_id):
     try:
         result = get_user_profile(user_id)
-        
+
         if "error" in result:
             return jsonify({"error": result["error"]}), 404
-        
+
         return jsonify(result), 200
-        
+
     except Exception as e:
         print(f"Get user profile exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -278,13 +280,14 @@ def get_user_profile_endpoint(user_id):
 def get_user_by_username(username):
     try:
         from supabase_backend import supabase
-        response = supabase.table('users').select('id, username, profile_picture_url').eq('username', username).execute()
-        
+        response = supabase.table('users').select(
+            'id, username, profile_picture_url').eq('username', username).execute()
+
         if response.data:
             return jsonify({"user": response.data[0]}), 200
         else:
             return jsonify({"error": "User not found"}), 404
-            
+
     except Exception as e:
         print(f"Get user by username exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -533,11 +536,11 @@ def update_recipe_handler():
             print("form")
             f = request.form
             file = request.files.get("image")
-            #if file:
-                #name_ok = file.filename.lower().endswith(".png")
-                #type_ok = (file.mimetype or "").lower() == "image/png"
-                #if not (name_ok and type_ok):
-                #    return jsonify({"error": "Only PNG images are allowed"}), 400
+            # if file:
+            # name_ok = file.filename.lower().endswith(".png")
+            # type_ok = (file.mimetype or "").lower() == "image/png"
+            # if not (name_ok and type_ok):
+            #    return jsonify({"error": "Only PNG images are allowed"}), 400
 
             id = f.get("recipe_id")
             author = f.get("author")
@@ -548,6 +551,7 @@ def update_recipe_handler():
             nutrition = f.get("nutrition")
             allergens = f.get("allergens")
             posting = f.get("posting")
+            visibility = f.get("visibility", "public")
             images = file
         else:
             print("data")
@@ -561,6 +565,7 @@ def update_recipe_handler():
             nutrition = data.get("nutrition")
             allergens = data.get("allergens")
             posting = data.get("posting")
+            visibility = data.get("visibility", "public")
             images = None
 
         if not author or not title or not desc or not ingredients or not instructions:
@@ -570,9 +575,11 @@ def update_recipe_handler():
             id = "new"
         if not posting:
             posting = False
+        if not visibility:
+            visibility = "public"
 
         result = update_recipe(
-            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images)
+            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images, visibility)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -625,12 +632,38 @@ def list_recipes():
         return jsonify({"error": "Failed to fetch recipes"}), 500
 
 
+@app.route("/feed", methods=["GET"])
+@require_auth
+def get_feed():
+    """Get feed of recipes from users that the current user follows"""
+    try:
+        user_id = request.current_user_id
+        limit = int(request.args.get('limit', 20))
+        offset = int(request.args.get('offset', 0))
+
+        result = get_feed_recipes(user_id, limit, offset)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get feed exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
 @app.route("/users/<username>/recipes", methods=["GET"])
 def list_recipes_by_username(username):
     """
     Return all recipes (id + title [+ optional description]) for a given username.
+    Filters private recipes based on follower status.
     """
     try:
+        # Get viewer's user ID (if authenticated)
+        viewer_id = request.headers.get(
+            'X-User-ID') or request.args.get('viewer_id')
+
         # 1) Find the user id for this username
         user_res = (
             supabase.table("users")
@@ -642,26 +675,46 @@ def list_recipes_by_username(username):
         if not user_res.data:
             return jsonify({"recipes": [], "userNotFound": True}), 200
 
-        user_id = user_res.data["id"]
-
+        profile_user_id = user_res.data["id"]
 
         # 2) Fetch that user's recipes
         rec_res = (
             supabase.table("recipes")
-            .select("recipe_id, title, description, timestamp, posted")
-            .eq("author_id", user_id)
+            .select("recipe_id, title, description, timestamp, posted, visibility")
+            .eq("author_id", profile_user_id)
             .order("timestamp", desc=True)
             .execute()
         )
 
+        # 3) Filter recipes based on privacy and viewer permissions
+        filtered_recipes = []
+        is_follower = False
 
+        # Check if viewer is following the profile owner
+        if viewer_id and viewer_id != profile_user_id:
+            follow_check = supabase.table('followers').select('id').eq(
+                'follower_id', viewer_id).eq('following_id', profile_user_id).execute()
+            is_follower = len(follow_check.data) > 0
 
-        return jsonify({"recipes": rec_res.data, "username": username}), 200
+        for recipe in rec_res.data:
+            # Owner can see all their recipes
+            if viewer_id == profile_user_id:
+                filtered_recipes.append(recipe)
+            # Public recipes visible to all
+            elif recipe.get('visibility', 'public') == 'public':
+                filtered_recipes.append(recipe)
+            # Private recipes only visible to followers
+            elif recipe.get('visibility') == 'private' and is_follower:
+                filtered_recipes.append(recipe)
+            # Otherwise skip this recipe
+
+        return jsonify({"recipes": filtered_recipes, "username": username}), 200
 
     except Exception as e:
         print(f"list_recipes_by_username error: {e}")
         return jsonify({"error": "Failed to fetch user's recipes"}), 500
-    
+
+
 @app.route("/recipes/<recipe_id>/draft", methods=["POST"])
 @require_auth
 def move_to_draft(recipe_id):
@@ -745,6 +798,7 @@ def edit_restrictions_handler():
         print(f"Update dietary restrictions exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/get_restrictions", methods=["POST"])
 def get_restrictions_handler():
     try:
@@ -769,6 +823,7 @@ def get_restrictions_handler():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # ==================== RECIPE LIKES ROUTES ====================
+
 
 @app.route("/recipes/<recipe_id>/like", methods=["POST"])
 def like_recipe_handler(recipe_id):
@@ -848,6 +903,7 @@ def check_like_handler(recipe_id):
     except Exception as e:
         print(f"Check like exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/likes", methods=["GET"])
 @require_auth
@@ -1024,7 +1080,7 @@ def add_reply_handler(comment_id):
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
-### Get meals
+# Get meals
 @app.route("/dieting/get_meal_templates", methods=["POST"])
 def get_meal_templates():
     try:
@@ -1035,7 +1091,8 @@ def get_meal_templates():
     except Exception as e:
         print(f"Exception templates: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/add_meal_template", methods=["POST"])
 def add_meal_template():
     try:
@@ -1050,7 +1107,8 @@ def add_meal_template():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/update_meal_template", methods=["POST"])
 def update_meal_template():
     try:
@@ -1059,14 +1117,16 @@ def update_meal_template():
         old_name = data.get("old_name")
         new_name = data.get("new_name")
         calories = data.get("calories")
-        updated_template = update_user_meal_template(user_id, old_name, new_name, calories)
+        updated_template = update_user_meal_template(
+            user_id, old_name, new_name, calories)
         if not updated_template:
             return jsonify({"error": "Could not update. Maybe check the name?"}), 400
-        return jsonify({"result": "Successfully updated!"}), 200        
+        return jsonify({"result": "Successfully updated!"}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/delete_meal_template", methods=["POST"])
 def delete_meal_template():
     try:
@@ -1076,11 +1136,12 @@ def delete_meal_template():
         deleted_template = delete_meal_template_of_user(user_id, name)
         if not deleted_template:
             return jsonify({"error": "Could not delete."}), 400
-        return jsonify({"result": "Successfully deleted!"}), 200        
+        return jsonify({"result": "Successfully deleted!"}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/add_meal", methods=["POST"])
 def add_user_meal():
     try:
@@ -1092,11 +1153,12 @@ def add_user_meal():
         meal_id = add_meal(user_id, name, calories, ate_at)
         if meal_id is None:
             return jsonify({"error": "Could not add meal."}), 400
-        return jsonify({"result": "Successfully added meal!", "id": meal_id}), 200        
+        return jsonify({"result": "Successfully added meal!", "id": meal_id}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/delete_meal", methods=["POST"])
 def delete_user_meal():
     try:
@@ -1105,11 +1167,12 @@ def delete_user_meal():
         is_deleted = delete_meal(meal_id)
         if not is_deleted:
             return jsonify({"error": "Could not delete meal."}), 400
-        return jsonify({"result": "Successfully deleted meal!"}), 200        
+        return jsonify({"result": "Successfully deleted meal!"}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/get_meals", methods=["POST"])
 def get_user_meals():
     try:
@@ -1118,12 +1181,13 @@ def get_user_meals():
         meals = get_all_user_meals(user_id)
         averages = get_hour_average(meals)
         res = jsonify({"meals": [meal.to_json() for meal in meals],
-                "averages": [str(average) for average in averages]})
-        return res, 200        
+                       "averages": [str(average) for average in averages]})
+        return res, 200
     except Exception as e:
         print(f"Exception meal: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/get_meal_range", methods=["POST"])
 def get_user_meals_range():
     try:
@@ -1134,12 +1198,14 @@ def get_user_meals_range():
         meals = get_meals(user_id, start, end)
         averages = get_hour_average(meals)
         return jsonify({"meals": [meal.to_json() for meal in meals],
-                "averages": [str(average) for average in averages]}), 200         
+                        "averages": [str(average) for average in averages]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-### Get nutrition
+# Get nutrition
+
+
 @app.route("/dieting/get_food_items", methods=["POST"])
 def get_food_of_type():
     try:
@@ -1150,7 +1216,8 @@ def get_food_of_type():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
- 
+
+
 @app.route("/dieting/add_nutrient_to_user", methods=["POST"])
 def add_nutrient_to_user():
     try:
@@ -1163,7 +1230,8 @@ def add_nutrient_to_user():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/update_nutrient_amount", methods=["POST"])
 def update_nutrient_amount():
     try:
@@ -1176,7 +1244,8 @@ def update_nutrient_amount():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/remove_nutrient_from_user", methods=["POST"])
 def remove_nutrient_from_user():
     try:
@@ -1188,7 +1257,8 @@ def remove_nutrient_from_user():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/get_all_nutrients", methods=["POST"])
 def get_all_nutrients():
     try:
@@ -1199,6 +1269,7 @@ def get_all_nutrients():
     except Exception as e:
         print(f"Nutr Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/dieting/get_elligible_foods", methods=["POST"])
 def get_elligible_foods():
@@ -1212,6 +1283,7 @@ def get_elligible_foods():
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/dieting/get_foods_for_nutrient", methods=["POST"])
 def get_food_of_nutrient():
     try:
@@ -1223,10 +1295,7 @@ def get_food_of_nutrient():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
-if __name__ == "__main__":
-    socketio.run(app, host='0.0.0.0', debug=True,
-                 port=5001, allow_unsafe_werkzeug=True)
+
 
 @app.route('/forgot-password', methods=['POST'])
 def handle_forgot_password():
@@ -1234,11 +1303,11 @@ def handle_forgot_password():
         data = request.json
         if not data or 'email' not in data:
             return jsonify({"error": "Email is required"}), 400
-        
+
         email = data['email']
 
         result = create_password_reset_token(email)
-        
+
         if not result.get('success'):
             return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
 
@@ -1247,13 +1316,13 @@ def handle_forgot_password():
             reset_token=result['token'],
             username=result['username']
         )
-        
+
         if not email_result.get('success'):
             print(f"Failed to send email: {email_result.get('error')}")
             return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
-        
+
         return jsonify({"message": "If an account exists with this email, a reset link will be sent"}), 200
-        
+
     except Exception as e:
         print(f"Error in forgot password: {str(e)}")
         return jsonify({"error": "An error occurred processing your request"}), 500
@@ -1265,16 +1334,16 @@ def handle_validate_reset_token():
         data = request.json
         if not data or 'token' not in data:
             return jsonify({"error": "Token is required"}), 400
-        
+
         token = data['token']
-        
+
         result = validate_reset_token(token)
-        
+
         if not result.get('valid'):
             return jsonify({"error": result.get('error', 'Invalid token')}), 400
-        
+
         return jsonify({"message": "Token is valid", "valid": True}), 200
-        
+
     except Exception as e:
         print(f"Error validating token: {str(e)}")
         return jsonify({"error": "An error occurred validating the token"}), 500
@@ -1286,7 +1355,7 @@ def handle_reset_password():
         data = request.json
         if not data or 'token' not in data or 'new_password' not in data:
             return jsonify({"error": "Token and new password are required"}), 400
-        
+
         token = data['token']
         new_password = data['new_password']
 
@@ -1294,24 +1363,25 @@ def handle_reset_password():
             return jsonify({"error": "Password must be at least 6 characters long"}), 400
 
         validation_result = validate_reset_token(token)
-        
+
         if not validation_result.get('valid'):
             return jsonify({"error": validation_result.get('error', 'Invalid or expired token')}), 400
-        
+
         user_id = validation_result['user_id']
 
         reset_result = reset_user_password(user_id, new_password)
-        
+
         if not reset_result.get('success'):
             return jsonify({"error": reset_result.get('error', 'Failed to reset password')}), 500
 
         mark_token_as_used(token)
-        
+
         return jsonify({"message": "Password reset successfully"}), 200
-        
+
     except Exception as e:
         print(f"Error resetting password: {str(e)}")
         return jsonify({"error": "An error occurred resetting your password"}), 500
+
 
 @app.route('/send-verification-code', methods=['POST'])
 def handle_send_verification_code():
@@ -1319,7 +1389,7 @@ def handle_send_verification_code():
         data = request.json
         if not data or 'email' not in data or 'username' not in data:
             return jsonify({"error": "Email and username are required"}), 400
-        
+
         email = data['email']
         username = data['username']
 
@@ -1330,7 +1400,7 @@ def handle_send_verification_code():
             return jsonify({"error": "Username must be at least 3 characters long"}), 400
 
         result = create_verification_code(email, username)
-        
+
         if not result.get('success'):
             return jsonify({"error": result.get('error', 'Failed to create verification code')}), 400
 
@@ -1339,13 +1409,14 @@ def handle_send_verification_code():
             verification_code=result['code'],
             username=result['username']
         )
-        
+
         if not email_result.get('success'):
-            print(f"Failed to send verification email: {email_result.get('error')}")
+            print(
+                f"Failed to send verification email: {email_result.get('error')}")
             return jsonify({"error": "Failed to send verification email"}), 500
-        
+
         return jsonify({"message": "Verification code sent to your email"}), 200
-        
+
     except Exception as e:
         print(f"Error sending verification code: {str(e)}")
         return jsonify({"error": "An error occurred sending the verification code"}), 500
@@ -1357,7 +1428,7 @@ def handle_verify_code():
         data = request.json
         if not data or 'email' not in data or 'code' not in data:
             return jsonify({"error": "Email and code are required"}), 400
-        
+
         email = data['email']
         code = data['code'].strip()
 
@@ -1365,18 +1436,18 @@ def handle_verify_code():
             return jsonify({"error": "Verification code must be 6 digits"}), 400
 
         result = validate_verification_code(email, code)
-        
+
         if not result.get('valid'):
             return jsonify({"error": result.get('error', 'Invalid verification code')}), 400
 
         mark_code_as_used(email, code)
-        
+
         return jsonify({
             "message": "Email verified successfully",
             "email": result['email'],
             "username": result['username']
         }), 200
-        
+
     except Exception as e:
         print(f"Error verifying code: {str(e)}")
         return jsonify({"error": "An error occurred verifying the code"}), 500
@@ -1393,7 +1464,7 @@ def handle_verify_code():
 #   message: string (contains error message if an error occurs)
 
 @app.route('/api_template', methods=['POST'])
-#@login_required
+# @login_required
 def handle_api_template():
     data = request.json
     if 'parameter_1' in data and 'parameter_2' in data:
@@ -1404,3 +1475,222 @@ def handle_api_template():
         return jsonify({"message": my_message}), 200
 
     return jsonify({"message": "Error: invalid parameters"}), 400
+
+
+# ==================== FOLLOWER/FOLLOWING ROUTES ====================
+
+@app.route('/users/<user_id>/follow', methods=['POST'])
+@require_auth
+def follow_user_handler(user_id):
+    """Follow a user"""
+    try:
+        follower_id = request.current_user_id
+
+        # Prevent self-follow
+        if follower_id == user_id:
+            return jsonify({"error": "You cannot follow yourself"}), 400
+
+        result = follow_user(follower_id, user_id)
+
+        if "error" in result:
+            if result["error"] == "Already following this user":
+                return jsonify({
+                    "message": "Already following this user",
+                    "follower_count": result.get('follower_count', 0),
+                    "is_following": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "follower_count": result["follower_count"],
+            "is_following": True
+        }), 200
+
+    except Exception as e:
+        print(f"Follow user exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/unfollow', methods=['POST'])
+@require_auth
+def unfollow_user_handler(user_id):
+    """Unfollow a user"""
+    try:
+        follower_id = request.current_user_id
+
+        result = unfollow_user(follower_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "follower_count": result["follower_count"],
+            "is_following": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unfollow user exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/is-following', methods=['GET'])
+def check_is_following_handler(user_id):
+    """Check if the current user is following another user"""
+    try:
+        follower_id = request.args.get('follower_id')
+
+        if not follower_id:
+            return jsonify({"error": "Missing follower_id"}), 400
+
+        result = check_is_following(follower_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Check is following exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/followers', methods=['GET'])
+def get_followers_handler(user_id):
+    """Get list of followers for a user"""
+    try:
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        result = get_followers(user_id, limit, offset)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get followers exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/following', methods=['GET'])
+def get_following_handler(user_id):
+    """Get list of users that a user is following"""
+    try:
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        result = get_following(user_id, limit, offset)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get following exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== BLOCK/UNBLOCK ROUTES ====================
+
+@app.route('/users/<user_id>/block', methods=['POST'])
+@require_auth
+def block_user_handler(user_id):
+    """Block a user"""
+    try:
+        blocker_id = request.current_user_id
+
+        # Prevent self-block
+        if blocker_id == user_id:
+            return jsonify({"error": "You cannot block yourself"}), 400
+
+        result = block_user(blocker_id, user_id)
+
+        if "error" in result:
+            if result["error"] == "User is already blocked":
+                return jsonify({
+                    "message": "User is already blocked",
+                    "is_blocked": True
+                }), 200
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "is_blocked": True
+        }), 200
+
+    except Exception as e:
+        print(f"Block user exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/unblock', methods=['POST'])
+@require_auth
+def unblock_user_handler(user_id):
+    """Unblock a user"""
+    try:
+        blocker_id = request.current_user_id
+
+        result = unblock_user(blocker_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify({
+            "message": result["message"],
+            "is_blocked": False
+        }), 200
+
+    except Exception as e:
+        print(f"Unblock user exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/users/<user_id>/is-blocked', methods=['GET'])
+def check_is_blocked_handler(user_id):
+    """Check if there's a block relationship between the current user and another user"""
+    try:
+        current_user_id = request.args.get('current_user_id')
+
+        if not current_user_id:
+            return jsonify({"error": "Missing current_user_id"}), 400
+
+        result = check_is_blocked(current_user_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Check is blocked exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/blocked-users', methods=['GET'])
+@require_auth
+def get_blocked_users_handler():
+    """Get list of users that the current user has blocked"""
+    try:
+        user_id = request.current_user_id
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        result = get_blocked_users(user_id, limit, offset)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get blocked users exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+if __name__ == "__main__":
+    socketio.run(app, host='0.0.0.0', debug=True,
+                 port=5001, allow_unsafe_werkzeug=True)

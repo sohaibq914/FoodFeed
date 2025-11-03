@@ -167,7 +167,7 @@ def change_user_password(email: str, current_password: str, new_password: str):
 def deactivate_user_account(email: str, password: str):
     try:
         print(f"Attempting to deactivate account for user: {email}")
-        
+
         sign_in_response = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
@@ -184,39 +184,44 @@ def deactivate_user_account(email: str, password: str):
             print(f"Deleted recipes for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete recipes: {e}")
-        
+
         try:
-            supabase.table('comments').delete().eq('user_id', user_id).execute()
+            supabase.table('comments').delete().eq(
+                'user_id', user_id).execute()
             print(f"Deleted comments for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete comments: {e}")
-        
+
         try:
-            supabase.table('recipe_likes').delete().eq('user_id', user_id).execute()
+            supabase.table('recipe_likes').delete().eq(
+                'user_id', user_id).execute()
             print(f"Deleted likes for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete likes: {e}")
-        
+
         try:
-            supabase.table('messages').delete().eq('sender_id', user_id).execute()
-            supabase.table('messages').delete().eq('receiver_id', user_id).execute()
+            supabase.table('messages').delete().eq(
+                'sender_id', user_id).execute()
+            supabase.table('messages').delete().eq(
+                'receiver_id', user_id).execute()
             print(f"Deleted messages for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete messages: {e}")
-        
+
         try:
             supabase.table('reviews').delete().eq('user_id', user_id).execute()
             supabase.table('restaurants').delete().eq('owner', email).execute()
             print(f"Deleted restaurants and reviews for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete restaurants/reviews: {e}")
-        
+
         try:
-            supabase.table('user_restrictions').delete().eq('user_id', user_id).execute()
+            supabase.table('user_restrictions').delete().eq(
+                'user_id', user_id).execute()
             print(f"Deleted dietary restrictions for user {user_id}")
         except Exception as e:
             print(f"Warning: Could not delete dietary restrictions: {e}")
-        
+
         try:
             supabase.table('users').delete().eq('id', user_id).execute()
             print(f"Deleted user profile for {user_id}")
@@ -228,7 +233,8 @@ def deactivate_user_account(email: str, password: str):
         if admin_supabase:
             try:
                 admin_response = admin_supabase.auth.admin.delete_user(user_id)
-                print(f"Successfully deleted user {user_id} from Supabase Auth")
+                print(
+                    f"Successfully deleted user {user_id} from Supabase Auth")
                 return {"message": "Account permanently deleted"}
             except Exception as e:
                 print(f"Error deleting user from auth: {e}")
@@ -240,7 +246,7 @@ def deactivate_user_account(email: str, password: str):
                     "email": email,
                     "password": password
                 })
-                
+
                 deactivated_email = f"deactivated_{user_id}_{int(time.time())}@deleted.local"
                 supabase.auth.update_user({
                     "email": deactivated_email
@@ -390,36 +396,60 @@ def insert_r_tags(restaurant_id, tags):
 # Recipe methods
 
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, visibility: str = 'public'):
     try:
         image_url = None
+        has_new_image = False
         if images:
             key = images.filename.lstrip("/")
             data = images.read()
             s3.put_object(Bucket=BUCKET, Key=key, Body=data)
             # FIX: missing slash after {url}
             image_url = f"{url}/storage/v1/object/public/{BUCKET}/{key}"
-            print(image_url)
+            has_new_image = True
+            print(f"New image uploaded: {image_url}")
 
-        print(id)
+        # Validate visibility
+        if visibility not in ['public', 'private']:
+            visibility = 'public'
+
+        print(f"Recipe ID: {id}")
         if id == "new":
-            print("new row")
+            print("Creating new recipe")
             response = supabase.table('recipes').insert({
                 "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens,
+                "posted": posting, "image": image_url, "visibility": visibility}).execute()
         else:
-            print("update")
-            response = supabase.table('recipes').upsert({
-                "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
+            print(f"Updating existing recipe: {id}")
+            # Build update payload - only include image if a new one was uploaded
+            update_payload = {
+                "recipe_id": id,
+                "author_id": author,
+                "title": title,
+                "description": desc,
+                "ingredients": ingredients,
+                "instructions": instructions,
+                "nutrition_facts": nutrition,
+                "allergens": allergens,
+                "posted": posting,
+                "visibility": visibility
+            }
+
+            # Only update image if a new one was provided
+            if has_new_image:
+                update_payload["image"] = image_url
+
+            response = supabase.table('recipes').upsert(
+                update_payload).execute()
 
         print(f"Recipe upsert response: {response}")
 
         if response.data:
             print(response.data[0])
-            return {"message": "Recipe added", "data": response.data[0]}
+            return {"message": "Recipe updated successfully", "data": response.data[0]}
         else:
-            return {"error": "Failed to add recipe"}
+            return {"error": "Failed to update recipe"}
 
     except Exception as e:
         print(f"Error in update_recipe: {str(e)}")
@@ -441,6 +471,23 @@ def get_recipe(id: str, user_id: str = None):
                       response.data["users"].get("username"))
             else:
                 print("No users.username found")
+
+            # Check privacy/visibility
+            recipe_visibility = response.data.get('visibility', 'public')
+            recipe_author_id = response.data.get('author_id')
+
+            # If recipe is private, check permissions
+            if recipe_visibility == 'private':
+                # Author can always view
+                if user_id != recipe_author_id:
+                    # Check if viewer is a follower
+                    if user_id:
+                        follow_check = supabase.table('followers').select('id').eq(
+                            'follower_id', user_id).eq('following_id', recipe_author_id).execute()
+                        if not follow_check.data:
+                            return {"error": "This recipe is private. Follow the author to view it.", "private": True}
+                    else:
+                        return {"error": "This recipe is private. Follow the author to view it.", "private": True}
 
             # Get actual like count from recipe_likes table
             like_count_result = supabase.table('recipe_likes').select(
@@ -556,6 +603,7 @@ def check_recipe_liked(user_id: str, recipe_id: str):
     except Exception as e:
         print(f"Error in check_recipe_liked: {str(e)}")
         return {"error": str(e)}
+
 
 def get_user_likes(user_id: str):
     """Fetch all recipes liked by a specific user"""
@@ -852,10 +900,12 @@ def get_comment_with_likes(comment_id: str, user_id: str = None):
         print(f"Error in get_comment_with_likes: {str(e)}")
         return {"error": str(e)}
 
-def edit_user_tags(user_id: str, tags ):
+
+def edit_user_tags(user_id: str, tags):
     try:
         print(tags)
-        response = supabase.table('users').update({"dietary_restrictions": tags}).eq("id", user_id).execute()
+        response = supabase.table('users').update(
+            {"dietary_restrictions": tags}).eq("id", user_id).execute()
 
         print(f"Response: {response}")
 
@@ -872,7 +922,8 @@ def edit_user_tags(user_id: str, tags ):
 def get_user_tags(id: str):
     try:
         if id:
-            response = supabase.table('users').select("dietary_restrictions").eq("id", id).execute()
+            response = supabase.table('users').select(
+                "dietary_restrictions").eq("id", id).execute()
 
             print("Response:", response.data)
 
@@ -888,12 +939,14 @@ def get_user_tags(id: str):
 def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, content_type: str):
     """Upload profile picture to Supabase storage and update user profile"""
     try:
-        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+        allowed_types = ['image/jpeg', 'image/jpg',
+                         'image/png', 'image/gif', 'image/webp']
         if content_type not in allowed_types:
             return {"error": "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed."}
 
         import uuid
-        file_extension = file_name.split('.')[-1] if '.' in file_name else 'jpg'
+        file_extension = file_name.split(
+            '.')[-1] if '.' in file_name else 'jpg'
         unique_filename = f"profile_pictures/{user_id}_{uuid.uuid4().hex}.{file_extension}"
 
         s3.put_object(
@@ -909,7 +962,7 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
         update_response = supabase.table('users').update({
             'profile_picture_url': profile_picture_url
         }).eq('id', user_id).execute()
-        
+
         if update_response.data:
             return {
                 "message": "Profile picture uploaded successfully",
@@ -917,7 +970,7 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
             }
         else:
             return {"error": "Failed to update user profile"}
-            
+
     except Exception as e:
         print(f"Error in upload_profile_picture: {str(e)}")
         return {"error": f"Failed to upload profile picture: {str(e)}"}
@@ -926,14 +979,363 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
 def get_user_profile(user_id: str):
     """Get user profile including profile picture URL"""
     try:
-        response = supabase.table('users').select('id, username, email, profile_picture_url').eq('id', user_id).execute()
-        
+        response = supabase.table('users').select(
+            'id, username, email, profile_picture_url, follower_count, following_count').eq('id', user_id).execute()
+
         if response.data:
             return {"user": response.data[0]}
         else:
             return {"error": "User not found"}
-            
+
     except Exception as e:
         print(f"Error in get_user_profile: {str(e)}")
         return {"error": str(e)}
 
+
+# Follower/Following methods
+
+def follow_user(follower_id: str, following_id: str):
+    """Follow a user"""
+    try:
+        print(
+            f"Follow attempt - follower: {follower_id}, following: {following_id}")
+
+        # Validate that users are not the same
+        if follower_id == following_id:
+            return {"error": "You cannot follow yourself"}
+
+        # Check if already following
+        existing = supabase.table('followers').select('id').eq(
+            'follower_id', follower_id).eq('following_id', following_id).execute()
+
+        if existing.data:
+            return {"error": "Already following this user"}
+
+        # Create follow relationship
+        response = supabase.table('followers').insert({
+            'follower_id': follower_id,
+            'following_id': following_id
+        }).execute()
+
+        print(f"Follow insert response: {response.data}")
+
+        if response.data:
+            # Get updated follower count
+            user = supabase.table('users').select('follower_count').eq(
+                'id', following_id).single().execute()
+            follower_count = user.data.get('follower_count', 0)
+
+            return {
+                "message": "Successfully followed user",
+                "follower_count": follower_count
+            }
+
+        return {"error": "Failed to follow user"}
+
+    except Exception as e:
+        print(f"Error in follow_user: {str(e)}")
+        return {"error": str(e)}
+
+
+def unfollow_user(follower_id: str, following_id: str):
+    """Unfollow a user"""
+    try:
+        print(
+            f"Unfollow attempt - follower: {follower_id}, following: {following_id}")
+
+        # Check if follow relationship exists
+        existing = supabase.table('followers').select('id').eq(
+            'follower_id', follower_id).eq('following_id', following_id).execute()
+
+        if not existing.data:
+            return {"error": "Not following this user"}
+
+        # Delete follow relationship
+        response = supabase.table('followers').delete().eq(
+            'follower_id', follower_id).eq('following_id', following_id).execute()
+
+        print(f"Unfollow delete response: {response.data}")
+
+        # Get updated follower count
+        user = supabase.table('users').select('follower_count').eq(
+            'id', following_id).single().execute()
+        follower_count = user.data.get('follower_count', 0)
+
+        return {
+            "message": "Successfully unfollowed user",
+            "follower_count": follower_count
+        }
+
+    except Exception as e:
+        print(f"Error in unfollow_user: {str(e)}")
+        return {"error": str(e)}
+
+
+def check_is_following(follower_id: str, following_id: str):
+    """Check if a user is following another user"""
+    try:
+        response = supabase.table('followers').select('id').eq(
+            'follower_id', follower_id).eq('following_id', following_id).execute()
+
+        return {"is_following": len(response.data) > 0}
+
+    except Exception as e:
+        print(f"Error in check_is_following: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_followers(user_id: str, limit: int = 50, offset: int = 0):
+    """Get list of users following a specific user"""
+    try:
+        print(f"Getting followers for user: {user_id}")
+
+        # Get followers with user info
+        response = supabase.table('followers').select(
+            'follower_id, created_at, users!followers_follower_id_fkey(id, username, profile_picture_url)'
+        ).eq('following_id', user_id).order('created_at', desc=True).range(offset, offset + limit - 1).execute()
+
+        if not response.data:
+            return {"followers": [], "count": 0}
+
+        followers = [
+            {
+                "user_id": follower['users']['id'],
+                "username": follower['users']['username'],
+                "profile_picture_url": follower['users'].get('profile_picture_url'),
+                "followed_at": follower['created_at']
+            }
+            for follower in response.data
+            if follower.get('users')
+        ]
+
+        # Get total count
+        count_response = supabase.table('followers').select(
+            'id', count='exact').eq('following_id', user_id).execute()
+        total_count = count_response.count if count_response.count is not None else 0
+
+        return {"followers": followers, "count": total_count}
+
+    except Exception as e:
+        print(f"Error in get_followers: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_following(user_id: str, limit: int = 50, offset: int = 0):
+    """Get list of users that a specific user is following"""
+    try:
+        print(f"Getting following list for user: {user_id}")
+
+        # Get following with user info
+        response = supabase.table('followers').select(
+            'following_id, created_at, users!followers_following_id_fkey(id, username, profile_picture_url)'
+        ).eq('follower_id', user_id).order('created_at', desc=True).range(offset, offset + limit - 1).execute()
+
+        if not response.data:
+            return {"following": [], "count": 0}
+
+        following = [
+            {
+                "user_id": follow['users']['id'],
+                "username": follow['users']['username'],
+                "profile_picture_url": follow['users'].get('profile_picture_url'),
+                "followed_at": follow['created_at']
+            }
+            for follow in response.data
+            if follow.get('users')
+        ]
+
+        # Get total count
+        count_response = supabase.table('followers').select(
+            'id', count='exact').eq('follower_id', user_id).execute()
+        total_count = count_response.count if count_response.count is not None else 0
+
+        return {"following": following, "count": total_count}
+
+    except Exception as e:
+        print(f"Error in get_following: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_feed_recipes(user_id: str, limit: int = 20, offset: int = 0):
+    """Get recipes from users that the current user is following"""
+    try:
+        print(f"Fetching feed for user: {user_id}")
+
+        # First, get the list of users this user is following
+        following_response = supabase.table('followers').select(
+            'following_id'
+        ).eq('follower_id', user_id).execute()
+
+        if not following_response.data:
+            # User is not following anyone, return empty feed
+            return {"recipes": [], "count": 0}
+
+        # Extract the user IDs of people being followed
+        following_ids = [f['following_id'] for f in following_response.data]
+
+        print(f"User {user_id} is following {len(following_ids)} users")
+
+        # Fetch recipes from followed users (only posted recipes)
+        # Include both public and private recipes since user is following them
+        recipes_response = supabase.table('recipes').select(
+            '*, users!recipes_author_id_fkey(id, username, profile_picture_url)'
+        ).in_('author_id', following_ids).eq('posted', True).order(
+            'timestamp', desc=True
+        ).range(offset, offset + limit - 1).execute()
+
+        # Get total count of recipes in feed
+        count_response = supabase.table('recipes').select(
+            'recipe_id', count='exact'
+        ).in_('author_id', following_ids).eq('posted', True).execute()
+
+        total_count = count_response.count if count_response.count is not None else 0
+
+        # Transform the response to include author info and visibility
+        recipes = []
+        for recipe in recipes_response.data:
+            recipe_data = {
+                'recipe_id': recipe['recipe_id'],
+                'title': recipe['title'],
+                'description': recipe.get('description'),
+                'image': recipe.get('image'),
+                'timestamp': recipe['timestamp'],
+                'like_count': recipe.get('like_count', 0),
+                'visibility': recipe.get('visibility', 'public'),
+                'author': {
+                    'id': recipe['users']['id'],
+                    'username': recipe['users']['username'],
+                    'profile_picture_url': recipe['users'].get('profile_picture_url')
+                }
+            }
+            recipes.append(recipe_data)
+
+        print(f"Found {len(recipes)} recipes in feed (total: {total_count})")
+
+        return {"recipes": recipes, "count": total_count}
+
+    except Exception as e:
+        print(f"Error in get_feed_recipes: {str(e)}")
+        return {"error": str(e)}
+
+
+# Block/Unblock methods
+
+def block_user(blocker_id: str, blocked_id: str):
+    """Block a user"""
+    try:
+        print(f"Block attempt - blocker: {blocker_id}, blocked: {blocked_id}")
+
+        # Validate that users are not the same
+        if blocker_id == blocked_id:
+            return {"error": "You cannot block yourself"}
+
+        # Check if already blocked
+        existing = supabase.table('blocked_users').select('id').eq(
+            'blocker_id', blocker_id).eq('blocked_id', blocked_id).execute()
+
+        if existing.data:
+            return {"error": "User is already blocked"}
+
+        # Create block relationship
+        response = supabase.table('blocked_users').insert({
+            'blocker_id': blocker_id,
+            'blocked_id': blocked_id
+        }).execute()
+
+        print(f"Block insert response: {response.data}")
+
+        if response.data:
+            return {"message": "User blocked successfully"}
+
+        return {"error": "Failed to block user"}
+
+    except Exception as e:
+        print(f"Error in block_user: {str(e)}")
+        return {"error": str(e)}
+
+
+def unblock_user(blocker_id: str, blocked_id: str):
+    """Unblock a user"""
+    try:
+        print(
+            f"Unblock attempt - blocker: {blocker_id}, blocked: {blocked_id}")
+
+        # Check if block relationship exists
+        existing = supabase.table('blocked_users').select('id').eq(
+            'blocker_id', blocker_id).eq('blocked_id', blocked_id).execute()
+
+        if not existing.data:
+            return {"error": "User is not blocked"}
+
+        # Delete block relationship
+        response = supabase.table('blocked_users').delete().eq(
+            'blocker_id', blocker_id).eq('blocked_id', blocked_id).execute()
+
+        print(f"Unblock delete response: {response.data}")
+
+        return {"message": "User unblocked successfully"}
+
+    except Exception as e:
+        print(f"Error in unblock_user: {str(e)}")
+        return {"error": str(e)}
+
+
+def check_is_blocked(user_a_id: str, user_b_id: str):
+    """Check if there's a block relationship between two users (either direction)"""
+    try:
+        # Check if user_a blocked user_b OR user_b blocked user_a
+        response = supabase.table('blocked_users').select('id, blocker_id, blocked_id').or_(
+            f'and(blocker_id.eq.{user_a_id},blocked_id.eq.{user_b_id}),'
+            f'and(blocker_id.eq.{user_b_id},blocked_id.eq.{user_a_id})'
+        ).execute()
+
+        if response.data:
+            block = response.data[0]
+            return {
+                "is_blocked": True,
+                "blocker_id": block['blocker_id'],
+                "blocked_id": block['blocked_id'],
+                "you_blocked_them": block['blocker_id'] == user_a_id
+            }
+
+        return {"is_blocked": False}
+
+    except Exception as e:
+        print(f"Error in check_is_blocked: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_blocked_users(user_id: str, limit: int = 50, offset: int = 0):
+    """Get list of users that the current user has blocked"""
+    try:
+        print(f"Getting blocked users for user: {user_id}")
+
+        # Get blocked users with user info
+        response = supabase.table('blocked_users').select(
+            'blocked_id, created_at, users!blocked_users_blocked_id_fkey(id, username, profile_picture_url)'
+        ).eq('blocker_id', user_id).order('created_at', desc=True).range(offset, offset + limit - 1).execute()
+
+        if not response.data:
+            return {"blocked_users": [], "count": 0}
+
+        blocked_users = [
+            {
+                "user_id": block['users']['id'],
+                "username": block['users']['username'],
+                "profile_picture_url": block['users'].get('profile_picture_url'),
+                "blocked_at": block['created_at']
+            }
+            for block in response.data
+            if block.get('users')
+        ]
+
+        # Get total count
+        count_response = supabase.table('blocked_users').select(
+            'id', count='exact').eq('blocker_id', user_id).execute()
+        total_count = count_response.count if count_response.count is not None else 0
+
+        return {"blocked_users": blocked_users, "count": total_count}
+
+    except Exception as e:
+        print(f"Error in get_blocked_users: {str(e)}")
+        return {"error": str(e)}

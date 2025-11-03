@@ -3,8 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { Container, Text, Center, Loader, AppShell, Paper, Group, Avatar, Stack, Button, TextInput, ScrollArea, ActionIcon } from "@mantine/core";
-import { IconArrowLeft, IconSend } from "@tabler/icons-react";
+import { IconArrowLeft, IconSend, IconUser } from "@tabler/icons-react";
 import Header from "@/components/Header";
+import Link from "next/link";
 import { io, Socket } from "socket.io-client";
 
 interface Message {
@@ -291,16 +292,23 @@ export default function ConversationView() {
               <Paper shadow="sm" style={{ height: "calc(100vh - 250px)", display: "flex", flexDirection: "column" }}>
                 {/* Chat Header */}
                 <Paper p="md" shadow="xs" style={{ borderBottom: "1px solid #e9ecef" }}>
-                  <Group>
-                    <Avatar size="md" radius="xl" color="blue" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
-                      {otherUser?.username ? otherUser.username.charAt(0).toUpperCase() : "U"}
-                    </Avatar>
-                    <div>
-                      <Text fw={500}>{otherUser?.username || "User"}</Text>
-                      <Text size="xs" c="dimmed">
-                        {otherUser?.email || userId}
-                      </Text>
-                    </div>
+                  <Group justify="space-between">
+                    <Group>
+                      <Avatar size="md" radius="xl" color="blue" style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}>
+                        {otherUser?.username ? otherUser.username.charAt(0).toUpperCase() : "U"}
+                      </Avatar>
+                      <div>
+                        <Text fw={500}>{otherUser?.username || "User"}</Text>
+                        <Text size="xs" c="dimmed">
+                          {otherUser?.email || userId}
+                        </Text>
+                      </div>
+                    </Group>
+                    {otherUser?.username && (
+                      <Button component={Link} href={`/${otherUser.username}`} variant="light" size="compact-sm" leftSection={<IconUser size={16} />}>
+                        View Profile
+                      </Button>
+                    )}
                   </Group>
                 </Paper>
 

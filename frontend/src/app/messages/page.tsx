@@ -2,9 +2,10 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
-import { Container, Title, Text, Center, Loader, AppShell, Paper, Group, Avatar, Stack, Badge, TextInput, rem } from "@mantine/core";
-import { IconSearch, IconMessage } from "@tabler/icons-react";
+import { Container, Title, Text, Center, Loader, AppShell, Paper, Group, Avatar, Stack, Badge, TextInput, rem, Button } from "@mantine/core";
+import { IconSearch, IconMessage, IconUser } from "@tabler/icons-react";
 import Header from "@/components/Header";
+import Link from "next/link";
 
 interface Conversation {
   user_id: string;
@@ -158,7 +159,7 @@ export default function Messages() {
                       onClick={() => handleConversationClick(conversation.user_id)}
                     >
                       <Group justify="space-between" wrap="nowrap">
-                        <Group wrap="nowrap">
+                        <Group wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
                           <Avatar
                             size="lg"
                             radius="xl"
@@ -188,11 +189,16 @@ export default function Messages() {
                             </Text>
                           </div>
                         </Group>
-                        {conversation.timestamp && conversation.last_message !== "No messages yet" && (
-                          <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
-                            {new Date(conversation.timestamp).toLocaleDateString()}
-                          </Text>
-                        )}
+                        <Group gap="xs" style={{ flexShrink: 0 }}>
+                          {conversation.timestamp && conversation.last_message !== "No messages yet" && (
+                            <Text c="dimmed" size="xs" style={{ whiteSpace: "nowrap" }}>
+                              {new Date(conversation.timestamp).toLocaleDateString()}
+                            </Text>
+                          )}
+                          <Button component={Link} href={`/${conversation.username}`} variant="light" size="compact-xs" leftSection={<IconUser size={14} />} onClick={(e) => e.stopPropagation()}>
+                            Profile
+                          </Button>
+                        </Group>
                       </Group>
                     </Paper>
                   ))}

@@ -3,8 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon } from "@mantine/core";
-import { IconHeart, IconHeartFilled } from "@tabler/icons-react";
+import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon, Avatar, Badge, Divider } from "@mantine/core";
+import { IconHeart, IconHeartFilled, IconUser, IconLock } from "@tabler/icons-react";
 import Header from "@/components/Header";
 
 type RecipeSummary = {
@@ -12,6 +12,21 @@ type RecipeSummary = {
   title: string;
   like_count?: number;
   user_has_liked?: boolean;
+};
+
+type FeedRecipe = {
+  recipe_id: string;
+  title: string;
+  description?: string;
+  image?: string;
+  timestamp: string;
+  like_count: number;
+  visibility?: string;
+  author: {
+    id: string;
+    username: string;
+    profile_picture_url?: string;
+  };
 };
 
 export default function Dashboard() {
@@ -23,6 +38,11 @@ export default function Dashboard() {
   const [recipesError, setRecipesError] = useState<string | null>(null);
   const [animatingRecipe, setAnimatingRecipe] = useState<string | null>(null);
 
+  // Feed state
+  const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState<string | null>(null);
+
   // auth redirect
   useEffect(() => {
     if (!loading && !user) {
@@ -30,22 +50,55 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
+  // Fetch feed from followed users
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchFeed = async () => {
+      try {
+        setFeedLoading(true);
+        setFeedError(null);
+
+        const res = await fetch(`http://localhost:5001/feed?limit=20`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to fetch feed");
+        }
+
+        setFeedRecipes(data.recipes || []);
+      } catch (err: any) {
+        setFeedError(err.message || "Failed to fetch feed");
+      } finally {
+        setFeedLoading(false);
+      }
+    };
+
+    fetchFeed();
+  }, [user]);
+
   // fetch all recipe titles with like data
   useEffect(() => {
     if (!user) return;
-  
+
     const fetchRecipes = async () => {
       try {
         setRecipesLoading(true);
         setRecipesError(null);
-  
+
         const res = await fetch(`http://localhost:5001/recipes`);
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
-  
+
         // show only posted
         const postedOnly: RecipeSummary[] = (data.recipes || []).filter((r: any) => r.posted === true);
-  
+
         // fetch likes ONLY for posted ones
         const withLikes = await Promise.all(
           postedOnly.map(async (recipe) => {
@@ -67,7 +120,7 @@ export default function Dashboard() {
             }
           })
         );
-  
+
         setRecipes(withLikes);
       } catch (err: any) {
         setRecipesError(err.message || "Failed to fetch recipes");
@@ -75,10 +128,9 @@ export default function Dashboard() {
         setRecipesLoading(false);
       }
     };
-  
+
     fetchRecipes();
   }, [user]);
-  
 
   const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean) => {
     e.preventDefault(); // Prevent navigation to recipe page
@@ -127,20 +179,136 @@ export default function Dashboard() {
 
   if (!user) return null;
 
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
   return (
     <div style={{ minHeight: "100vh" }}>
       <AppShell header={{ height: 70 }} padding="md">
         <Header showSettingsButton={true} showBackButton={false} />
         <AppShell.Main>
           <Container size="lg" py="xl">
-            <Title order={2}>Welcome to your Dashboard!</Title>
+            <Title order={2}>Your Feed</Title>
             <Text c="dimmed" mt="md">
-              You are logged in as {user.username}
+              Recipes from people you follow
             </Text>
+
+            {/* === Feed from Followed Users === */}
+            <Stack mt="xl" gap="md">
+              {feedLoading && (
+                <Center py="xl">
+                  <div style={{ textAlign: "center" }}>
+                    <Loader size="md" />
+                    <Text mt="md" c="dimmed" size="sm">
+                      Loading your feed...
+                    </Text>
+                  </div>
+                </Center>
+              )}
+
+              {feedError && (
+                <Text c="red" size="sm">
+                  {feedError}
+                </Text>
+              )}
+
+              {!feedLoading && !feedError && feedRecipes.length === 0 && (
+                <Card withBorder p="xl">
+                  <Center>
+                    <Stack align="center" gap="sm">
+                      <Text size="lg" fw={500} c="dimmed">
+                        No recipes in your feed yet
+                      </Text>
+                      <Text size="sm" c="dimmed" ta="center">
+                        Follow other users to see their recipes here!
+                      </Text>
+                    </Stack>
+                  </Center>
+                </Card>
+              )}
+
+              {!feedLoading &&
+                !feedError &&
+                feedRecipes.map((recipe) => (
+                  <Card key={recipe.recipe_id} withBorder p="md" component={Link} href={`/recipe/${recipe.recipe_id}`} style={{ textDecoration: "none", cursor: "pointer" }}>
+                    <Stack gap="xs">
+                      {/* Author Info */}
+                      <Group gap="sm">
+                        <Avatar src={recipe.author.profile_picture_url || undefined} radius="xl" size="sm" color="blue">
+                          <IconUser size={16} />
+                        </Avatar>
+                        <div style={{ flex: 1 }}>
+                          <Group gap="xs">
+                            <Text size="sm" fw={500} component={Link} href={`/${recipe.author.username}`} onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none", color: "inherit" }}>
+                              @{recipe.author.username}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                              • {formatTimestamp(recipe.timestamp)}
+                            </Text>
+                          </Group>
+                        </div>
+                        <Group gap="xs">
+                          <Badge size="sm" variant="light" color="blue">
+                            Following
+                          </Badge>
+                          {recipe.visibility === "private" && (
+                            <Badge size="sm" variant="light" color="orange" leftSection={<IconLock size={12} />}>
+                              Private
+                            </Badge>
+                          )}
+                        </Group>
+                      </Group>
+
+                      {/* Recipe Content */}
+                      <div>
+                        <Text fw={600} size="lg">
+                          {recipe.title}
+                        </Text>
+                        {recipe.description && (
+                          <Text size="sm" c="dimmed" lineClamp={2} mt={4}>
+                            {recipe.description}
+                          </Text>
+                        )}
+                      </div>
+
+                      {/* Recipe Image */}
+                      {recipe.image && (
+                        <div style={{ width: "100%", height: "200px", overflow: "hidden", borderRadius: "8px" }}>
+                          <img src={recipe.image} alt={recipe.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        </div>
+                      )}
+
+                      {/* Engagement */}
+                      <Group gap="md" mt="xs">
+                        <Group gap={4}>
+                          <IconHeart size={16} />
+                          <Text size="sm" c="dimmed">
+                            {recipe.like_count} {recipe.like_count === 1 ? "like" : "likes"}
+                          </Text>
+                        </Group>
+                      </Group>
+                    </Stack>
+                  </Card>
+                ))}
+            </Stack>
+
+            <Divider my="xl" />
 
             {/* === All Recipes (titles only) === */}
             <Title order={3} mt="xl">
-              All Recipes
+              Discover More Recipes
             </Title>
             {recipesLoading && (
               <Center mt="md">
