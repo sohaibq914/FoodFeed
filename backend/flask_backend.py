@@ -1471,6 +1471,71 @@ def restaurant_reviews_average():
         print("AVG rating error:", e)
         return jsonify({"error": "failed to compute average"}), 500
 
+@app.route("/restaurant_favorites", methods=["POST"])
+def add_restaurant_favorite():
+
+    try:
+        data = request.get_json() or {}
+        print(data)
+        restaurant_id = (data.get("restaurant_id") or "").strip()
+        user_id = (data.get("user") or "").strip()
+
+        if not restaurant_id or not user_id:
+            return jsonify({"error": "Missing restaurant_id or user"}), 400
+
+        res = supabase.table("rest_favs").insert({
+            "r_id": restaurant_id,
+            "user": user_id
+        }).execute()
+
+        return jsonify({"favorite": res.data[0] if res.data else None}), 201
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/restaurant_favorites", methods=["GET"])
+def list_restaurant_favorites():
+
+    try:
+        user_id = (request.args.get("user") or "").strip()
+        if not user_id:
+            return jsonify({"error": "Missing user"}), 400
+
+        res = supabase.table("rest_favs").select("r_id").eq("user", user_id).execute()
+        rows = res.data or []
+
+        return jsonify({"restaurants": [row["r_id"] for row in rows]}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/restaurant_favorites", methods=["DELETE"])
+def remove_restaurant_favorite():
+
+    try:
+        data = request.get_json(force=True) or {}
+        restaurant_id = (data.get("restaurant_id") or "").strip()
+        user_id = (data.get("user") or "").strip()
+
+        if not restaurant_id or not user_id:
+            return jsonify({"error": "Missing restaurant_id or user"}), 400
+
+        res = (
+            supabase.table("rest_favs")
+            .delete()
+            .eq("r_id", restaurant_id)
+            .eq("user", user_id)
+            .execute()
+        )
+
+        return jsonify({"deleted": len(res.data or [])}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)

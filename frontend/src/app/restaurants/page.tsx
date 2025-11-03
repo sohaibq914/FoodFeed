@@ -1,46 +1,69 @@
 "use client";
+
 import React from "react";
-import { AppShell, Button, Group, Stack, Text, Title } from "@mantine/core";
+import { AppShell, Button, Group, Stack, Text, Title, Paper, Tabs } from "@mantine/core";
 import Header from "@/components/Header";
 import { RestaurantsProvider } from "@/contexts/restaurants/RestaurantContext";
 import RestaurantSearchBar from "@/components/restaurants/Search";
 import RestaurantList from "@/components/restaurants/RestaurantList";
+import FavoritesList from "@/components/restaurants/Favorites";
 
 export default function RestaurantsPage() {
     return (
-        <AppShell
-            header={{ height: 60 }}
-            padding="xl"
-        >
+        <AppShell header={{ height: 60 }} padding="xl">
             <AppShell.Header>
                 <Header showSettingsButton={true} showBackButton={true} />
             </AppShell.Header>
 
             <AppShell.Main>
-                <div>
-                    <Title order={2}>Restaurants</Title>
-                    <Text c="dimmed" mt="sm">
-                        Own a restaurant? Add one here!
-                    </Text>
-                </div>
+                <Title order={1} fw={800}>
+                    Restaurants
+                </Title>
+                <Text c="dimmed" mt="xs" fz="lg">
+                    Own a restaurant? Add one here!
+                </Text>
 
-                <Group justify="space-between" mb="lg" mt="lg">
+                <Group justify="space-between" mt="lg" mb="lg">
                     <Button
                         component="a"
                         href="/restaurants/create"
                         variant="light"
                         color="orange"
+                        size="md"
                     >
                         Add your establishment
                     </Button>
                 </Group>
 
-                <RestaurantsProvider>
-                    <Stack gap="xl" mt="xl">
-                        <RestaurantSearchBar />
-                        <RestaurantList />
-                    </Stack>
-                </RestaurantsProvider>
+                <Paper withBorder radius="xl" p="xl" mt="xl" shadow="md">
+                    <Tabs defaultValue="browse" variant="pills" radius="md" keepMounted={false}>
+                        <Tabs.List grow>
+                            <Tabs.Tab value="browse" fz="lg">
+                                Browse
+                            </Tabs.Tab>
+                            <Tabs.Tab value="favorites" fz="lg">
+                                Favorites
+                            </Tabs.Tab>
+                        </Tabs.List>
+
+                        <Tabs.Panel value="browse" pt="xl">
+                            <RestaurantsProvider>
+                                <Stack gap="xl" mt="lg">
+                                    <RestaurantSearchBar />
+                                    <RestaurantList />
+                                </Stack>
+                            </RestaurantsProvider>
+                        </Tabs.Panel>
+
+                        <Tabs.Panel value="favorites" pt="xl">
+                            <RestaurantsProvider>
+                                <Stack gap="xl" mt="lg">
+                                    <FavoritesList />
+                                </Stack>
+                            </RestaurantsProvider>
+                        </Tabs.Panel>
+                    </Tabs>
+                </Paper>
             </AppShell.Main>
         </AppShell>
     );
