@@ -1,6 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Container, Paper, TextInput, Textarea, Button, Title, Alert, Stack, Center, Flex, Checkbox, Tooltip, FileInput, Image, Group, CloseButton, SegmentedControl, Text } from "@mantine/core";
+import {
+  Container,
+  Paper,
+  TextInput,
+  Textarea,
+  Button,
+  Title,
+  Alert,
+  Stack,
+  Center,
+  Flex,
+  Checkbox,
+  Tooltip,
+  FileInput,
+  Image,
+  Group,
+  CloseButton,
+  TagsInput,
+  SegmentedControl, 
+  Text
+} from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +33,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   const [allergens, setAllergens] = useState("");
   const [files, setFiles] = useState<File | null>(null);
   const [previews, setPreviews] = useState<string>();
+  const [tags, setTags] = useState<string[]>([]);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,7 +80,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         }),
       });
 
+
       const data = await response.json();
+
       if (response.ok) {
         setTitle(data.title || "");
         setDesc(data.description || "");
@@ -69,6 +92,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
         setVisibility(data.visibility || "public");
+        setTags(JSON.parse(data.tags) || [])
       } else {
         console.error("Failed to load recipe:", data.error);
         setError(data.error || "Failed to load recipe");
@@ -80,8 +104,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   };
 
   const update_recipe = async (recipe_id: string, author: string, title: string, description: string, ingredients: string, instructions: string, nutrition: string, allergens: string, posting: boolean, image: File | null, visibility: string) => {
+
     try {
-      if (image) {
+      //if (image) {
         const fd = new FormData();
         fd.append("recipe_id", recipe_id);
         fd.append("author", author);
@@ -93,39 +118,18 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         fd.append("allergens", allergens);
         fd.append("posting", String(posting));
         fd.append("visibility", visibility);
-        fd.append("image", image);
+        if (image) {
+          fd.append("image", image)
+        }
+        fd.append("tags", JSON.stringify(tags))
 
         const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || "Failed to update");
-        // ✅ Redirect to user profile after success
-        else router.push(`/${user.username}`);
-      } else {
-        const response = await fetch("http://localhost:5001/update_recipe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipe_id,
-            author,
-            title,
-            description,
-            ingredients,
-            instructions,
-            nutrition,
-            allergens,
-            posting,
-            visibility,
-            image,
-          }),
-        });
+        else 
+          // ✅ Reload page after success
+          router.push("/edit-recipe/" + data.recipe_id);
 
-        const data = await response.json();
-        console.log("data:" + data.recipe_id);
-
-        if (!response.ok) throw new Error(data?.error || "Failed to update");
-        // ✅ Redirect to user profile after success
-        else router.push(`/${user.username}`);
-      }
     } catch (err) {
       console.error(err);
       setError("Network error while updating recipe");
@@ -152,7 +156,19 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       return;
     }
 
-    await update_recipe(params.recipe_id, user.id, title, description, ingredients, instructions, nutrition, allergens, posting, files, visibility);
+    await update_recipe(
+      params.recipe_id,
+      user.id,
+      title,
+      description,
+      ingredients,
+      instructions,
+      nutrition,
+      allergens,
+      posting,
+      files,
+      visibility
+    );
 
     setLoading(false);
   };
@@ -186,9 +202,11 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             <Textarea label="Nutrition Facts" placeholder="Your recipe's nutritional information" autosize minRows={2} maxRows={6} value={nutrition} onChange={(e) => setNutrition(e.currentTarget.value)} size="md" />
 
             <Textarea label="Allergens" placeholder="Your recipe's allergens" value={allergens} autosize minRows={2} maxRows={6} onChange={(e) => setAllergens(e.currentTarget.value)} size="md" />
+            
+            <TagsInput label="Tags" placeholder="Type a tag and press enter" value={tags} onChange={setTags} size="md" />
 
             <FileInput label="Add an Image" placeholder="Click to upload an image" accept="image/*" value={files} onChange={setFiles} clearable />
-
+        
             {previews && (
               <Group>
                 <Image src={previews} alt="preview" radius="sm" w="auto" h={140} fit="contain" />

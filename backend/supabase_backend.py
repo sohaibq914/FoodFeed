@@ -395,8 +395,8 @@ def insert_r_tags(restaurant_id, tags):
 
 # Recipe methods
 
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, visibility: str = 'public'):
     try:
         image_url = None
         has_new_image = False
@@ -419,7 +419,7 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
             response = supabase.table('recipes').insert({
                 "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
                 "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens,
-                "posted": posting, "image": image_url, "visibility": visibility}).execute()
+                "posted": posting, "image": image_url, "visibility": visibility, "tags": tags}).execute()
         else:
             print(f"Updating existing recipe: {id}")
             # Build update payload - only include image if a new one was uploaded
@@ -433,7 +433,8 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
                 "nutrition_facts": nutrition,
                 "allergens": allergens,
                 "posted": posting,
-                "visibility": visibility
+                "visibility": visibility,
+                "tags": tags
             }
 
             # Only update image if a new one was provided
