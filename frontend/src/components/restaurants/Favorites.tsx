@@ -89,7 +89,6 @@ export default function FavoritesList(): React.ReactElement {
         return () => { alive = false; };
     }, [userId]);
 
-    // Ensure we have restaurants loaded so we can map IDs → cards
     useEffect(() => {
         if (!loading && items.length === 0) {
             void refresh();
@@ -104,7 +103,6 @@ export default function FavoritesList(): React.ReactElement {
     const unFavorite = useCallback(
         async (restaurantId: string) => {
             if (!userId) return;
-            // optimistic update
             const next = new Set(favIds);
             next.delete(restaurantId);
             setFavIds(new Set(next));
@@ -132,18 +130,14 @@ export default function FavoritesList(): React.ReactElement {
     if (loading && items.length === 0) return <Text c="dimmed">Loading…</Text>;
     if (favorites.length === 0)
         return (
-            <Stack gap="md" align="center">
                 <Text fz="lg" c="dimmed">No favorites yet.</Text>
-                <Button variant="light" onClick={refresh}>Refresh</Button>
-            </Stack>
         );
 
     return (
         <>
             <Group justify="space-between" mb="sm">
                 <Text fw={600}>Your Favorites</Text>
-                <Button variant="light" onClick={refresh}>Refresh</Button>
-            </Group>
+            </Group> 
 
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 {favorites.map((r) => (
