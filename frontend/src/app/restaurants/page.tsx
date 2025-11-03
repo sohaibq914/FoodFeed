@@ -7,6 +7,7 @@ import { RestaurantsProvider } from "@/contexts/restaurants/RestaurantContext";
 import RestaurantSearchBar from "@/components/restaurants/Search";
 import RestaurantList from "@/components/restaurants/RestaurantList";
 import FavoritesList from "@/components/restaurants/Favorites";
+import TrendingRestaurants from "@/components/restaurants/Trending";
 
 export default function RestaurantsPage() {
     return (
@@ -38,12 +39,9 @@ export default function RestaurantsPage() {
                 <Paper withBorder radius="xl" p="xl" mt="xl" shadow="md">
                     <Tabs defaultValue="browse" variant="pills" radius="md" keepMounted={false}>
                         <Tabs.List grow>
-                            <Tabs.Tab value="browse" fz="lg">
-                                Browse
-                            </Tabs.Tab>
-                            <Tabs.Tab value="favorites" fz="lg">
-                                Favorites
-                            </Tabs.Tab>
+                            <Tabs.Tab value="browse" fz="lg">Browse</Tabs.Tab>
+                            <Tabs.Tab value="favorites" fz="lg">Favorites</Tabs.Tab>
+                            <Tabs.Tab value="trending" fz="lg">Trending</Tabs.Tab>
                         </Tabs.List>
 
                         <Tabs.Panel value="browse" pt="xl">
@@ -60,6 +58,12 @@ export default function RestaurantsPage() {
                                 <Stack gap="xl" mt="lg">
                                     <FavoritesList />
                                 </Stack>
+                            </RestaurantsProvider>
+                        </Tabs.Panel>
+
+                        <Tabs.Panel value="trending" pt="xl">
+                            <RestaurantsProvider>
+                                <TrendingRestaurants />
                             </RestaurantsProvider>
                         </Tabs.Panel>
                     </Tabs>

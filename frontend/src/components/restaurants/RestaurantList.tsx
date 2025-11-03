@@ -63,7 +63,6 @@ export default function RestaurantList(): React.ReactElement {
     const router = useRouter();
     const { items, loading, refresh, filter, tagQuery, fetchTags } = useRestaurants();
     const { user } = useAuth();
-
     const userId = user?.id;
 
     const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -96,10 +95,8 @@ export default function RestaurantList(): React.ReactElement {
     const toggleFav = useCallback(
         async (id: string) => {
             if (!userId) return;
-
             const willFav = !favorites.has(id);
 
-            // optimistic
             const next = new Set(favorites);
             if (willFav) next.add(id);
             else next.delete(id);
@@ -123,9 +120,7 @@ export default function RestaurantList(): React.ReactElement {
                     if (!res.ok) throw new Error("DELETE failed");
                 }
             } catch {
-                // rollback on error
-                const rollback = new Set(favorites);
-                setFavorites(rollback);
+                setFavorites(new Set(favorites));
             } finally {
                 setSyncingId(null);
             }
@@ -133,7 +128,22 @@ export default function RestaurantList(): React.ReactElement {
         [favorites, userId]
     );
 
-    // --- Filtering (unchanged) ---
+    const bumpTrending = useCallback(async (id: string, name: string) => {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 300); // don’t block navigation
+        try {
+            await fetch(`${Endpoint}/rest_trending/view`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ restaurant_id: id, name }),
+                signal: controller.signal,
+            });
+        } catch {
+        } finally {
+            clearTimeout(t);
+        }
+    }, []);
+
     const textFiltered = useMemo(() => {
         const q = (filter || "").toLowerCase().trim();
         if (!q) return items;
@@ -202,7 +212,9 @@ export default function RestaurantList(): React.ReactElement {
                         withBorder
                         radius="md"
                         p="md"
-                        onClick={() => {
+                        onClick={async () => {
+                            await bumpTrending(r.id, r.name);
+
                             sessionStorage.setItem(
                                 "selected_restaurant",
                                 JSON.stringify({

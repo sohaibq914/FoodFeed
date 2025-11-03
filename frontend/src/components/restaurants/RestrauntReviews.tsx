@@ -70,6 +70,7 @@ export default function RestaurantReviews(): React.ReactElement {
             rating,
         });
 
+
         if (error) {
             setErr(error?.message ?? error?.error ?? String(error));
         } else {

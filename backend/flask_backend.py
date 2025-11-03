@@ -1536,6 +1536,71 @@ def remove_restaurant_favorite():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/rest_trending/view", methods=["POST"])
+def rest_trending_increment_view():
+
+    try:
+        data = request.get_json(force=True) or {}
+        rid = (data.get("restaurant_id") or "").strip()
+        rname = (data.get("name") or "").strip()
+
+        if not rid:
+            return jsonify({"error": "restaurant_id is required"}), 400
+
+        existing = (
+            supabase.table("rest_trending")
+            .select("id,count")
+            .eq("r_id", rid)
+            .limit(1)
+            .execute()
+        )
+
+        if existing.data:
+            row = existing.data[0]
+            new_count = int(row.get("count") or 0) + 1
+            updated = (
+                supabase.table("rest_trending")
+                .update({"count": new_count})
+                .eq("r_id", rid)
+                .execute()
+            )
+            out = updated.data[0] if updated.data else {"r_id": rid, "count": new_count, "r_name": rname}
+            return jsonify({"trending": out}), 200
+        else:
+            inserted = (
+                supabase.table("rest_trending")
+                .insert({"r_id": rid, "r_name": rname, "count": 1})
+                .execute()
+            )
+            out = inserted.data[0] if inserted.data else {"r_id": rid, "r_name": rname, "count": 1}
+            return jsonify({"trending": out}), 201
+
+    except Exception as e:
+        print(f"/rest_trending/view error: {e}")
+        return jsonify({"error": "Failed to increment trending"}), 500
+
+
+@app.route("/rest_trending", methods=["GET"])
+def rest_trending_list():
+
+    try:
+        limit = 20
+
+        res = (
+            supabase.table("rest_trending")
+            .select("r_id,r_name,count")
+            .order("count", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return jsonify({"trending": res.data or []}), 200
+
+    except Exception as e:
+        print(f"/rest_trending error: {e}")
+        return jsonify({"error": "Failed to fetch trending"}), 500
+
+
+
 if __name__ == "__main__":
     socketio.run(app, host='0.0.0.0', debug=True,
                  port=5001, allow_unsafe_werkzeug=True)
