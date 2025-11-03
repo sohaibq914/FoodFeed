@@ -121,7 +121,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         if (image) {
           fd.append("image", image)
         }
-        fd.append("tags", JSON.stringify(tags))
+        fd.append("tags", JSON.stringify(tags).toLowerCase())
 
         const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
         const data = await response.json();
