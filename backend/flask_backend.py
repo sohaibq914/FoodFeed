@@ -549,6 +549,7 @@ def update_recipe_handler():
             allergens = f.get("allergens")
             posting = f.get("posting")
             images = file
+            tags = f.get("tags")
         else:
             print("data")
             data = request.get_json()
@@ -562,6 +563,7 @@ def update_recipe_handler():
             allergens = data.get("allergens")
             posting = data.get("posting")
             images = None
+            tags = data.get("tags")
 
         if not author or not title or not desc or not ingredients or not instructions:
             return jsonify({"error": "Missing author, title, description, ingredients, or instructions"}), 400
@@ -572,7 +574,7 @@ def update_recipe_handler():
             posting = False
 
         result = update_recipe(
-            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images)
+            id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images, tags)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400

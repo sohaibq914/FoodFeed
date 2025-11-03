@@ -16,7 +16,8 @@ import {
   FileInput,
   Image,
   Group,
-  CloseButton
+  CloseButton,
+  TagsInput
 } from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
@@ -30,6 +31,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   const [allergens, setAllergens] = useState("");
   const [files, setFiles] = useState<File | null>(null);
   const [previews, setPreviews] = useState<string>();
+  const [tags, setTags] = useState<string[]>([]);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -72,15 +74,18 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         body: JSON.stringify({ recipe_id }),
       });
 
+
       const data = await response.json();
+
       if (response.ok) {
         setTitle(data.title || "");
         setDesc(data.description || "");
         setIngredients(data.ingredients || "");
         setInstructions(data.instructions || "");
-        setNutrition(data.nutrition || "");
+        setNutrition(data.nutrition_facts || "");
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
+        setTags(JSON.parse(data.tags) || [])
       } else {
         router.push("/edit-recipe/new");
       }
@@ -100,10 +105,11 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     nutrition: string,
     allergens: string,
     posting: boolean,
-    image: File | null
+    image: File | null,
+    //tags: string[]
   ) => {
     try {
-      if (image) {
+      //if (image) {
         const fd = new FormData();
         fd.append("recipe_id", recipe_id);
         fd.append("author", author);
@@ -114,41 +120,45 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         fd.append("nutrition", nutrition);
         fd.append("allergens", allergens);
         fd.append("posting", String(posting));
-        fd.append("image", image)
+        if (image) {
+          fd.append("image", image)
+        }
+        fd.append("tags", JSON.stringify(tags))
 
         const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
         const data = await response.json();
         if (!response.ok) throw new Error(data?.error || "Failed to update");
         else 
-          // ✅ Redirect to dashboard after success
+          // ✅ Reload page after success
           router.push("/edit-recipe/" + data.recipe_id);
-      }
-      else {
-        const response = await fetch("http://localhost:5001/update_recipe", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipe_id,
-            author,
-            title,
-            description,
-            ingredients,
-            instructions,
-            nutrition,
-            allergens,
-            posting,
-            image
-          }),
-        });
+      //}
+      //else {
+      //  const response = await fetch("http://localhost:5001/update_recipe", {
+      //    method: "POST",
+      //    headers: { "Content-Type": "application/json" },
+      //    body: JSON.stringify({
+      //      recipe_id,
+      //      author,
+      //      title,
+      //      description,
+      //      ingredients,
+      //      instructions,
+      //      nutrition,
+      //      allergens,
+      //      posting,
+      //      image,
+      //      tags
+      //    }),
+      //  });
 
-        const data = await response.json();
-        console.log("data:" + data.recipe_id)
+      //  const data = await response.json();
+      //  console.log("data:" + data.recipe_id)
 
-        if (!response.ok) throw new Error(data?.error || "Failed to update")
-        else 
-          // ✅ Redirect to dashboard after success
-          router.push("/edit-recipe/" + data.recipe_id);
-      }
+      //  if (!response.ok) throw new Error(data?.error || "Failed to update")
+      //  else 
+      //    // ✅ Redirect to dashboard after success
+      //    router.push("/edit-recipe/" + data.recipe_id);
+      //}
 
     } catch (err) {
       console.error(err);
@@ -188,7 +198,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       nutrition,
       allergens,
       posting,
-      files
+      files,
     );
 
     setLoading(false);
@@ -280,6 +290,14 @@ export default function RecipeEditor(params: { recipe_id: string }) {
               size="md"
             />
 
+            <TagsInput
+              label="Tags"
+              placeholder="Type a tag and press enter"
+              value={tags}
+              onChange={setTags}
+              size="md"
+            />
+
             <FileInput
               label="Add an Image"
               placeholder="Click to upload an image"
@@ -304,6 +322,8 @@ export default function RecipeEditor(params: { recipe_id: string }) {
                   </CloseButton>
                 </Group>
             )}
+
+
 
             {error && (
               <Alert color="red" variant="filled">

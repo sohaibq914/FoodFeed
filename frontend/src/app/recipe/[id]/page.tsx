@@ -38,6 +38,7 @@ type Recipe = {
   like_count?: number;
   user_has_liked?: boolean;
   image?: string;
+  tags: Array<string>;
 };
 
 type RecipeComment = {
@@ -59,6 +60,7 @@ export default function RecipePage() {
   const { user } = useAuth();
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [tags, setTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -99,6 +101,8 @@ export default function RecipePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipe");
 
         setRecipe(data as Recipe);
+        setTags(JSON.parse(data.tags))
+        console.log(recipe)
         setLikeCount(data.like_count ?? 0);
         setIsLiked(Boolean(data.user_has_liked));
       } catch (e: any) {
@@ -351,6 +355,13 @@ export default function RecipePage() {
   const authorUsername =
     recipe.users?.username || (recipe.author_id ?? "Unknown");
 
+  const test = () => {
+    console.log(recipe)
+    console.log(recipe.tags)
+
+    return true
+  }
+
   return (
     <AppShell header={{ height: 64 }} padding="md">
       <AppShell.Header>
@@ -458,6 +469,19 @@ export default function RecipePage() {
                     Allergens
                   </Text>
                   <Text>{recipe.allergens}</Text>
+                </>
+              )}
+
+              {test() && recipe.tags && (
+                <>
+                  <Text fw={600} mt="md">
+                    Tags
+                  </Text>
+                  <Group>
+                    {tags.map((tag, index) => {
+                      return <Text key={index}>{tag}</Text>
+                    })}
+                  </Group> 
                 </>
               )}
             </Stack>

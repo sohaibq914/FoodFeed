@@ -390,7 +390,7 @@ def insert_r_tags(restaurant_id, tags):
 # Recipe methods
 
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, tags):
     try:
         image_url = None
         if images:
@@ -406,12 +406,12 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
             print("new row")
             response = supabase.table('recipes').insert({
                 "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url, "tags": tags}).execute()
         else:
             print("update")
             response = supabase.table('recipes').upsert({
                 "recipe_id": id, "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
-                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url}).execute()
+                "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens, "posted": posting, "image": image_url, "tags": tags}).execute()
 
         print(f"Recipe upsert response: {response}")
 
