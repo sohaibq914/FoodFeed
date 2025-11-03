@@ -5,7 +5,7 @@ from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_u
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
     upload_profile_picture, get_user_profile, follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
-    block_user, unblock_user, check_is_blocked, get_blocked_users
+    block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -1689,6 +1689,212 @@ def get_blocked_users_handler():
     except Exception as e:
         print(f"Get blocked users exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+# ==================== RESTAURANT REVIEWS ROUTES ====================
+
+@app.route("/restaurant_reviews", methods=["GET"])
+def restaurant_reviews_list():
+
+    rid = (request.args.get("restaurant_id") or "").strip()
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    rows = fetch_restaurant_reviews(rid)
+    if isinstance(rows, dict) and "error" in rows:
+        return jsonify({"error": rows["error"]}), 400
+
+    return jsonify({"reviews": rows}), 200
+
+
+@app.route("/restaurant_reviews", methods=["POST"])
+def restaurant_reviews_create():
+
+    data = request.get_json(silent=True) or {}
+    rid = (data.get("restaurant_id") or "").strip()
+    author = (data.get("author") or "").strip()
+    print(author)
+    body = (data.get("text") or "").strip()
+    rating = data.get("rating")
+
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    try:
+        rating = int(rating)
+    except Exception:
+        return jsonify({"error": "rating must be an integer 1..5"}), 400
+
+    if rating < 1 or rating > 5:
+        return jsonify({"error": "rating must be between 1 and 5"}), 400
+
+    row = insert_restaurant_review(rid, author, body, rating)
+    if isinstance(row, dict) and "error" in row:
+        return jsonify({"error": row["error"]}), 400
+
+    return jsonify({"review": row}), 201
+
+
+@app.route("/restaurant_reviews/average", methods=["GET"])
+def restaurant_reviews_average():
+    rid = (request.args.get("restaurant_id") or "").strip()
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    try:
+        result = supabase.table("about_restuarant_review") \
+            .select("rating") \
+            .eq("r_id", rid) \
+            .execute()
+
+        rows = result.data or []
+        if not rows:
+            return jsonify({"avg_rating": None, "count": 0}), 200
+
+        ratings = [r["rating"]
+                   for r in rows if isinstance(r.get("rating"), (int, float))]
+        if not ratings:
+            return jsonify({"avg_rating": None, "count": 0}), 200
+
+        avg = sum(ratings) / len(ratings)
+        return jsonify({"avg_rating": round(avg, 2), "count": len(ratings)}), 200
+
+    except Exception as e:
+        print("AVG rating error:", e)
+        return jsonify({"error": "failed to compute average"}), 500
+
+
+@app.route("/restaurant_favorites", methods=["POST"])
+def add_restaurant_favorite():
+
+    try:
+        data = request.get_json() or {}
+        print(data)
+        restaurant_id = (data.get("restaurant_id") or "").strip()
+        user_id = (data.get("user") or "").strip()
+
+        if not restaurant_id or not user_id:
+            return jsonify({"error": "Missing restaurant_id or user"}), 400
+
+        res = supabase.table("rest_favs").insert({
+            "r_id": restaurant_id,
+            "user": user_id
+        }).execute()
+
+        return jsonify({"favorite": res.data[0] if res.data else None}), 201
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/restaurant_favorites", methods=["GET"])
+def list_restaurant_favorites():
+
+    try:
+        user_id = (request.args.get("user") or "").strip()
+        if not user_id:
+            return jsonify({"error": "Missing user"}), 400
+
+        res = supabase.table("rest_favs").select(
+            "r_id").eq("user", user_id).execute()
+        rows = res.data or []
+
+        return jsonify({"restaurants": [row["r_id"] for row in rows]}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/restaurant_favorites", methods=["DELETE"])
+def remove_restaurant_favorite():
+
+    try:
+        data = request.get_json(force=True) or {}
+        restaurant_id = (data.get("restaurant_id") or "").strip()
+        user_id = (data.get("user") or "").strip()
+
+        if not restaurant_id or not user_id:
+            return jsonify({"error": "Missing restaurant_id or user"}), 400
+
+        res = (
+            supabase.table("rest_favs")
+            .delete()
+            .eq("r_id", restaurant_id)
+            .eq("user", user_id)
+            .execute()
+        )
+
+        return jsonify({"deleted": len(res.data or [])}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/rest_trending/view", methods=["POST"])
+def rest_trending_increment_view():
+
+    try:
+        data = request.get_json(force=True) or {}
+        rid = (data.get("restaurant_id") or "").strip()
+        rname = (data.get("name") or "").strip()
+
+        if not rid:
+            return jsonify({"error": "restaurant_id is required"}), 400
+
+        existing = (
+            supabase.table("rest_trending")
+            .select("id,count")
+            .eq("r_id", rid)
+            .limit(1)
+            .execute()
+        )
+
+        if existing.data:
+            row = existing.data[0]
+            new_count = int(row.get("count") or 0) + 1
+            updated = (
+                supabase.table("rest_trending")
+                .update({"count": new_count})
+                .eq("r_id", rid)
+                .execute()
+            )
+            out = updated.data[0] if updated.data else {
+                "r_id": rid, "count": new_count, "r_name": rname}
+            return jsonify({"trending": out}), 200
+        else:
+            inserted = (
+                supabase.table("rest_trending")
+                .insert({"r_id": rid, "r_name": rname, "count": 1})
+                .execute()
+            )
+            out = inserted.data[0] if inserted.data else {
+                "r_id": rid, "r_name": rname, "count": 1}
+            return jsonify({"trending": out}), 201
+
+    except Exception as e:
+        print(f"/rest_trending/view error: {e}")
+        return jsonify({"error": "Failed to increment trending"}), 500
+
+
+@app.route("/rest_trending", methods=["GET"])
+def rest_trending_list():
+
+    try:
+        limit = 20
+
+        res = (
+            supabase.table("rest_trending")
+            .select("r_id,r_name,count")
+            .order("count", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return jsonify({"trending": res.data or []}), 200
+
+    except Exception as e:
+        print(f"/rest_trending error: {e}")
+        return jsonify({"error": "Failed to fetch trending"}), 500
 
 
 if __name__ == "__main__":

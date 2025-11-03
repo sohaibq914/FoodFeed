@@ -1339,3 +1339,63 @@ def get_blocked_users(user_id: str, limit: int = 50, offset: int = 0):
     except Exception as e:
         print(f"Error in get_blocked_users: {str(e)}")
         return {"error": str(e)}
+
+
+# Restaurant review methods
+
+def fetch_restaurant_reviews(restaurant_id: str):
+    """
+    Return normalized rows for a given restaurant_id (r_id).
+    Output keys: id, restaurant_id, author, text, rating
+    """
+    try:
+        res = (
+            supabase.table("about_restuarant_review")
+            .select("id,r_id,name,text,rating")
+            .eq("r_id", restaurant_id)
+            .order("id", desc=True)
+            .execute()
+        )
+        rows = res.data or []
+        norm = [
+            {
+                "id": r.get("id"),
+                "restaurant_id": r.get("r_id"),
+                "author": r.get("name"),
+                "text": r.get("text"),
+                "rating": r.get("rating"),
+            }
+            for r in rows
+        ]
+        return norm
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def insert_restaurant_review(restaurant_id: str, author_name: str, body_text: str, rating: int):
+    """
+    Insert then return a normalized row.
+    """
+    try:
+        payload = {
+            "r_id": restaurant_id,
+            "name": author_name,
+            "text": body_text,
+            "rating": int(rating),
+        }
+        res = supabase.table("about_restuarant_review").insert(
+            payload).execute()
+        if getattr(res, "error", None):
+            return {"error": str(res.error)}
+        if not res.data:
+            return {"error": "insert failed"}
+        r = res.data[0]
+        return {
+            "id": r.get("id"),
+            "restaurant_id": r.get("r_id"),
+            "author": r.get("name"),
+            "text": r.get("text"),
+            "rating": r.get("rating"),
+        }
+    except Exception as e:
+        return {"error": str(e)}
