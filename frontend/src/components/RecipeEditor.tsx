@@ -161,6 +161,8 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     setLoading(true);
     setError("");
 
+    console.log("Posting: " + posting)
+
     if (!user) {
       setError("User not logged in");
       setLoading(false);
@@ -309,19 +311,15 @@ export default function RecipeEditor(params: { recipe_id: string }) {
               </Alert>
             )}
 
-            <Flex justify="flex-start" gap="xl" align="center">
-              <Tooltip label="Post this recipe to your profile.">
-                <Checkbox
-                  checked={posting}
-                  onChange={(e) => setPosting(e.currentTarget.checked)}
-                  size="md"
-                  label="Post"
-                  labelPosition="left"
-                />
-              </Tooltip>
-
-              <Button type="submit" loading={loading} size="md">
-                {posting ? "Post to Profile" : "Save Draft"}
+            <Flex justify="center" gap="xl" align="center">
+              <Button type="submit" loading={loading} size="md"
+                onClick={() => setPosting(false)}>
+                {loading ? "Loading..." : "Save Draft"}
+                
+              </Button>
+              <Button type="submit"  loading={loading} size="md" 
+                onClick={() => setPosting(true)}>
+                {loading ? "Loading..." : "Post"}
               </Button>
             </Flex>
           </Stack>
