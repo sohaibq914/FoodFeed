@@ -20,7 +20,8 @@ import {
   Divider,
   Modal,
   AppShell,
-  Image
+  Image,
+  Select
 } from "@mantine/core";
 import Header from "@/components/Header";
 import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
@@ -29,7 +30,7 @@ type Recipe = {
   recipe_id: string;
   title: string;
   description?: string | null;
-  ingredients?: string | null;
+  ingredients?: [] | null;
   instructions?: string | null;
   nutrition_facts?: string | null;
   allergens?: string | null;
@@ -38,7 +39,7 @@ type Recipe = {
   like_count?: number;
   user_has_liked?: boolean;
   image?: string;
-  tags: Array<string>;
+  tags?: Array<string>;
 };
 
 type RecipeComment = {
@@ -52,6 +53,10 @@ type RecipeComment = {
   replies?: RecipeComment[];
 };
 
+const ingredientDefault = [
+  {name: "", quantity: 0, unit: ""},
+];
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
 export default function RecipePage() {
@@ -60,7 +65,9 @@ export default function RecipePage() {
   const { user } = useAuth();
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [ingredients, setIngredients] = useState(ingredientDefault);
   const [tags, setTags] = useState<string[]>([]);
+  const [portion, setPortion] = useState<string | null>('1');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +108,7 @@ export default function RecipePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipe");
 
         setRecipe(data as Recipe);
+        setIngredients(JSON.parse(data.ingredients))
         setTags(JSON.parse(data.tags))
         console.log(recipe)
         setLikeCount(data.like_count ?? 0);
@@ -436,12 +444,20 @@ export default function RecipePage() {
                 </>
               )}
 
-              {recipe.ingredients && (
+              {ingredients && (
                 <>
                   <Text fw={600} mt="md">
                     Ingredients
                   </Text>
-                  <Text>{recipe.ingredients}</Text>
+                  
+                  <Group>
+                  <Select label="Portion" value={portion} onChange={(value) => setPortion(value)} data={['0.5', '1', '2', '3']} allowDeselect={false} ></Select>
+                  </Group>
+                  <Stack>
+                    {ingredients.map((ingredient, index) => {
+                      return <Text key={index}> {ingredient.name}: {ingredient.quantity * Number(portion)} {ingredient.unit} </Text>
+                    })}
+                  </Stack> 
                 </>
               )}
 
@@ -472,7 +488,7 @@ export default function RecipePage() {
                 </>
               )}
 
-              {test() && recipe.tags && (
+              {recipe.tags && (
                 <>
                   <Text fw={600} mt="md">
                     Tags
