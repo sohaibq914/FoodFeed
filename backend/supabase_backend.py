@@ -395,7 +395,7 @@ def insert_r_tags(restaurant_id, tags):
 
 # Recipe methods
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
 
     try:
         image_url = None
