@@ -3,8 +3,27 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon, Avatar, Badge, Divider } from "@mantine/core";
-import { IconHeart, IconHeartFilled, IconUser, IconLock } from "@tabler/icons-react";
+import {
+  Container,
+  Title,
+  Text,
+  Center,
+  Loader,
+  AppShell,
+  Card,
+  Stack,
+  Group,
+  ActionIcon,
+  Avatar,
+  Badge,
+  Divider,
+} from "@mantine/core";
+import {
+  IconHeart,
+  IconHeartFilled,
+  IconUser,
+  IconLock,
+} from "@tabler/icons-react";
 import Header from "@/components/Header";
 
 type RecipeSummary = {
@@ -97,7 +116,9 @@ export default function Dashboard() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
 
         // show only posted
-        const postedOnly: RecipeSummary[] = (data.recipes || []).filter((r: any) => r.posted === true);
+        const postedOnly: RecipeSummary[] = (data.recipes || []).filter(
+          (r: any) => r.posted === true
+        );
 
         // fetch likes ONLY for posted ones
         const withLikes = await Promise.all(
@@ -106,10 +127,14 @@ export default function Dashboard() {
               const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ recipe_id: recipe.recipe_id, user_id: user.id }),
+                body: JSON.stringify({
+                  recipe_id: recipe.recipe_id,
+                  user_id: user.id,
+                }),
               });
               const likeData = await likeRes.json();
-              if (!likeRes.ok) throw new Error(likeData?.error || "like fetch failed");
+              if (!likeRes.ok)
+                throw new Error(likeData?.error || "like fetch failed");
               return {
                 ...recipe,
                 like_count: likeData.like_count || 0,
@@ -132,7 +157,11 @@ export default function Dashboard() {
     fetchRecipes();
   }, [user]);
 
-  const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean) => {
+  const handleLikeToggle = async (
+    e: React.MouseEvent,
+    recipeId: string,
+    isCurrentlyLiked: boolean
+  ) => {
     e.preventDefault(); // Prevent navigation to recipe page
     e.stopPropagation();
 
@@ -141,7 +170,9 @@ export default function Dashboard() {
     setAnimatingRecipe(recipeId);
 
     try {
-      const endpoint = isCurrentlyLiked ? `http://localhost:5001/recipes/${recipeId}/unlike` : `http://localhost:5001/recipes/${recipeId}/like`;
+      const endpoint = isCurrentlyLiked
+        ? `http://localhost:5001/recipes/${recipeId}/unlike`
+        : `http://localhost:5001/recipes/${recipeId}/like`;
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -154,7 +185,13 @@ export default function Dashboard() {
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
       // Update the recipe in the list
-      setRecipes((prev) => prev.map((r) => (r.recipe_id === recipeId ? { ...r, like_count: data.like_count, user_has_liked: data.liked } : r)));
+      setRecipes((prev) =>
+        prev.map((r) =>
+          r.recipe_id === recipeId
+            ? { ...r, like_count: data.like_count, user_has_liked: data.liked }
+            : r
+        )
+      );
     } catch (err: any) {
       console.error("Error updating like:", err);
     } finally {
@@ -164,7 +201,10 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <Container size="lg" style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+      <Container
+        size="lg"
+        style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}
+      >
         <Center style={{ width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <Loader size="lg" />
@@ -242,18 +282,36 @@ export default function Dashboard() {
               {!feedLoading &&
                 !feedError &&
                 feedRecipes.map((recipe) => (
-                  <Card key={recipe.recipe_id} withBorder p="md" component={Link} href={`/recipe/${recipe.recipe_id}`} style={{ textDecoration: "none", cursor: "pointer" }}>
+                  <Card
+                    key={recipe.recipe_id}
+                    withBorder
+                    p="md"
+                    component={Link}
+                    href={`/recipe/${recipe.recipe_id}`}
+                    style={{ textDecoration: "none", cursor: "pointer" }}
+                  >
                     <Stack gap="xs">
                       {/* Author Info */}
                       <Group gap="sm">
-                        <Avatar src={recipe.author.profile_picture_url || undefined} radius="xl" size="sm" color="blue">
+                        <Avatar
+                          src={recipe.author.profile_picture_url || undefined}
+                          radius="xl"
+                          size="sm"
+                          color="blue"
+                        >
                           <IconUser size={16} />
                         </Avatar>
                         <div style={{ flex: 1 }}>
                           <Group gap="xs">
-                            <Text size="sm" fw={500} component={Link} href={`/${recipe.author.username}`} onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none", color: "inherit" }}>
+                            <Text
+                              size="sm"
+                              fw={500}
+                              component="span"
+                              style={{ color: "inherit" }} 
+                            >
                               @{recipe.author.username}
                             </Text>
+
                             <Text size="xs" c="dimmed">
                               • {formatTimestamp(recipe.timestamp)}
                             </Text>
@@ -264,7 +322,12 @@ export default function Dashboard() {
                             Following
                           </Badge>
                           {recipe.visibility === "private" && (
-                            <Badge size="sm" variant="light" color="orange" leftSection={<IconLock size={12} />}>
+                            <Badge
+                              size="sm"
+                              variant="light"
+                              color="orange"
+                              leftSection={<IconLock size={12} />}
+                            >
                               Private
                             </Badge>
                           )}
@@ -285,8 +348,23 @@ export default function Dashboard() {
 
                       {/* Recipe Image */}
                       {recipe.image && (
-                        <div style={{ width: "100%", height: "200px", overflow: "hidden", borderRadius: "8px" }}>
-                          <img src={recipe.image} alt={recipe.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <div
+                          style={{
+                            width: "100%",
+                            height: "200px",
+                            overflow: "hidden",
+                            borderRadius: "8px",
+                          }}
+                        >
+                          <img
+                            src={recipe.image}
+                            alt={recipe.title}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
+                            }}
+                          />
                         </div>
                       )}
 
@@ -295,7 +373,8 @@ export default function Dashboard() {
                         <Group gap={4}>
                           <IconHeart size={16} />
                           <Text size="sm" c="dimmed">
-                            {recipe.like_count} {recipe.like_count === 1 ? "like" : "likes"}
+                            {recipe.like_count}{" "}
+                            {recipe.like_count === 1 ? "like" : "likes"}
                           </Text>
                         </Group>
                       </Group>
@@ -326,26 +405,54 @@ export default function Dashboard() {
                   <Text c="dimmed">No recipes found.</Text>
                 ) : (
                   recipes.map((r) => (
-                    <Card key={r.recipe_id} withBorder component={Link} href={`/recipe/${r.recipe_id}`} style={{ textDecoration: "none", cursor: "pointer" }}>
+                    <Card
+                      key={r.recipe_id}
+                      withBorder
+                      component={Link}
+                      href={`/recipe/${r.recipe_id}`}
+                      style={{ textDecoration: "none", cursor: "pointer" }}
+                    >
                       <Group justify="space-between" align="center">
                         <Text fw={500} style={{ flex: 1 }}>
                           {r.title || "(untitled)"}
                         </Text>
-                        <Group gap="xs" align="center" onClick={(e) => e.preventDefault()}>
+                        <Group
+                          gap="xs"
+                          align="center"
+                          onClick={(e) => e.preventDefault()}
+                        >
                           <ActionIcon
                             variant={r.user_has_liked ? "filled" : "light"}
                             color={r.user_has_liked ? "red" : "gray"}
                             size="md"
                             radius="xl"
-                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_liked || false)}
+                            onClick={(e) =>
+                              handleLikeToggle(
+                                e,
+                                r.recipe_id,
+                                r.user_has_liked || false
+                              )
+                            }
                             style={{
                               transition: "all 0.2s ease",
-                              transform: animatingRecipe === r.recipe_id ? "scale(1.2)" : "scale(1)",
+                              transform:
+                                animatingRecipe === r.recipe_id
+                                  ? "scale(1.2)"
+                                  : "scale(1)",
                             }}
                           >
-                            {r.user_has_liked ? <IconHeartFilled size={16} /> : <IconHeart size={16} />}
+                            {r.user_has_liked ? (
+                              <IconHeartFilled size={16} />
+                            ) : (
+                              <IconHeart size={16} />
+                            )}
                           </ActionIcon>
-                          <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
+                          <Text
+                            size="sm"
+                            fw={500}
+                            c="dimmed"
+                            style={{ minWidth: "20px", textAlign: "center" }}
+                          >
                             {r.like_count || 0}
                           </Text>
                         </Group>
