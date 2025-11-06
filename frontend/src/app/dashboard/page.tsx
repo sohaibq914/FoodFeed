@@ -39,7 +39,9 @@ export default function Dashboard() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
-  const [animatingRecipe, setAnimatingRecipe] = useState<string | null>(null);
+  const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(null);
+  const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<string | null>(null);
+
 
   // Feed state
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
@@ -149,7 +151,7 @@ export default function Dashboard() {
 
     if (!user) return;
 
-    setAnimatingRecipe(recipeId);
+    is_dislike ? setAnimatingRecipeDislike(recipeId) : setAnimatingRecipeLike(recipeId)
 
     try {
       const endpoint = isCurrentlyLiked
@@ -176,7 +178,8 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error("Error updating like:", err);
     } finally {
-      setTimeout(() => setAnimatingRecipe(null), 300);
+      setTimeout(() => setAnimatingRecipeLike(null), 300);
+      setTimeout(() => setAnimatingRecipeDislike(null), 300);
     }
   };
 
@@ -411,7 +414,7 @@ export default function Dashboard() {
                             style={{
                               transition: "all 0.2s ease",
                               transform:
-                                animatingRecipe === r.recipe_id
+                                animatingRecipeLike === r.recipe_id
                                   ? "scale(1.2)"
                                   : "scale(1)",
                             }}
@@ -438,7 +441,7 @@ export default function Dashboard() {
                             onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_disliked || false, true)}
                             style={{
                               transition: "all 0.2s ease",
-                              transform: animatingRecipe === r.recipe_id ? "scale(1.2)" : "scale(1)",
+                              transform: animatingRecipeDislike === r.recipe_id ? "scale(1.2)" : "scale(1)",
                             }}
                           >
                             {r.user_has_disliked ? <IconHeartBrokenFilled size={16} /> : <IconHeartBroken size={16} />}

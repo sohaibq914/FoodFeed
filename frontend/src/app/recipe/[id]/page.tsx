@@ -24,7 +24,7 @@ import {
   Select,
 } from "@mantine/core";
 import Header from "@/components/Header";
-import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
+import { IconHeart, IconHeartFilled, IconHeartBroken, IconHeartBrokenFilled, IconTrash } from "@tabler/icons-react";
 import { CopyButton, Tooltip, TextInput } from "@mantine/core";
 import { IconShare3, IconCheck, IconCopy } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
@@ -41,6 +41,8 @@ type Recipe = {
   users?: { username?: string | null } | null;
   like_count?: number;
   user_has_liked?: boolean;
+  dislike_count?: number;
+  user_has_disliked?: boolean;
   image?: string;
   tags?: Array<string>;
 };
@@ -74,7 +76,13 @@ export default function RecipePage() {
 
   const [likeCount, setLikeCount] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [dislikeCount, setDislikeCount] = useState(0);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [isAnimatingLike, setIsAnimatingLike] = useState(false);
+  const [isAnimatingDislike, setIsAnimatingDislike] = useState(false);
+
+  const [animatingRecipe, setAnimatingRecipe] = useState<string | null>(null);
+
   const [likeLoading, setLikeLoading] = useState(false);
 
   // Comments
@@ -160,35 +168,48 @@ export default function RecipePage() {
     // Consider using toLocaleString with a set timezone if you want consistency.
   };
 
-  const handleLikeToggle = async () => {
+const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, is_dislike: boolean) => {
     if (!user) {
       alert("Please log in to like recipes");
       return;
     }
     if (likeLoading) return;
 
+    if (!user) return;
+
     setLikeLoading(true);
-    setIsAnimating(true);
+    is_dislike ? setIsAnimatingDislike(true) : setIsAnimatingLike(true)
+
     try {
-      const endpoint = isLiked
+      const endpoint = isCurrentlyLiked
         ? `${API_BASE}/recipes/${recipeId}/unlike`
         : `${API_BASE}/recipes/${recipeId}/like`;
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
+        body: JSON.stringify({ user_id: user.id, is_dislike: is_dislike }),
       });
+
       const data = await res.json();
+      console.log(data)
+      
+
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
-      setLikeCount(data.like_count);
-      setIsLiked(Boolean(data.liked));
-    } catch (e: any) {
-      console.error("Error updating like:", e);
-      alert(e.message || "Failed to update like");
+      // Update the UI
+      if (recipe) {
+        setRecipe({ ...recipe, like_count: data.like_count, dislike_count: data.dislike_count, 
+          user_has_liked: data.liked, user_has_disliked: data.disliked });
+      }
+    } catch (err: any) {
+      console.error("Error updating like:", err);
+      alert(err.message || "Failed to update like");
     } finally {
       setLikeLoading(false);
-      setTimeout(() => setIsAnimating(false), 300);
+      setTimeout(() => setIsAnimatingLike(false), 300);
+      setTimeout(() => setIsAnimatingDislike(false), 300);
+
     }
   };
 
@@ -418,27 +439,54 @@ export default function RecipePage() {
             </div>
 
             <Group gap="xs" align="center">
+              {/*
+                Like and Dislike buttons
+              */}
+
               <ActionIcon
-                variant={isLiked ? "filled" : "light"}
-                color={isLiked ? "red" : "gray"}
-                size="lg"
+                variant={recipe.user_has_liked ? "filled" : "light"}
+                color={recipe.user_has_liked ? "red" : "gray"}
+                size="md"
                 radius="xl"
-                onClick={handleLikeToggle}
+                onClick={(e) => handleLikeToggle(e, recipe.user_has_liked || false, false)}
                 disabled={likeLoading}
                 style={{
                   transition: "all 0.2s ease",
-                  transform: isAnimating ? "scale(1.2)" : "scale(1)",
+                  transform:
+                    isAnimatingLike
+                      ? "scale(1.2)"
+                      : "scale(1)",
                 }}
-                aria-label={isLiked ? "Unlike" : "Like"}
               >
-                {isLiked ? (
-                  <IconHeartFilled size={20} />
+                {recipe.user_has_liked ? (
+                  <IconHeartFilled size={16} />
                 ) : (
-                  <IconHeart size={20} />
+                  <IconHeart size={16} />
                 )}
               </ActionIcon>
-              <Text fw={600} size="lg">
-                {likeCount}
+              <Text
+                size="sm"
+                fw={500}
+                c="dimmed"
+                style={{ minWidth: "20px", textAlign: "center" }}
+              >
+                {recipe.like_count || 0}
+              </Text>
+              <ActionIcon
+                variant={recipe.user_has_disliked ? "filled" : "light"}
+                color={recipe.user_has_disliked ? "red" : "gray"}
+                size="md"
+                radius="xl"
+                onClick={(e) => handleLikeToggle(e, recipe.user_has_disliked || false, true)}
+                style={{
+                  transition: "all 0.2s ease",
+                  transform: isAnimatingDislike ? "scale(1.2)" : "scale(1)",
+                }}
+              >
+                {recipe.user_has_disliked ? <IconHeartBrokenFilled size={16} /> : <IconHeartBroken size={16} />}
+              </ActionIcon>
+              <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
+                {recipe.dislike_count || 0}
               </Text>
             </Group>
 
