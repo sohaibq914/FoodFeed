@@ -55,6 +55,7 @@ interface RestaurantsContextType {
     restaurantReviewsLoading: boolean;
     restaurantReviewsError: string | null;
     refreshRestaurantReviews: (restaurant_id?: string) => Promise<{ data: any; error: any }>;
+    fetchRestaurantAverageRating: (restaurant_id: string) => Promise<any>;
 
 }
 
