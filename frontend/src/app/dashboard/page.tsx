@@ -4,14 +4,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon, Avatar, Badge, Divider } from "@mantine/core";
-import { IconHeart, IconHeartFilled, IconUser, IconLock } from "@tabler/icons-react";
+import { IconHeart, IconHeartFilled, IconHeartBroken, IconHeartBrokenFilled, IconUser, IconLock } from "@tabler/icons-react";
 import Header from "@/components/Header";
 
 type RecipeSummary = {
   recipe_id: string;
   title: string;
   like_count?: number;
+  dislike_count?: number;
   user_has_liked?: boolean;
+  user_has_disliked?: boolean
 };
 
 type FeedRecipe = {
@@ -21,6 +23,7 @@ type FeedRecipe = {
   image?: string;
   timestamp: string;
   like_count: number;
+  dislike_count: number;
   visibility?: string;
   author: {
     id: string;
@@ -109,14 +112,17 @@ export default function Dashboard() {
                 body: JSON.stringify({ recipe_id: recipe.recipe_id, user_id: user.id }),
               });
               const likeData = await likeRes.json();
+              console.log(likeData)
               if (!likeRes.ok) throw new Error(likeData?.error || "like fetch failed");
               return {
                 ...recipe,
                 like_count: likeData.like_count || 0,
                 user_has_liked: likeData.user_has_liked || false,
+                dislike_count: likeData.dislike_count || 0,
+                user_has_disliked: likeData.user_has_disliked || false,
               };
             } catch {
-              return { ...recipe, like_count: 0, user_has_liked: false };
+              return { ...recipe, like_count: 0, user_has_liked: false, dislike_count: 0, user_has_disliked: false, };
             }
           })
         );
@@ -132,7 +138,7 @@ export default function Dashboard() {
     fetchRecipes();
   }, [user]);
 
-  const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean) => {
+  const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean, is_dislike: boolean) => {
     e.preventDefault(); // Prevent navigation to recipe page
     e.stopPropagation();
 
@@ -141,20 +147,23 @@ export default function Dashboard() {
     setAnimatingRecipe(recipeId);
 
     try {
+      
       const endpoint = isCurrentlyLiked ? `http://localhost:5001/recipes/${recipeId}/unlike` : `http://localhost:5001/recipes/${recipeId}/like`;
 
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
+        body: JSON.stringify({ user_id: user.id, is_dislike: is_dislike }),
       });
 
       const data = await res.json();
+      console.log(data)
+      
 
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
       // Update the recipe in the list
-      setRecipes((prev) => prev.map((r) => (r.recipe_id === recipeId ? { ...r, like_count: data.like_count, user_has_liked: data.liked } : r)));
+      setRecipes((prev) => prev.map((r) => (r.recipe_id === recipeId ? { ...r, like_count: data.like_count, user_has_liked: data.liked, dislike_count: data.dislike_count, user_has_disliked: data.disliked } : r)));
     } catch (err: any) {
       console.error("Error updating like:", err);
     } finally {
@@ -337,7 +346,7 @@ export default function Dashboard() {
                             color={r.user_has_liked ? "red" : "gray"}
                             size="md"
                             radius="xl"
-                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_liked || false)}
+                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_liked || false, false)}
                             style={{
                               transition: "all 0.2s ease",
                               transform: animatingRecipe === r.recipe_id ? "scale(1.2)" : "scale(1)",
@@ -347,6 +356,22 @@ export default function Dashboard() {
                           </ActionIcon>
                           <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
                             {r.like_count || 0}
+                          </Text>
+                          <ActionIcon
+                            variant={r.user_has_disliked ? "filled" : "light"}
+                            color={r.user_has_disliked ? "red" : "gray"}
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_disliked || false, true)}
+                            style={{
+                              transition: "all 0.2s ease",
+                              transform: animatingRecipe === r.recipe_id ? "scale(1.2)" : "scale(1)",
+                            }}
+                          >
+                            {r.user_has_disliked ? <IconHeartBrokenFilled size={16} /> : <IconHeartBroken size={16} />}
+                          </ActionIcon>
+                          <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
+                            {r.dislike_count || 0}
                           </Text>
                         </Group>
                       </Group>
