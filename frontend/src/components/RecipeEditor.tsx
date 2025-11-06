@@ -114,8 +114,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setTags(JSON.parse(data.tags) || [])
 
         console.log(user)
+        console.log("author id: " + data.author_id)
 
-        if (user === null || author !== user.id) {
+        if (user === null || data.author_id !== user.id) {
           console.log("illegal!")
           router.push("/dashboard/");
         }
