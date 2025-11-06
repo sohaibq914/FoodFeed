@@ -21,10 +21,13 @@ import {
   Modal,
   AppShell,
   Image,
-  Select
+  Select,
 } from "@mantine/core";
 import Header from "@/components/Header";
 import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
+import { CopyButton, Tooltip, TextInput } from "@mantine/core";
+import { IconShare3, IconCheck, IconCopy } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 
 type Recipe = {
   recipe_id: string;
@@ -53,9 +56,7 @@ type RecipeComment = {
   replies?: RecipeComment[];
 };
 
-const ingredientDefault = [
-  {name: "", quantity: 0, unit: ""},
-];
+const ingredientDefault = [{ name: "", quantity: 0, unit: "" }];
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
@@ -67,7 +68,7 @@ export default function RecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [ingredients, setIngredients] = useState(ingredientDefault);
   const [tags, setTags] = useState<string[]>([]);
-  const [portion, setPortion] = useState<string | null>('1');
+  const [portion, setPortion] = useState<string | null>("1");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +90,14 @@ export default function RecipePage() {
   const [replyContent, setReplyContent] = useState("");
   const [replyLoading, setReplyLoading] = useState(false);
 
+  const [shareOpen, { open: openShare, close: closeShare }] =
+    useDisclosure(false);
+
+  const shareUrl =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}/recipe/${recipeId}`;
+
   // Fetch recipe
   useEffect(() => {
     if (!recipeId) return;
@@ -108,9 +117,9 @@ export default function RecipePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipe");
 
         setRecipe(data as Recipe);
-        setIngredients(JSON.parse(data.ingredients))
-        setTags(JSON.parse(data.tags))
-        console.log(recipe)
+        setIngredients(JSON.parse(data.ingredients));
+        setTags(JSON.parse(data.tags));
+        console.log(recipe);
         setLikeCount(data.like_count ?? 0);
         setIsLiked(Boolean(data.user_has_liked));
       } catch (e: any) {
@@ -364,11 +373,11 @@ export default function RecipePage() {
     recipe.users?.username || (recipe.author_id ?? "Unknown");
 
   const test = () => {
-    console.log(recipe)
-    console.log(recipe.tags)
+    console.log(recipe);
+    console.log(recipe.tags);
 
-    return true
-  }
+    return true;
+  };
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -395,7 +404,8 @@ export default function RecipePage() {
                   {authorUsername}
                 </Link>
               </Text>
-              {recipe.image && <Image
+              {recipe.image && (
+                <Image
                   src={recipe.image}
                   alt="preview"
                   radius="sm"
@@ -403,9 +413,8 @@ export default function RecipePage() {
                   h={140}
                   fit="contain"
                   mt="sm"
-              >
-              </Image>
-              }
+                ></Image>
+              )}
             </div>
 
             <Group gap="xs" align="center">
@@ -432,6 +441,65 @@ export default function RecipePage() {
                 {likeCount}
               </Text>
             </Group>
+
+            {/* share function, should there be a better url shortener later? */}
+            <Tooltip label="Share" openDelay={250}>
+              <ActionIcon
+                variant="light"
+                size="lg"
+                radius="xl"
+                onClick={openShare}
+                aria-label="Share recipe"
+              >
+                <IconShare3 size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Modal
+              opened={shareOpen}
+              onClose={closeShare}
+              title="Share this recipe"
+              centered
+            >
+              <Stack>
+                <Text size="sm" c="dimmed">
+                  Copy the link below to share this recipe.
+                </Text>
+
+                <TextInput
+                  value={shareUrl}
+                  readOnly
+                  onFocus={(e) => e.currentTarget.select()}
+                  rightSection={
+                    <CopyButton value={shareUrl} timeout={1400}>
+                      {({ copied, copy }) => (
+                        <Tooltip
+                          label={copied ? "Copied!" : "Copy"}
+                          openDelay={200}
+                        >
+                          <ActionIcon
+                            onClick={copy}
+                            variant="light"
+                            aria-label="Copy link"
+                          >
+                            {copied ? (
+                              <IconCheck size={18} />
+                            ) : (
+                              <IconCopy size={18} />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </CopyButton>
+                  }
+                />
+
+                <Group justify="flex-end" mt="sm">
+                  <Button variant="default" onClick={closeShare}>
+                    Close
+                  </Button>
+                </Group>
+              </Stack>
+            </Modal>
           </Group>
 
           {/* Body */}
@@ -449,15 +517,28 @@ export default function RecipePage() {
                   <Text fw={600} mt="md">
                     Ingredients
                   </Text>
-                  
+
                   <Group>
-                  <Select label="Portion" value={portion} onChange={(value) => setPortion(value)} data={['0.5', '1', '2', '3']} allowDeselect={false} ></Select>
+                    <Select
+                      label="Portion"
+                      value={portion}
+                      onChange={(value) => setPortion(value)}
+                      data={["0.5", "1", "2", "3"]}
+                      allowDeselect={false}
+                    ></Select>
                   </Group>
                   <Stack>
                     {ingredients.map((ingredient, index) => {
-                      return <Text key={index}> {ingredient.name}: {ingredient.quantity * Number(portion)} {ingredient.unit} </Text>
+                      return (
+                        <Text key={index}>
+                          {" "}
+                          {ingredient.name}:{" "}
+                          {ingredient.quantity * Number(portion)}{" "}
+                          {ingredient.unit}{" "}
+                        </Text>
+                      );
                     })}
-                  </Stack> 
+                  </Stack>
                 </>
               )}
 
@@ -495,9 +576,9 @@ export default function RecipePage() {
                   </Text>
                   <Group>
                     {tags.map((tag, index) => {
-                      return <Text key={index}>{tag}</Text>
+                      return <Text key={index}>{tag}</Text>;
                     })}
-                  </Group> 
+                  </Group>
                 </>
               )}
             </Stack>
