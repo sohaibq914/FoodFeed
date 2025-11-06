@@ -421,6 +421,12 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients, inst
                 "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens,
                 "posted": posting, "image": image_url, "visibility": visibility, "tags": tags}).execute()
         else:
+            # Verify that user is authorized
+            verify = supabase.table('recipes').select('author_id').eq('recipe_id', id).single().execute()
+            print(verify)
+            if (verify.data['author_id'] != author):
+                return {"error": "This account is not the correct author."}
+
             print(f"Updating existing recipe: {id}")
             # Build update payload - only include image if a new one was uploaded
             update_payload = {
@@ -466,6 +472,7 @@ def get_recipe(id: str, user_id: str = None):
                 "*, users!recipes_author_id_fkey(username)").eq("recipe_id", id).single().execute()
 
             print("Full recipe response:", response.data)
+
 
             if response.data and "users" in response.data:
                 print("Author username:",

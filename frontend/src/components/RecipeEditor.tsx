@@ -23,13 +23,14 @@ import {
   NumberInput
 } from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, forbidden } from "next/navigation";
 
 const ingredientDefault = [
   {name: "", quantity: 0, unit: ""},
 ];
 
 export default function RecipeEditor(params: { recipe_id: string }) {
+  const [author, setAuthor] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDesc] = useState("");
   const [ingredients, setIngredients] = useState(ingredientDefault);
@@ -98,7 +99,10 @@ export default function RecipeEditor(params: { recipe_id: string }) {
 
       const data = await response.json();
 
+      console.log(data)
+
       if (response.ok) {
+        setAuthor(data.author_id || "");
         setTitle(data.title || "");
         setDesc(data.description || "");
         setIngredients(JSON.parse(data.ingredients) || ingredientDefault);
@@ -108,6 +112,13 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setPreviews(data.image || "");
         setVisibility(data.visibility || "public");
         setTags(JSON.parse(data.tags) || [])
+
+        console.log(user)
+
+        if (user === null || author !== user.id) {
+          console.log("illegal!")
+          router.push("/dashboard/");
+        }
       } else {
         console.error("Failed to load recipe:", data.error);
         setError(data.error || "Failed to load recipe");
