@@ -651,7 +651,7 @@ def check_recipe_liked(user_id: str, recipe_id: str):
     """Check if a user has liked a specific recipe"""
     try:
         response = supabase.table('recipe_likes').select('id').eq(
-            'user_id', user_id).eq('recipe_id', recipe_id).eq('is_disliked', False).execute()
+            'user_id', user_id).eq('recipe_id', recipe_id).eq('is_dislike', False).execute()
         return {"liked": len(response.data) > 0}
     except Exception as e:
         print(f"Error in check_recipe_liked: {str(e)}")

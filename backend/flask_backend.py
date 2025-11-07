@@ -835,6 +835,7 @@ def like_recipe_handler(recipe_id):
         is_dislike = data.get("is_dislike")
 
         print(is_dislike)
+        
 
         if not user_id:
             return jsonify({"error": "Missing user_id"}), 400
