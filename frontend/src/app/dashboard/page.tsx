@@ -35,6 +35,7 @@ import Header from "@/components/Header";
 type RecipeSummary = {
   recipe_id: string;
   title: string;
+  timestamp?: string;
   like_count?: number;
   dislike_count?: number;
   user_has_liked?: boolean;
@@ -71,21 +72,32 @@ export default function Dashboard() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
 
-  const [sortOption, setSortOption] = useState<
-    "newest" | "oldest" | "mostLiked"
-  >("newest");
+  const [sortOption, setSortOption] = useState<"default" | "mostLiked">(
+    "default"
+  );
 
   const sortedRecipes = useMemo(() => {
-    const sorted = [...recipes];
-    switch (sortOption) {
-      case "oldest":
-        return sorted.sort((a, b) => (a.recipe_id > b.recipe_id ? 1 : -1)); // or use timestamp if available
-      case "mostLiked":
-        return sorted.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
-      default: // newest
-        return sorted.sort((a, b) => (a.recipe_id < b.recipe_id ? 1 : -1));
+    if (sortOption === "mostLiked") {
+      return [...recipes].sort(
+        (a, b) => (b.like_count || 0) - (a.like_count || 0)
+      );
     }
+    // "default" -> keep backend order, no sort
+    return recipes;
   }, [recipes, sortOption]);
+
+  useEffect(() => {
+    if (!sortedRecipes || sortedRecipes.length === 0) return;
+
+    console.log("Displayed recipe timestamps (sorted):");
+    sortedRecipes.forEach((recipe, index) => {
+      console.log(
+        `${index + 1}. ${recipe.title || "(untitled)"} — ${
+          recipe.timestamp || "(no timestamp)"
+        }`
+      );
+    });
+  }, [sortedRecipes]);
 
   // auth redirect
   useEffect(() => {
@@ -141,9 +153,13 @@ export default function Dashboard() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
 
         // show only posted
-        const postedOnly: RecipeSummary[] = (data.recipes || []).filter(
-          (r: any) => r.posted === true
-        );
+        const postedOnly: RecipeSummary[] = (data.recipes || [])
+          .filter((r: any) => r.posted === true)
+          .map((r: any) => ({
+            ...r,
+            // normalize to a single field your UI uses
+            timestamp: r.timestamp ?? r.created_at ?? r.updated_at ?? null,
+          }));
 
         // fetch likes ONLY for posted ones
         const withLikes = await Promise.all(
@@ -435,32 +451,23 @@ export default function Dashboard() {
               <Text c="dimmed" size="sm">
                 Sort by:
               </Text>
-              <Menu shadow="md" width={160}>
+              <Menu shadow="md" width={180}>
                 <Menu.Target>
                   <Button
                     variant="light"
                     size="xs"
                     leftSection={<IconSortDescending size={16} />}
                   >
-                    {sortOption === "newest"
-                      ? "Newest"
-                      : sortOption === "oldest"
-                      ? "Oldest"
-                      : "Most Liked"}
+                    {sortOption === "default" ? "Default" : "Most Liked"}
                   </Button>
                 </Menu.Target>
-
                 <Menu.Dropdown>
-                  <Menu.Item onClick={() => setSortOption("newest")}>
-                    <IconSortDescending size={14} style={{ marginRight: 6 }} />{" "}
-                    Newest
-                  </Menu.Item>
-                  <Menu.Item onClick={() => setSortOption("oldest")}>
-                    <IconSortAscending size={14} style={{ marginRight: 6 }} />{" "}
-                    Oldest
+                  <Menu.Item onClick={() => setSortOption("default")}>
+                    <IconSortDescending size={14} style={{ marginRight: 6 }} />
+                    Default
                   </Menu.Item>
                   <Menu.Item onClick={() => setSortOption("mostLiked")}>
-                    <IconHeartFilled size={14} style={{ marginRight: 6 }} />{" "}
+                    <IconHeartFilled size={14} style={{ marginRight: 6 }} />
                     Most Liked
                   </Menu.Item>
                 </Menu.Dropdown>
