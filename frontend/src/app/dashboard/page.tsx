@@ -92,27 +92,32 @@ export default function Dashboard() {
 
   const getTime = (t?: string) => (t ? new Date(t).getTime() : 0);
 
+  const filteredRecipes = useMemo(() => {
+    if (selectedTags.length === 0) return recipes;
+
+    return recipes.filter((r) =>
+      selectedTags.every((tag) => r.tags?.includes(tag))
+    );
+  }, [recipes, selectedTags]);
+
   const sortedRecipes = useMemo(() => {
-    const arr = [...recipes];
+    const arr = [...filteredRecipes];
     if (sortOption === "mostLiked") {
       return arr.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
     }
     if (sortOption === "oldest") {
-      return arr.sort((a, b) => {
-        const da = getTime(a.timestamp);
-        const db = getTime(b.timestamp);
-        if (da !== db) return da - db; // oldest first
-        return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
-      });
+      return arr.sort(
+        (a, b) =>
+          new Date(a.timestamp || 0).getTime() -
+          new Date(b.timestamp || 0).getTime()
+      );
     }
-    // "newest"
-    return arr.sort((a, b) => {
-      const da = getTime(a.timestamp);
-      const db = getTime(b.timestamp);
-      if (da !== db) return db - da; // newest first
-      return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
-    });
-  }, [recipes, sortOption]);
+    return arr.sort(
+      (a, b) =>
+        new Date(b.timestamp || 0).getTime() -
+        new Date(a.timestamp || 0).getTime()
+    );
+  }, [filteredRecipes, sortOption]);
 
   // auth redirect
   useEffect(() => {
@@ -127,14 +132,40 @@ export default function Dashboard() {
         const res = await fetch("http://localhost:5001/recipes");
         const data = await res.json();
 
-        console.log("recipes sample:", data.recipes?.slice(0, 3));
+        const seen = new Set<string>(); // lowercase keys for uniqueness
+        const out: string[] = []; // display labels (first-seen casing)
 
-        // Just show whatever the tags column contains for each recipe
-        const rawTags = (data.recipes ?? [])
-          .map((r: any) => r.tags ?? "(no tags)")
-          .map(String);
+        (data.recipes ?? []).forEach((r: any) => {
+          const raw = r.tags;
 
-        setAllTags(rawTags);
+          let arr: string[] = [];
+          if (Array.isArray(raw)) {
+            arr = raw;
+          } else if (typeof raw === "string" && raw.trim()) {
+            // handle '["peanut","dairy"]' or 'peanut,dairy'
+            try {
+              const parsed = JSON.parse(raw);
+              arr = Array.isArray(parsed) ? parsed : raw.split(",");
+            } catch {
+              arr = raw.split(",");
+            }
+          }
+
+          arr.forEach((t) => {
+            const tag = String(t).trim();
+            if (!tag) return;
+            const key = tag.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              out.push(tag); // preserve first-seen casing for display
+            }
+          });
+        });
+
+        out.sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base" })
+        );
+        setAllTags(out);
       } catch (e) {
         console.error("Failed to load tags from recipes", e);
         setAllTags([]);
@@ -151,7 +182,7 @@ export default function Dashboard() {
         setFeedLoading(true);
         setFeedError(null);
 
-        const res = await fetch(`http://localhost:5001/feed?limit=20`, {
+        const res = await fetch(`http://localhost:5001/feed?limit=40`, {
           headers: {
             "Content-Type": "application/json",
             "X-User-ID": user.id,
@@ -193,8 +224,12 @@ export default function Dashboard() {
           .filter((r: any) => r.posted === true)
           .map((r: any) => ({
             ...r,
-            // normalize to a single field your UI uses
             timestamp: r.timestamp ?? r.created_at ?? r.updated_at ?? null,
+            tags: Array.isArray(r.tags)
+              ? r.tags
+              : typeof r.tags === "string" && r.tags.trim()
+              ? JSON.parse(r.tags)
+              : [],
           }));
 
         // fetch likes ONLY for posted ones
