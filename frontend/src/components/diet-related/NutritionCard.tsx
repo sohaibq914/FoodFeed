@@ -52,6 +52,7 @@ export default function NutritionCard({user_id, item}: NutritionInfo) {
             <Text>Elligible Foods:</Text>
             {loading ? <Text>Still loading...</Text>: 
                 <Stack>
+                    {food_items.length == 0 ? <Text>-- Sorry, we're still currently looking into this!</Text>: <></>}
                     {food_items.sort((a, b) => {
                         if (a.favorite) {
                             return -1

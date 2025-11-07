@@ -59,6 +59,11 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
             if (success) {
                 setMealPlan(plan!);
                 setComponents(plan!.components)
+                let selectedIds = new Set<String>()
+                plan!.components.forEach((value) => {
+                    selectedIds.add(value.food_id)
+                })
+                setSelected(selectedIds)
                 const {success: daySuccess, message: dayMessage, days} = await get_days_of_plan(user_id, plan_id)
                 console.log(days)
                 if (daySuccess) {
@@ -149,11 +154,17 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
         const {success, message} = await delete_component(comp_id)
         if (success) {
             let food_id = ''
-            setComponents(components.filter((value) => {
-                if (value.id = comp_id) {
+            console.log(components.filter((value) => {
+                if (value.id === comp_id) {
                     food_id = value.food_id
                 }
-                return value.id != comp_id;
+                return value.id !== comp_id;
+            }))
+            setComponents(components.filter((value) => {
+                if (value.id === comp_id) {
+                    food_id = value.food_id
+                }
+                return value.id !== comp_id;
             }))
             let oldItem = new Set<String>();
             oldItem.add(food_id)
