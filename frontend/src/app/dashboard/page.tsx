@@ -72,32 +72,33 @@ export default function Dashboard() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
 
-  const [sortOption, setSortOption] = useState<"default" | "mostLiked">(
-    "default"
-  );
+  const [sortOption, setSortOption] = useState<
+    "newest" | "oldest" | "mostLiked"
+  >("newest");
+
+  const getTime = (t?: string) => (t ? new Date(t).getTime() : 0);
 
   const sortedRecipes = useMemo(() => {
+    const arr = [...recipes];
     if (sortOption === "mostLiked") {
-      return [...recipes].sort(
-        (a, b) => (b.like_count || 0) - (a.like_count || 0)
-      );
+      return arr.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
     }
-    // "default" -> keep backend order, no sort
-    return recipes;
-  }, [recipes, sortOption]);
-
-  useEffect(() => {
-    if (!sortedRecipes || sortedRecipes.length === 0) return;
-
-    console.log("Displayed recipe timestamps (sorted):");
-    sortedRecipes.forEach((recipe, index) => {
-      console.log(
-        `${index + 1}. ${recipe.title || "(untitled)"} — ${
-          recipe.timestamp || "(no timestamp)"
-        }`
-      );
+    if (sortOption === "oldest") {
+      return arr.sort((a, b) => {
+        const da = getTime(a.timestamp);
+        const db = getTime(b.timestamp);
+        if (da !== db) return da - db; // oldest first
+        return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
+      });
+    }
+    // "newest"
+    return arr.sort((a, b) => {
+      const da = getTime(a.timestamp);
+      const db = getTime(b.timestamp);
+      if (da !== db) return db - da; // newest first
+      return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
     });
-  }, [sortedRecipes]);
+  }, [recipes, sortOption]);
 
   // auth redirect
   useEffect(() => {
@@ -456,15 +457,31 @@ export default function Dashboard() {
                   <Button
                     variant="light"
                     size="xs"
-                    leftSection={<IconSortDescending size={16} />}
+                    leftSection={
+                      sortOption === "mostLiked" ? (
+                        <IconHeartFilled size={16} />
+                      ) : sortOption === "oldest" ? (
+                        <IconSortAscending size={16} />
+                      ) : (
+                        <IconSortDescending size={16} />
+                      )
+                    }
                   >
-                    {sortOption === "default" ? "Default" : "Most Liked"}
+                    {sortOption === "mostLiked"
+                      ? "Most Liked"
+                      : sortOption === "oldest"
+                      ? "Oldest"
+                      : "Newest"}
                   </Button>
                 </Menu.Target>
                 <Menu.Dropdown>
-                  <Menu.Item onClick={() => setSortOption("default")}>
+                  <Menu.Item onClick={() => setSortOption("newest")}>
                     <IconSortDescending size={14} style={{ marginRight: 6 }} />
-                    Default
+                    Newest
+                  </Menu.Item>
+                  <Menu.Item onClick={() => setSortOption("oldest")}>
+                    <IconSortAscending size={14} style={{ marginRight: 6 }} />
+                    Oldest
                   </Menu.Item>
                   <Menu.Item onClick={() => setSortOption("mostLiked")}>
                     <IconHeartFilled size={14} style={{ marginRight: 6 }} />
