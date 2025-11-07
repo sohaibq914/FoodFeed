@@ -221,8 +221,19 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (response.ok) {
+        // Update follow state immediately
         setIsFollowing(!isFollowing);
-        setFollowerCount(data.follower_count || followerCount);
+
+        // Update follower count from response (if provided)
+        if (data.follower_count !== undefined) {
+          setFollowerCount(data.follower_count);
+        } else {
+          // If not provided, manually adjust the count
+          setFollowerCount((prev) => (isFollowing ? prev - 1 : prev + 1));
+        }
+
+        // Refresh follow data to ensure everything is in sync
+        await fetchFollowData(profileUser.id);
       } else {
         console.error("Follow/unfollow failed:", data.error);
       }
