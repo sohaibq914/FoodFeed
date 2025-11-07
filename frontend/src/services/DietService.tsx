@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from 'react';
+import { act, createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { time } from 'console';
 import { API_Caller, get_caller } from '@/misc/Connection'
@@ -10,6 +10,7 @@ export interface FoodItem {
     id: string;
     name: string;
     description: string;
+    favorite: boolean;
 }
 
 export interface NutritionItem {
@@ -32,6 +33,31 @@ export interface Meal {
     time_aten: Date;
 }
 
+export interface FoodForm {
+    id: string;
+    name: string;
+    type: string;
+    desc: string;
+    user_id: string;
+    status: string;
+}
+
+export interface PlanComponent {
+    id: string;
+    food_id: string;
+    amount: number;
+}
+
+export interface Plan {
+    plan_id: string;
+    components: PlanComponent[];
+}
+
+export interface NutrFood { 
+    nutr_id: string;
+    food_ids: string[];
+}
+
 class MealHolder implements Meal {
     id: string;
     name: string;
@@ -47,22 +73,20 @@ class MealHolder implements Meal {
 }
 /*
 Template:
-export const get_ = async (user_id: string): Promise<{success: boolean, message:}> => {    
-    const response = await fetch('http://localhost:5001/dieting/', { //note the port number -andrew
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            'user_id': user_id
+export const get_ = async (user_id: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/',
+        JSON.stringify({
         }),
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
-        let templates: { data: [] } = JSON.parse(data.toString())
-        return {success: true, message: }
+    );
+    try {    
+        if (response.ok) {
+            let templates: { } = data
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
     }
     return {success: false, message: data.error};
 }
@@ -315,6 +339,44 @@ export const get_all_nutrients = async (user_id: string): Promise<{success: bool
     return {success: false, message: data.error, nutrients: null};
 }
 
+export const favorite_food = async (user_id: string, food_id: string): Promise<{success: boolean, message:string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/favorite_food',
+        JSON.stringify({
+            'user_id': user_id,
+            'food_id': food_id
+        }),
+    );
+    
+    try {
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error};
+}
+
+export const defavorite_food = async (user_id: string, food_id: string): Promise<{success: boolean, message:string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/defavorite_food',
+        JSON.stringify({
+            'user_id': user_id,
+            'food_id': food_id
+        }),
+    );
+    
+    try {
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error};
+}
+
 export const get_food_of_type = async (user_id: string, type: string): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_elligible_foods',
@@ -356,4 +418,308 @@ export const get_food_of_nutrient = async (user_id: string, nutrient_id: string)
     catch {
     }
     return {success: false, message: data.error, foods: null};
+}
+
+export const get_calorie_intake = async (user_id: string): Promise<{success: boolean, message:string|null, intake: number|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/get_calorie_intake',
+        JSON.stringify({
+            'user_id': user_id,
+        }),
+    );
+    
+    try {
+        if (response.ok) {
+            if (data.result == 0) {
+                return {success: false, message: null, intake: -1}
+            }
+            return {success: true, message: null, intake: data.result}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error, intake: null};
+}
+
+export const calculate_calorie_intake = async (user_id: string, sex: string, weight: number, height: number, age: number, activity: number): Promise<{success: boolean, message:string|null, intake: number|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/calculate_calorie_intake',
+        JSON.stringify({
+            'user_id': user_id,
+            'sex': sex,
+            'weight': weight,
+            'height': height,
+            'age': age,
+            'activity': activity
+        }),
+    );
+    
+    try {
+        if (response.ok) {
+            return {success: true, message: null, intake: data.result}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error, intake: null};
+}
+
+//  Food forms
+export const submit_form = async (user_id: string, name: string, type: string, description: string): Promise<{success: boolean, message:string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'create_foods/submit_form',
+        JSON.stringify({
+            'user_id': user_id,
+            'name': name,
+            'type': type,
+            'description': description
+        }),
+    );
+    
+    try {
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error};
+}
+
+export const get_all_pending_forms = async (): Promise<{success: boolean, message: string|null, forms:FoodForm[]|null}> => {    
+    const {response, data} = await caller.call_function(
+        'create_foods/get_all_pending_forms',
+        JSON.stringify({
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: {forms: FoodForm[]} = data;
+            return {success: true, message: null, forms: items.forms}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error, forms: null};
+}
+
+export const get_user_forms = async (user_id: string): Promise<{success: boolean, message: string|null, forms: FoodForm[]|null}> => {    
+    const {response, data} = await caller.call_function(
+        'create_foods/get_user_forms',
+        JSON.stringify({
+            'user_id': user_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: {forms: FoodForm[]} = data;
+            return {success: true, message: null, forms: items.forms}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error, forms: null};
+}
+
+export const reject_form = async (form_id: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'create_foods/reject_form',
+        JSON.stringify({
+            'id': form_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error};
+}
+
+export const accept_form = async (form_id: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'create_foods/accept_form',
+        JSON.stringify({
+            'id': form_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error};
+}
+
+// Plans
+
+export const get_meal_plan = async (user_id: string): Promise<{success: boolean, message: string|null, plan: Plan|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/get_meal_plan',
+        JSON.stringify({
+            'user_id': user_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: { plan: Plan } = data
+            return {success: true, message: null, plan: items.plan}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, plan: null};
+}
+
+export const create_meal_plan = async (user_id: string): Promise<{success: boolean, message: string|null, plan_id: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/create_meal_plan',
+        JSON.stringify({
+            'user_id': user_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: { plan_id: string } = data
+            return {success: true, message: null, plan_id: items.plan_id}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, plan_id: null};
+}
+
+export const add_component = async (plan_id: string, food_id: string, amount: number): Promise<{success: boolean, message: string|null, id: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/add_component',
+        JSON.stringify({
+            'plan_id': plan_id,
+            'food_id': food_id,
+            'amount': amount
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null, id: data.id}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, id: null};
+}
+
+export const update_component = async (id: string, amount: number): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/update_component',
+        JSON.stringify({
+            'id': id,
+            'amount': amount
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
+}
+
+export const delete_component = async (id: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/delete_component',
+        JSON.stringify({
+            'id': id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
+}
+
+export const get_days_of_plan = async (user_id: string, plan_id: string): Promise<{success: boolean, message: string|null, days: Date[]|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/get_days_plan_is_completed',
+        JSON.stringify({
+            'user_id': user_id,
+            'plan_id': plan_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: {days: Date[]} = data
+            items.days = items.days.map((value, index) => {
+                return new Date(Date.parse(value as unknown as string))
+            })
+            return {success: true, message: null, days: items.days}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, days: null};
+}
+
+export const mark_day = async (user_id: string, plan_id: string, day: Date): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/mark_day',
+        JSON.stringify({
+            'user_id': user_id,
+            'plan_id': plan_id,
+            'day': day.toISOString()
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
+}
+
+export const get_nutrients_to_foods = async (): Promise<{success: boolean, message: string|null, nutrs_to_foods: Map<String, Set<String>>|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/get_nutrients_to_food',
+        JSON.stringify({}),
+    );
+    try {    
+        if (response.ok) {
+            const items: { data : NutrFood[]} = data
+            let res = new Map<String, Set<String>>() 
+            items.data.forEach((value) => {
+                let foods = new Set<String>()
+                value.food_ids.forEach((value) => {
+                    foods.add(value)
+                })
+                res.set(value.nutr_id, foods)
+            })
+            return {success: true, message: null, nutrs_to_foods: res}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, nutrs_to_foods: null};
 }

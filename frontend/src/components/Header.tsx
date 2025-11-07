@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Container, Title, Button, Group, AppShell, Text } from "@mantine/core";
-import { IconSettings, IconMessage, IconPlus } from "@tabler/icons-react";
+import { IconSettings, IconMessage, IconPlus, IconFolderCheck, IconFilesFilled } from "@tabler/icons-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface CommonHeaderProps {
@@ -64,6 +64,24 @@ export default function CommonHeader({
             >
               Messages
             </Button>
+
+            <Button
+                component={Link}
+                href="/submission-history"
+                variant="light"
+                leftSection={<IconFolderCheck size={16} />}
+              >
+                Submitting
+              </Button>
+
+            <Button
+                component={Link}
+                href="/submissions"
+                variant="light"
+                leftSection={<IconFilesFilled size={16} />}
+              >
+                Approving
+              </Button>
 
             <Button
                 component={Link}

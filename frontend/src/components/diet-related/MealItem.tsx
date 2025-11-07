@@ -16,7 +16,11 @@ class TempMeal implements Meal {
 }
 export default function MealItem({meal}: MealItemInfo) {
     console.log(meal.time_aten)
-    return (<Container>
+    return (<Card withBorder
+            radius="md"
+            p="md"
+            w={200}>
+
         <Group>
             <Stack>
                 <Title order={3}>{meal.name}</Title>
@@ -27,5 +31,5 @@ export default function MealItem({meal}: MealItemInfo) {
                 <Text>{meal.time_aten.toLocaleTimeString()}</Text>
             </Stack>
         </Group>
-    </Container>)
+    </Card>)
 }

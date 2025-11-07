@@ -7,7 +7,8 @@ import {
   Button, 
   Group, 
   Text,
-  AppShell
+  AppShell,
+  Card
 } from '@mantine/core';
 import { useState } from "react";
 
@@ -18,9 +19,11 @@ interface FoodCardInfo {
 
 export default function FoodCard({food_name, description}: FoodCardInfo) {
     return (
-        <Container>
+        <Card withBorder
+            radius="md"
+            p="md" w={700}>
             <Title order={4}>{food_name}</Title>
             <Text>{description}</Text>
-        </Container>
+        </Card>
     )
 }

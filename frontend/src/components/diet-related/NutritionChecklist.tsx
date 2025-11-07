@@ -1,6 +1,7 @@
 'use client';
 import { add_nutrient, get_all_nutrients, NutritionItem, remove_nutrient, update_nutrient } from '@/services/DietService'
-import { Button, Checkbox, Container, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
+import { ActionIcon, Alert, Button, Card, Checkbox, Container, Group, NumberInput, Stack, Text, Title } from '@mantine/core'
+import { IconDeviceFloppy } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react'
 
@@ -12,6 +13,7 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
     const [loading, set_loading] = useState(true);
     const [items, set_items] = useState([] as NutritionItem[]);
     const [old_item_states, set_old_item_states] = useState([] as boolean[]);
+    const [error, set_error] = useState(null as null|string);
 
     useEffect(() => {
         const runner = async () => {
@@ -39,18 +41,28 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
     }
 
     const submit_item = (i: number) => {
-        items.forEach((item, index) => {
+        set_error(null);
+        items.forEach(async (item, index) => {
             if (index == i) {
                 if (old_item_states[index] && !item.is_eaten) {
-                    remove_nutrient(item.id, user_id);
+                    const {success, message} = await remove_nutrient(item.id, user_id);
+                    if (!success) {
+                        set_error(message)
+                    }
                     item.is_eaten = false;
                 }
                 else if (item.is_eaten) {
                     if (!old_item_states[index]) {
-                        add_nutrient(item.id, user_id, item.amount);
+                        const {success, message} = await add_nutrient(item.id, user_id, item.amount);
+                        if (!success) {
+                            set_error(message)
+                        }
                     }
                     else {
-                        update_nutrient(item.id, user_id, item.amount);
+                        const {success, message} = await update_nutrient(item.id, user_id, item.amount);
+                        if (!success) {
+                            set_error(message)
+                        }
                     }
                 }
             }
@@ -61,12 +73,18 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
         {loading? <Text>Loading Nutrients...</Text>: 
             <Stack>
                 <Title>Nutrients</Title>
+                {error && (
+                    <Alert color="red" variant="filled">
+                        {error}
+                    </Alert>
+                )}
                 {items.map((item, index) => {
                     const submit = async () => {
                         submit_item(index)
                     };
 
-                    return (<Container key={index}>
+                    return (<Card withBorder
+                                radius="md" key={item.id}>
                         <form>
                             <Group>
                                 <Link 
@@ -81,7 +99,7 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
                                     onChange={(value) => {
                                         update_item(index, item.amount, value.currentTarget.checked)
                                     }}/>
-                                <NumberInput placeholder='Amount'
+                                <NumberInput label='Amount'
                                     value={item.amount}
                                     onChange={(value) => {
                                         if (typeof value === "number") {
@@ -92,14 +110,19 @@ export default function NutritionChecklist({user_id}: ChecklistInfo) {
                                         }
                                     }}
                                     />
-                                <Button onClick={() => {
-                                    submit()
-                                }}>
-                                    Save
-                                </Button>
+                                <ActionIcon
+                                    color="green"
+                                    size="md"
+                                    radius="xl"
+                                    onClick={(e) => {submit()}}
+                                    style={{
+                                    transition: "all 0.2s ease",
+                                    }}>
+                                    <IconDeviceFloppy/>
+                                </ActionIcon>
                             </Group>
                         </form>
-                    </Container>);
+                    </Card>);
                 })}
             </Stack>
         }

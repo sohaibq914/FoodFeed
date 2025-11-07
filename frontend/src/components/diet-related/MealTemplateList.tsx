@@ -1,12 +1,13 @@
 'use client';
 
 import { Meal, MealTemplate, add_meal, add_meal_template, delete_meal_template, get_meal_templates, get_user_meals, update_meal_template, delete_meal } from "@/services/DietService";
-import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text, Divider } from "@mantine/core";
+import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text, Divider, Alert, Card, ScrollArea, ActionIcon } from "@mantine/core";
 import { DateInput, DateTimePicker } from "@mantine/dates"
 import { create } from "domain";
 import { useEffect, useState } from "react";
 import MealItem from "./MealItem";
 import { Console } from "console";
+import { IconDeviceFloppy, IconLoader, IconTrash } from "@tabler/icons-react";
 
 interface MealTemplateInfo {
     user_id: string
@@ -27,6 +28,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [meals, set_meals] = useState([] as Meal[])
     const [old_names, set_old_names] = useState([] as string[])
     const [loading, set_loading] = useState(true);
+    const [error, set_error] = useState(null as null|string)
     useEffect(() => {
         const runner = async () => {
             set_loading(true)
@@ -66,17 +68,29 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     }
 
     const create_meal = async () => {
+        set_error(null)
+        if (meal_name === '') {
+            set_error('Cannot have a blank name.')
+            return
+        }
         const {success, message, res} = await add_meal(user_id, meal_name, meal_calories, meal_date)
         if (success) {
             set_meals(meals.concat(res!))
             adjust_meal_params('', 0, new Date(Date.now()))
         }
+        else {
+            set_error(message)
+        }
     }
 
     const remove_meal = async (id: string) => {
+        set_error(null)
         const {success, message} = await delete_meal(id)
         if (success) {
             set_meals(meals.filter((value) => value.id !== id))
+        }
+        else {
+            set_error(null)
         }
     }
 
@@ -97,6 +111,11 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
 
     const update_template = async (i: number) => {
         const template = meal_templates[i]
+        set_error(null)
+        if (template.name === '') {
+            set_error("Cannot have a blank name.")
+            return
+        }
         const {success, message} = await update_meal_template(user_id, old_names[i], template.name, template.calories);
         if (success) {
             set_old_names(old_names.map((value, index) => {
@@ -105,6 +124,8 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                 }
                 return value;
             }))
+        } else {
+            set_error(message)
         }
     }
 
@@ -117,17 +138,25 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
 
     const add_template = async (name: string, calories: number) => {
         const {success, message} = await add_meal_template(user_id, name, calories);
+        set_error(null)
         if (success) {
             set_meal_templates(meal_templates.concat(new MealTemplateObject(name, calories)))
             set_old_names(old_names.concat(name))
             set_calories_new_template(0)
             set_new_template_name('')
+        } else {
+            set_error(message)
         }
     }
 
     const [name_of_new_template, set_new_template_name] = useState('')
     const [calories_of_new_template, set_calories_new_template] = useState(0)
     return (<Container>
+        {error && (
+            <Alert color="red" variant="filled">
+                {error}
+            </Alert>
+        )}
         <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
             {/* Meals */}
             <Stack>
@@ -173,19 +202,28 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                         </form>
                         <Divider/>
                         <Title>Meals</Title>
+                        <ScrollArea h={300}>
                         {
                             meals.map((value, index) => {
-                                return <Container key={index}>
+                                return <Container key={value.id}>
                                     <Group>
                                         <MealItem meal={value}></MealItem>
-                                        <Button onClick={() => {
-                                            remove_meal(value.id)
-                                        }}>Delete Meal</Button>
+                                        <ActionIcon
+                                            color="red"
+                                            size="md"
+                                            radius="xl"
+                                            onClick={(e) => {remove_meal(value.id)}}
+                                            style={{
+                                            transition: "all 0.2s ease",
+                                            }}>
+                                            <IconTrash/>
+                                        </ActionIcon>
                                     </Group>
                                     <Divider/>
                                 </Container>
                             })
                         }
+                        </ScrollArea>
                     </Stack>
                 }
             </Stack>
@@ -226,10 +264,13 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                         </form>
                         <Divider/>
                         <Title>Templates</Title>
+                        <ScrollArea h={400}>
                         {meal_templates.map((value, index) => {
                         return (
-                            <Container key={index}>
-                                <Group>
+                            <Card withBorder
+                                radius="md"
+                                p="md" key={index}>
+                                <Group justify="space-between" grow>
                                     <Stack>
                                         <TextInput
                                             label='Name:'
@@ -253,20 +294,41 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                             }}
                                             />
                                     </Stack>
-                                    <Button onClick={(event) => {
-                                            update_template(index)
-                                        }}>Submit</Button>
-                                    <Button onClick={(event) => {
-                                            delete_template(index)
-                                        }}>Delete</Button>
-                                    <Button onClick={(event) => {
-                                            set_meal_params(index)
-                                        }}>Set</Button>
+                                    <ActionIcon
+                                        color="green"
+                                        size="md"
+                                        radius="xl"
+                                        onClick={(e) => {update_template(index)}}
+                                        style={{
+                                        transition: "all 0.2s ease",
+                                        }}>
+                                        <IconDeviceFloppy/>
+                                    </ActionIcon>
+                                    <ActionIcon
+                                        color="red"
+                                        size="md"
+                                        radius="xl"
+                                        onClick={(e) => {delete_template(index)}}
+                                        style={{
+                                        transition: "all 0.2s ease",
+                                        }}>
+                                        <IconTrash/>
+                                    </ActionIcon>
+                                    <ActionIcon
+                                        color="blue"
+                                        size="md"
+                                        radius="xl"
+                                        onClick={(e) => {set_meal_params(index)}}
+                                        style={{
+                                        transition: "all 0.2s ease",
+                                        }}>
+                                        <IconLoader/>
+                                    </ActionIcon>
                                 </Group>
-                                <Divider/>
-                            </Container>
+                            </Card>
                         )
                     })}
+                    </ScrollArea>
                     </Stack>
                 }
             </Stack>

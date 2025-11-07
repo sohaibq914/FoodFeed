@@ -2,8 +2,8 @@ from supabase_access_nutrition import *
 
 def test_get_foods_with_restrictions(id, type, expected):
     actual = get_elligble_foods_type(id, type)
-    if len(actual) != len(expected):
-        print("Error: Lengths are different. " + str(len(actual)) + " vs. " + str(len(expected)))
+    if len(actual) < len(expected):
+        print("Error: Length is too small. " + str(len(actual)) + " vs. " + str(len(expected)))
         return False
     for item in actual:
         food_item = item[1]

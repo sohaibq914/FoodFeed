@@ -16,20 +16,27 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-def get_food_items(type):
+def get_food_is_favorite(user_id, food_id):
+    res = supabase.table('favorited_foods') \
+        .select("*") \
+        .eq('user_id', user_id) \
+        .eq('food_id', food_id) \
+        .execute() 
+    return len(res.data) > 0
+
+def get_food_items(user_id, type):
     try:
         items = []
         res = supabase.table('food_item').select('*')\
             .eq("type", type).execute()
         for row in res.data:
             items.append(
-                FoodItem(row['id'], row['name'], row['description'])
+                FoodItem(row['id'], row['name'], row['description'], get_food_is_favorite(user_id, row['id']))
             )
         return items
     except Exception as e:
         print("Food Items: " + str(e))
         return [FoodItem('', '', '')]
-    
     
 def add_user_nutrient(user_id, nutrient_id, amount):
     try: 
@@ -98,7 +105,7 @@ def get_nutrients(user_id):
         print("Nutrient Exception: " + str(e))
         return []
 
-def get_foods_with_nutrient(nutr_id):
+def get_foods_with_nutrient(user_id, nutr_id):
     try:
         res = supabase.table('item_has_nutrient') \
             .select('food_id') \
@@ -110,8 +117,10 @@ def get_foods_with_nutrient(nutr_id):
                 .select('*') \
                 .eq('id', row['food_id']) \
                 .execute()
+            
             foods.append(
-                FoodItem(info.data[0]['id'], info.data[0]['name'], info.data[0]['description'])
+                FoodItem(info.data[0]['id'], info.data[0]['name'], info.data[0]['description'],
+                    get_food_is_favorite(user_id, info.data[0]['id']))
             )
         return foods
     except Exception as e:
@@ -168,11 +177,92 @@ def get_elligble_foods(user_id, foods):
         print("Elligible Foods: " + str(e))
         return []
 
+def get_nutrients_to_foods():
+    try: 
+        nutrs_to_foods = {}
+        res = supabase.table('nutrients') \
+            .select('id') \
+            .execute()
+        for row in res.data:
+            id = row['id']
+            foods = []
+            food_res = supabase.table('item_has_nutrient') \
+                .select('food_id') \
+                .eq('nutrient_id', id) \
+                .execute()
+            for food_row in food_res.data:
+                foods.append(food_row['food_id'])
+            nutrs_to_foods[id] = foods
+        return nutrs_to_foods
+    except Exception as e:
+        print(e)
+        return {}
+
+def favorite_food(user_id, food_id):
+    if (not get_food_is_favorite(user_id, food_id)):
+        supabase.table('favorited_foods') \
+            .insert({'food_id': food_id, 'user_id': user_id}) \
+            .execute()
+        return True
+    else:
+        return False
+    
+def defavorite_food(user_id, food_id):
+    if (get_food_is_favorite(user_id, food_id)):
+        supabase.table('favorited_foods') \
+            .delete() \
+            .eq('food_id', food_id) \
+            .eq('user_id', user_id) \
+            .execute()
+        return True
+    else:
+        return False
+
+def calculate_calorie_intake(user_id, sex, weight, height, age, activity):
+    if get_calorie_intake(user_id) is not None:
+        return False
+
+    calorie_intake = 10 * weight * 0.453592 \
+            + 6.25 * height * 2.54 \
+            - 5 * age
+    if sex == 'm':
+        calorie_intake += 161
+    elif sex == 'f':
+        calorie_intake -= 5
+    
+    match activity:
+        case 4:
+            calorie_intake *= 1.9
+        case 3:
+            calorie_intake *= 1.725
+        case 2:
+            calorie_intake *= 1.55
+        case 1:
+            calorie_intake *= 1.375
+        case 0:
+            calorie_intake *= 1.2
+    supabase.table('calorie_intake') \
+        .insert({  
+            'user_id': user_id,
+            'intake': calorie_intake
+        }) \
+        .execute()
+    return calorie_intake
+
+def get_calorie_intake(user_id):
+    res = supabase.table('calorie_intake') \
+        .select('*') \
+        .eq('user_id', user_id) \
+        .execute()
+    if (len(res.data) == 0):
+        return None
+    return res.data[0]['intake']
+
 def get_elligble_foods_type(user_id, type):
-    food_items = get_food_items(type)
+    food_items = get_food_items(user_id, type)
     return get_elligble_foods(user_id, food_items)
 
 def get_elligble_foods_nutrient(user_id, nutr_id):
-    return get_elligble_foods(user_id, get_foods_with_nutrient(nutr_id))
+    return get_elligble_foods(user_id, get_foods_with_nutrient(user_id, nutr_id))
 
 

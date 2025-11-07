@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from functools import wraps
 from supabase_access_meal import *
 from supabase_access_nutrition import *
+from supabase_meal_planner import *
+from supabase_create_food import *
 from password_reset_handler import create_password_reset_token, validate_reset_token, mark_token_as_used, reset_user_password
 from email_service import send_password_reset_email, send_verification_email
 from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
@@ -1212,7 +1214,8 @@ def get_food_of_type():
     try:
         data = request.get_json()
         type = data.get('type')
-        foods = get_food_items(type)
+        user_id = data.get('user_id')
+        foods = get_food_items(user_id, type)
         return jsonify({'foods': [food.to_json() for key, food in foods]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
@@ -1296,7 +1299,227 @@ def get_food_of_nutrient():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/favorite_food", methods=["POST"])
+def favorite_food_for_user():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        food_id = data.get('food_id')
+        res = favorite_food(user_id, food_id)
+        return jsonify({"result": res}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/defavorite_food", methods=["POST"])
+def defavorite_food_for_user():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        food_id = data.get('food_id')
+        res = defavorite_food(user_id, food_id)
+        return jsonify({"result": res}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/get_calorie_intake", methods=["POST"])
+def get_user_calorie_intake():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        res = get_calorie_intake(user_id)
+        if res is None:
+            res = 0
+        return jsonify({"result": res}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/dieting/calculate_calorie_intake", methods=["POST"])
+def calculate_user_calorie_intake():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        sex = data.get('sex')
+        weight = data.get('weight')
+        height = data.get('height')
+        age = data.get('age')
+        activity = data.get('activity')
+        res = calculate_calorie_intake(user_id, sex, weight, height, age, activity)
+        return jsonify({"result": res}), 200
+    except Exception as e:
+        print(f"Exception calc: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+# New Food Items
+@app.route("/create_foods/submit_form", methods=["POST"])
+def submit_user_form_for_food():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        name = data.get('name')
+        type = data.get('type')
+        description = data.get('description') 
+        submit_form(user_id, name, type, description)
+        return jsonify({"data": "Success"}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/create_foods/get_all_pending_forms", methods=["POST"])
+def get_all_pending_food_forms():
+    try:
+        data = request.get_json()
+        forms = get_all_pending_forms()
+        return jsonify({"forms": [form.to_json() for form in forms]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/create_foods/get_user_forms", methods=["POST"])
+def get_user_food_forms():
+    print('eeee')
+    try:
+        print('accessed')
+        data = request.get_json()
+        user_id = data.get('user_id')
+        forms = get_user_forms(user_id)
+        print(forms)
+        return jsonify({"forms": [form.to_json() for form in forms]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/create_foods/reject_form", methods=["POST"])
+def reject_food_form():
+    try:
+        data = request.get_json()
+        id = data.get('id')
+        reject_form(id)
+        return jsonify({"data": True}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/create_foods/accept_form", methods=["POST"])
+def accept_food_form():
+    try:
+        data = request.get_json()
+        id = data.get('id')
+        accept_form(id)
+        return jsonify({"data": True}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# Meal Plans
+
+@app.route("/meal_plan/get_meal_plan", methods=["POST"])
+def get_user_meal_plan():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plan = get_meal_plan(user_id)
+        if plan == None:
+            return jsonify({"data": None}), 200
+        return jsonify({"plan": plan.to_json()}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/meal_plan/create_meal_plan", methods=["POST"])
+def create_user_meal_plan():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plan_id = create_meal_plan(user_id)
+        if plan_id == None:
+            return jsonify({"error": "Could not create."}), 500
+        return jsonify({"plan_id": plan_id}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/add_component", methods=["POST"])
+def add_component_to_plan():
+    try:
+        data = request.get_json()
+        plan_id = data.get('plan_id')
+        food_id = data.get('food_id')
+        amount = data.get('amount')
+        id = add_component(plan_id, food_id, amount)
+        return jsonify({"id": id}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/update_component", methods=["POST"])
+def update_component_of_plan():
+    try:
+        data = request.get_json()
+        id = data.get('id')
+        amount = data.get('amount')
+        update_component(id, amount)
+        return jsonify({"data": True}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/delete_component", methods=["POST"])
+def delete_component_in_plan():
+    try:
+        data = request.get_json()
+        id = data.get('id')
+        delete_component(id)
+        return jsonify({"data": True}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/get_days_plan_is_completed", methods=["POST"])
+def get_days_of_plan():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plan_id = data.get('plan_id')
+        days = get_days_plan_is_completed(user_id, plan_id)
+        return jsonify({"days": days}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/mark_day", methods=["POST"])
+def mark_day_of_plan():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plan_id = data.get('plan_id')
+        day = data.get('day')
+        mark_day(user_id, plan_id, day)
+        return jsonify({"data": True}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/get_nutrients_to_food", methods=["POST"])
+def get_map_of_nutrients_to_food():
+    try:
+        data = request.get_json()
+        res = get_nutrients_to_foods()
+        output = []
+        for key in res.keys():
+            output.append({
+                'nutr_id': key,
+                'food_ids': res.get(key)
+            })
+        return jsonify({"data": output}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+# Forgot password
 
 @app.route('/forgot-password', methods=['POST'])
 def handle_forgot_password():
