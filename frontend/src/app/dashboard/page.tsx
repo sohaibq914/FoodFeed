@@ -132,17 +132,15 @@ export default function Dashboard() {
         const res = await fetch("http://localhost:5001/recipes");
         const data = await res.json();
 
-        const seen = new Set<string>(); // lowercase keys for uniqueness
-        const out: string[] = []; // display labels (first-seen casing)
+        const tagCounts: Record<string, number> = {};
+        const displayNames: Record<string, string> = {};
 
         (data.recipes ?? []).forEach((r: any) => {
           const raw = r.tags;
-
           let arr: string[] = [];
           if (Array.isArray(raw)) {
             arr = raw;
           } else if (typeof raw === "string" && raw.trim()) {
-            // handle '["peanut","dairy"]' or 'peanut,dairy'
             try {
               const parsed = JSON.parse(raw);
               arr = Array.isArray(parsed) ? parsed : raw.split(",");
@@ -155,17 +153,22 @@ export default function Dashboard() {
             const tag = String(t).trim();
             if (!tag) return;
             const key = tag.toLowerCase();
-            if (!seen.has(key)) {
-              seen.add(key);
-              out.push(tag); // preserve first-seen casing for display
-            }
+            tagCounts[key] = (tagCounts[key] || 0) + 1;
+            if (!displayNames[key]) displayNames[key] = tag; // preserve casing
           });
         });
 
-        out.sort((a, b) =>
-          a.localeCompare(b, undefined, { sensitivity: "base" })
-        );
-        setAllTags(out);
+        // sort tags by descending frequency, then alphabetically
+        const sorted = Object.keys(tagCounts)
+          .sort((a, b) => {
+            const diff = tagCounts[b] - tagCounts[a];
+            return diff !== 0
+              ? diff
+              : a.localeCompare(b, undefined, { sensitivity: "base" });
+          })
+          .map((key) => displayNames[key]);
+
+        setAllTags(sorted);
       } catch (e) {
         console.error("Failed to load tags from recipes", e);
         setAllTags([]);
@@ -690,7 +693,7 @@ export default function Dashboard() {
             radius="md"
           >
             {/* Scrollable checklist area */}
-            <ScrollArea style={{ maxHeight: 300 }}>
+            <ScrollArea h={300} type="always" offsetScrollbars>
               {allTags.length === 0 ? (
                 <Text c="dimmed" size="sm">
                   No tags found.
@@ -699,7 +702,7 @@ export default function Dashboard() {
                 <Checkbox.Group
                   value={selectedTags}
                   onChange={setSelectedTags}
-                  label="Tags column contents"
+                  label="Tags"
                 >
                   <Stack gap="xs" mt="xs">
                     {allTags.map((t, i) => (
