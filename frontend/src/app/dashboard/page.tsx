@@ -19,6 +19,9 @@ import {
   Avatar,
   Badge,
   Divider,
+  Modal,
+  ScrollArea,
+  Checkbox,
 } from "@mantine/core";
 import {
   IconHeart,
@@ -29,6 +32,7 @@ import {
   IconSortAscending,
   IconUser,
   IconLock,
+  IconFilter,
 } from "@tabler/icons-react";
 import Header from "@/components/Header";
 
@@ -40,6 +44,7 @@ type RecipeSummary = {
   dislike_count?: number;
   user_has_liked?: boolean;
   user_has_disliked?: boolean;
+  tags?: string;
 };
 
 type FeedRecipe = {
@@ -65,9 +70,16 @@ export default function Dashboard() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
-  const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(null);
-  const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<string | null>(null);
+  const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(
+    null
+  );
+  const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<
+    string | null
+  >(null);
 
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]); // will fetch later
 
   // Feed state
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
@@ -108,6 +120,27 @@ export default function Dashboard() {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("http://localhost:5001/recipes");
+        const data = await res.json();
+
+        console.log("recipes sample:", data.recipes?.slice(0, 3));
+
+        // Just show whatever the tags column contains for each recipe
+        const rawTags = (data.recipes ?? [])
+          .map((r: any) => r.tags ?? "(no tags)")
+          .map(String);
+
+        setAllTags(rawTags);
+      } catch (e) {
+        console.error("Failed to load tags from recipes", e);
+        setAllTags([]);
+      }
+    })();
+  }, []);
 
   // Fetch feed from followed users
   useEffect(() => {
@@ -220,7 +253,9 @@ export default function Dashboard() {
 
     if (!user) return;
 
-    is_dislike ? setAnimatingRecipeDislike(recipeId) : setAnimatingRecipeLike(recipeId)
+    is_dislike
+      ? setAnimatingRecipeDislike(recipeId)
+      : setAnimatingRecipeLike(recipeId);
 
     try {
       const endpoint = isCurrentlyLiked
@@ -492,6 +527,14 @@ export default function Dashboard() {
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconFilter size={16} />}
+                onClick={() => setTagModalOpen(true)}
+              >
+                Filter tags
+              </Button>
             </Group>
 
             {recipesLoading && (
@@ -576,7 +619,10 @@ export default function Dashboard() {
                             }
                             style={{
                               transition: "all 0.2s ease",
-                              transform: animatingRecipeDislike === r.recipe_id ? "scale(1.2)" : "scale(1)",
+                              transform:
+                                animatingRecipeDislike === r.recipe_id
+                                  ? "scale(1.2)"
+                                  : "scale(1)",
                             }}
                           >
                             {r.user_has_disliked ? (
@@ -601,6 +647,57 @@ export default function Dashboard() {
               </Stack>
             )}
           </Container>
+          <Modal
+            opened={tagModalOpen}
+            onClose={() => setTagModalOpen(false)}
+            title="Filter by tags"
+            size="lg"
+            radius="md"
+          >
+            {/* Scrollable checklist area */}
+            <ScrollArea style={{ maxHeight: 300 }}>
+              {allTags.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  No tags found.
+                </Text>
+              ) : (
+                <Checkbox.Group
+                  value={selectedTags}
+                  onChange={setSelectedTags}
+                  label="Tags column contents"
+                >
+                  <Stack gap="xs" mt="xs">
+                    {allTags.map((t, i) => (
+                      <Checkbox key={i} value={t} label={t} />
+                    ))}
+                  </Stack>
+                </Checkbox.Group>
+              )}
+            </ScrollArea>
+
+            {/* Actions */}
+            <Group justify="space-between" mt="md">
+              <Button variant="subtle" onClick={() => setSelectedTags([])}>
+                Clear
+              </Button>
+              <Group>
+                <Button
+                  variant="default"
+                  onClick={() => setTagModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    // TODO: apply filtering to your recipe lists using `selectedTags`
+                    setTagModalOpen(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              </Group>
+            </Group>
+          </Modal>
         </AppShell.Main>
       </AppShell>
     </div>
