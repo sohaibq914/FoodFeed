@@ -622,15 +622,17 @@ def get_recipe_handler():
 @app.route("/recipes", methods=["GET"])
 def list_recipes():
     try:
-        res = supabase.table("recipes") \
-            .select("recipe_id,title,posted") \
-            .order("timestamp", desc=True) \
+        res = (
+            supabase.table("recipes")
+            .select('recipe_id,title,posted,"timestamp"')  # include it (quoted is safest)
+            .order("timestamp", desc=True)
             .execute()
-
+        )
         return jsonify({"recipes": res.data}), 200
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 
 @app.route("/feed", methods=["GET"])
