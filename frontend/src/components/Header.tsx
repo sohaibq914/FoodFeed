@@ -71,7 +71,6 @@ export default function CommonHeader({
                 variant="light"
                 leftSection={<IconFolderCheck size={16} />}
               >
-                Submitting
               </Button>
 
             <Button
@@ -80,7 +79,6 @@ export default function CommonHeader({
                 variant="light"
                 leftSection={<IconFilesFilled size={16} />}
               >
-                Approving
               </Button>
 
             <Button
@@ -100,7 +98,7 @@ export default function CommonHeader({
                 variant="light"
                 leftSection={<IconSettings size={16} />}
               >
-                Account Settings
+                Settings
               </Button>
             )}
             {user?.username && (
