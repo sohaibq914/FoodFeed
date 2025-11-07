@@ -3,17 +3,43 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Container, Title, Text, Center, Loader, AppShell, Card, Stack, Group, ActionIcon, Avatar, Badge, Divider } from "@mantine/core";
-import { IconHeart, IconHeartFilled, IconHeartBroken, IconHeartBrokenFilled, IconUser, IconLock } from "@tabler/icons-react";
+import {
+  Container,
+  Title,
+  Text,
+  Center,
+  Loader,
+  AppShell,
+  Card,
+  Stack,
+  Group,
+  Menu,
+  Button,
+  ActionIcon,
+  Avatar,
+  Badge,
+  Divider,
+} from "@mantine/core";
+import {
+  IconHeart,
+  IconHeartFilled,
+  IconHeartBroken,
+  IconHeartBrokenFilled,
+  IconSortDescending,
+  IconSortAscending,
+  IconUser,
+  IconLock,
+} from "@tabler/icons-react";
 import Header from "@/components/Header";
 
 type RecipeSummary = {
   recipe_id: string;
   title: string;
+  timestamp?: string;
   like_count?: number;
   dislike_count?: number;
   user_has_liked?: boolean;
-  user_has_disliked?: boolean
+  user_has_disliked?: boolean;
 };
 
 type FeedRecipe = {
@@ -47,6 +73,34 @@ export default function Dashboard() {
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedError, setFeedError] = useState<string | null>(null);
+
+  const [sortOption, setSortOption] = useState<
+    "newest" | "oldest" | "mostLiked"
+  >("newest");
+
+  const getTime = (t?: string) => (t ? new Date(t).getTime() : 0);
+
+  const sortedRecipes = useMemo(() => {
+    const arr = [...recipes];
+    if (sortOption === "mostLiked") {
+      return arr.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
+    }
+    if (sortOption === "oldest") {
+      return arr.sort((a, b) => {
+        const da = getTime(a.timestamp);
+        const db = getTime(b.timestamp);
+        if (da !== db) return da - db; // oldest first
+        return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
+      });
+    }
+    // "newest"
+    return arr.sort((a, b) => {
+      const da = getTime(a.timestamp);
+      const db = getTime(b.timestamp);
+      if (da !== db) return db - da; // newest first
+      return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
+    });
+  }, [recipes, sortOption]);
 
   // auth redirect
   useEffect(() => {
@@ -102,9 +156,13 @@ export default function Dashboard() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
 
         // show only posted
-        const postedOnly: RecipeSummary[] = (data.recipes || []).filter(
-          (r: any) => r.posted === true
-        );
+        const postedOnly: RecipeSummary[] = (data.recipes || [])
+          .filter((r: any) => r.posted === true)
+          .map((r: any) => ({
+            ...r,
+            // normalize to a single field your UI uses
+            timestamp: r.timestamp ?? r.created_at ?? r.updated_at ?? null,
+          }));
 
         // fetch likes ONLY for posted ones
         const withLikes = await Promise.all(
@@ -129,7 +187,13 @@ export default function Dashboard() {
                 user_has_disliked: likeData.user_has_disliked || false,
               };
             } catch {
-              return { ...recipe, like_count: 0, user_has_liked: false, dislike_count: 0, user_has_disliked: false, };
+              return {
+                ...recipe,
+                like_count: 0,
+                user_has_liked: false,
+                dislike_count: 0,
+                user_has_disliked: false,
+              };
             }
           })
         );
@@ -145,7 +209,12 @@ export default function Dashboard() {
     fetchRecipes();
   }, [user]);
 
-  const handleLikeToggle = async (e: React.MouseEvent, recipeId: string, isCurrentlyLiked: boolean, is_dislike: boolean) => {
+  const handleLikeToggle = async (
+    e: React.MouseEvent,
+    recipeId: string,
+    isCurrentlyLiked: boolean,
+    is_dislike: boolean
+  ) => {
     e.preventDefault(); // Prevent navigation to recipe page
     e.stopPropagation();
 
@@ -165,16 +234,24 @@ export default function Dashboard() {
       });
 
       const data = await res.json();
-      console.log(data)
-      
+      console.log(data);
 
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
       // Update the recipe in the list
-      setRecipes((prev) => prev.map((r) => 
-        (r.recipe_id === recipeId
-           ? { ...r, like_count: data.like_count, user_has_liked: data.liked, dislike_count: data.dislike_count, user_has_disliked: data.disliked } 
-           : r)));
+      setRecipes((prev) =>
+        prev.map((r) =>
+          r.recipe_id === recipeId
+            ? {
+                ...r,
+                like_count: data.like_count,
+                user_has_liked: data.liked,
+                dislike_count: data.dislike_count,
+                user_has_disliked: data.disliked,
+              }
+            : r
+        )
+      );
     } catch (err: any) {
       console.error("Error updating like:", err);
     } finally {
@@ -291,7 +368,7 @@ export default function Dashboard() {
                               size="sm"
                               fw={500}
                               component="span"
-                              style={{ color: "inherit" }} 
+                              style={{ color: "inherit" }}
                             >
                               @{recipe.author.username}
                             </Text>
@@ -373,6 +450,50 @@ export default function Dashboard() {
             <Title order={3} mt="xl">
               Discover More Recipes
             </Title>
+
+            <Group align="center" justify="start" gap="xs" mt="sm" mb="md">
+              <Text c="dimmed" size="sm">
+                Sort by:
+              </Text>
+              <Menu shadow="md" width={180}>
+                <Menu.Target>
+                  <Button
+                    variant="light"
+                    size="xs"
+                    leftSection={
+                      sortOption === "mostLiked" ? (
+                        <IconHeartFilled size={16} />
+                      ) : sortOption === "oldest" ? (
+                        <IconSortAscending size={16} />
+                      ) : (
+                        <IconSortDescending size={16} />
+                      )
+                    }
+                  >
+                    {sortOption === "mostLiked"
+                      ? "Most Liked"
+                      : sortOption === "oldest"
+                      ? "Oldest"
+                      : "Newest"}
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item onClick={() => setSortOption("newest")}>
+                    <IconSortDescending size={14} style={{ marginRight: 6 }} />
+                    Newest
+                  </Menu.Item>
+                  <Menu.Item onClick={() => setSortOption("oldest")}>
+                    <IconSortAscending size={14} style={{ marginRight: 6 }} />
+                    Oldest
+                  </Menu.Item>
+                  <Menu.Item onClick={() => setSortOption("mostLiked")}>
+                    <IconHeartFilled size={14} style={{ marginRight: 6 }} />
+                    Most Liked
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </Group>
+
             {recipesLoading && (
               <Center mt="md">
                 <Loader />
@@ -388,7 +509,7 @@ export default function Dashboard() {
                 {recipes.length === 0 ? (
                   <Text c="dimmed">No recipes found.</Text>
                 ) : (
-                  recipes.map((r) => (
+                  sortedRecipes.map((r) => (
                     <Card
                       key={r.recipe_id}
                       withBorder
@@ -410,7 +531,14 @@ export default function Dashboard() {
                             color={r.user_has_liked ? "red" : "gray"}
                             size="md"
                             radius="xl"
-                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_liked || false, false)}
+                            onClick={(e) =>
+                              handleLikeToggle(
+                                e,
+                                r.recipe_id,
+                                r.user_has_liked || false,
+                                false
+                              )
+                            }
                             style={{
                               transition: "all 0.2s ease",
                               transform:
@@ -438,15 +566,31 @@ export default function Dashboard() {
                             color={r.user_has_disliked ? "red" : "gray"}
                             size="md"
                             radius="xl"
-                            onClick={(e) => handleLikeToggle(e, r.recipe_id, r.user_has_disliked || false, true)}
+                            onClick={(e) =>
+                              handleLikeToggle(
+                                e,
+                                r.recipe_id,
+                                r.user_has_disliked || false,
+                                true
+                              )
+                            }
                             style={{
                               transition: "all 0.2s ease",
                               transform: animatingRecipeDislike === r.recipe_id ? "scale(1.2)" : "scale(1)",
                             }}
                           >
-                            {r.user_has_disliked ? <IconHeartBrokenFilled size={16} /> : <IconHeartBroken size={16} />}
+                            {r.user_has_disliked ? (
+                              <IconHeartBrokenFilled size={16} />
+                            ) : (
+                              <IconHeartBroken size={16} />
+                            )}
                           </ActionIcon>
-                          <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
+                          <Text
+                            size="sm"
+                            fw={500}
+                            c="dimmed"
+                            style={{ minWidth: "20px", textAlign: "center" }}
+                          >
                             {r.dislike_count || 0}
                           </Text>
                         </Group>
