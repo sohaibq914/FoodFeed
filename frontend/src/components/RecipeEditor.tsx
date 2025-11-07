@@ -19,15 +19,21 @@ import {
   CloseButton,
   TagsInput,
   SegmentedControl, 
-  Text
+  Text,
+  NumberInput
 } from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, forbidden } from "next/navigation";
+
+const ingredientDefault = [
+  {name: "", quantity: 0, unit: ""},
+];
 
 export default function RecipeEditor(params: { recipe_id: string }) {
+  const [author, setAuthor] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDesc] = useState("");
-  const [ingredients, setIngredients] = useState("");
+  const [ingredients, setIngredients] = useState(ingredientDefault);
   const [instructions, setInstructions] = useState("");
   const [nutrition, setNutrition] = useState("");
   const [allergens, setAllergens] = useState("");
@@ -67,6 +73,16 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     setFiles(null);
   }
 
+  function addIngredient() {
+    console.log("pressed");
+    setIngredients( [...ingredients, {name: "", quantity: 0, unit: ""}]);
+  }
+
+  function removeIngredient(index: number) {
+    console.log("pressed");
+    setIngredients( ingredients.filter(i => ingredients.indexOf(i) !== index));
+  }
+
   // --- API helpers ---
 
   const get_recipe = async (recipe_id: string) => {
@@ -83,16 +99,27 @@ export default function RecipeEditor(params: { recipe_id: string }) {
 
       const data = await response.json();
 
+      console.log(data)
+
       if (response.ok) {
+        setAuthor(data.author_id || "");
         setTitle(data.title || "");
         setDesc(data.description || "");
-        setIngredients(data.ingredients || "");
+        setIngredients(JSON.parse(data.ingredients) || ingredientDefault);
         setInstructions(data.instructions || "");
         setNutrition(data.nutrition_facts || "");
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
         setVisibility(data.visibility || "public");
         setTags(JSON.parse(data.tags) || [])
+
+        console.log(user)
+        console.log("author id: " + data.author_id)
+
+        if (user === null || data.author_id !== user.id) {
+          console.log("illegal!")
+          router.push("/dashboard/");
+        }
       } else {
         console.error("Failed to load recipe:", data.error);
         setError(data.error || "Failed to load recipe");
@@ -103,32 +130,33 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     }
   };
 
-  const update_recipe = async (recipe_id: string, author: string, title: string, description: string, ingredients: string, instructions: string, nutrition: string, allergens: string, posting: boolean, image: File | null, visibility: string) => {
+  const update_recipe = async (recipe_id: string, author: string, title: string, description: string, 
+    ingredients: {name: string, quantity: number, unit: string}[], instructions: string, nutrition: string, 
+    allergens: string, posting: boolean, image: File | null, visibility: string) => {
 
     try {
-      //if (image) {
-        const fd = new FormData();
-        fd.append("recipe_id", recipe_id);
-        fd.append("author", author);
-        fd.append("title", title);
-        fd.append("description", description);
-        fd.append("ingredients", ingredients);
-        fd.append("instructions", instructions);
-        fd.append("nutrition", nutrition);
-        fd.append("allergens", allergens);
-        fd.append("posting", String(posting));
-        fd.append("visibility", visibility);
-        if (image) {
-          fd.append("image", image)
-        }
-        fd.append("tags", JSON.stringify(tags).toLowerCase())
+      const fd = new FormData();
+      fd.append("recipe_id", recipe_id);
+      fd.append("author", author);
+      fd.append("title", title);
+      fd.append("description", description);
+      fd.append("ingredients", JSON.stringify(ingredients));
+      fd.append("instructions", instructions);
+      fd.append("nutrition", nutrition);
+      fd.append("allergens", allergens);
+      fd.append("posting", String(posting));
+      fd.append("visibility", visibility);
+      if (image) {
+        fd.append("image", image)
+      }
+      fd.append("tags", JSON.stringify(tags).toLowerCase())
 
-        const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data?.error || "Failed to update");
-        else 
-          // ✅ Reload page after success
-          router.push("/edit-recipe/" + data.recipe_id);
+      const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Failed to update");
+      else 
+        // ✅ Reload page after success
+        router.push("/edit-recipe/" + data.recipe_id);
 
     } catch (err) {
       console.error(err);
@@ -194,9 +222,61 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             <TextInput label="Title" placeholder="Your recipe's title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required size="md" />
 
             <Textarea label="Description" placeholder="Your recipe's description" autosize minRows={2} maxRows={3} value={description} onChange={(e) => setDesc(e.currentTarget.value)} required size="md" />
-
-            <Textarea label="Ingredients" placeholder="Your recipe's ingredient list" value={ingredients} autosize minRows={2} maxRows={8} onChange={(e) => setIngredients(e.currentTarget.value)} required size="md" />
-
+            
+            <Stack gap="sm" align="flex-start">
+              <Group justify="flex-start" gap="xs">
+                <Text size="md" fw={500}>
+                  Ingredients
+                </Text>
+                <Text size="md" fw={500} c="red">
+                  *
+                </Text>
+              </Group>
+              <Stack justify="space-between" align="stretch">
+                {ingredients.map((ingredient, index) => (
+                  <Group key = {index} justify="flex-start">
+                    <TextInput placeholder="Ingredient name" value={ingredient.name} required size="md"
+                    onChange={(e) => setIngredients(
+                      ingredients.map((ingredient, subIndex) => {
+                        if (index === subIndex) {
+                          return { ...ingredient, name: e.currentTarget.value };
+                        } else {
+                          return ingredient;
+                        }
+                      })
+                    )}/>          
+                    <NumberInput required size="md" placeholder="Quantity" allowNegative={false} decimalScale={3} hideControls value={ingredient.quantity}
+                    onChange={(e) => setIngredients(
+                      ingredients.map((ingredient, subIndex) => {
+                        if (index === subIndex) {  
+                          return { ...ingredient, quantity: Number(e)};
+                        } else {
+                          return ingredient;
+                        }
+                      })
+                    )}/>
+                    <TextInput placeholder="Unit" value={ingredient.unit} required size="md" 
+                    onChange={(e) => setIngredients(
+                      ingredients.map((ingredient, subIndex) => {
+                        if (index === subIndex) {
+                          return { ...ingredient, unit: e.currentTarget.value };
+                        } else {
+                          return ingredient;
+                        }
+                      })
+                    )}/>
+                    <CloseButton size="md" onClick={() => removeIngredient(index)} >
+                    </CloseButton>
+                  </Group>
+                ))}
+              </Stack>
+              <Group justify="center">
+                <Button size="md" onClick={() => addIngredient()} >
+                  Add ingredient
+                </Button>
+              </Group>
+            </Stack>
+            
             <Textarea label="Instructions" placeholder="Your recipe's directions" autosize minRows={4} maxRows={10} value={instructions} onChange={(e) => setInstructions(e.currentTarget.value)} required size="md" />
 
             <Textarea label="Nutrition Facts" placeholder="Your recipe's nutritional information" autosize minRows={2} maxRows={6} value={nutrition} onChange={(e) => setNutrition(e.currentTarget.value)} size="md" />

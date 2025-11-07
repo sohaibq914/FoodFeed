@@ -11,6 +11,7 @@ import {
   Loader,
   Center,
   Paper,
+  Badge,
   Stack,
   Group,
   ActionIcon,
@@ -20,16 +21,26 @@ import {
   Divider,
   Modal,
   AppShell,
-  Image
+  Image,
+  Select,
 } from "@mantine/core";
 import Header from "@/components/Header";
-import { IconHeart, IconHeartFilled, IconTrash } from "@tabler/icons-react";
+import {
+  IconHeart,
+  IconHeartFilled,
+  IconHeartBroken,
+  IconHeartBrokenFilled,
+  IconTrash,
+} from "@tabler/icons-react";
+import { CopyButton, Tooltip, TextInput } from "@mantine/core";
+import { IconShare3, IconCheck, IconCopy } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
 
 type Recipe = {
   recipe_id: string;
   title: string;
   description?: string | null;
-  ingredients?: string | null;
+  ingredients?: [] | null;
   instructions?: string | null;
   nutrition_facts?: string | null;
   allergens?: string | null;
@@ -37,8 +48,10 @@ type Recipe = {
   users?: { username?: string | null } | null;
   like_count?: number;
   user_has_liked?: boolean;
+  dislike_count?: number;
+  user_has_disliked?: boolean;
   image?: string;
-  tags: Array<string>;
+  tags?: Array<string>;
 };
 
 type RecipeComment = {
@@ -52,6 +65,8 @@ type RecipeComment = {
   replies?: RecipeComment[];
 };
 
+const ingredientDefault = [{ name: "", quantity: 0, unit: "" }];
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:5001";
 
 export default function RecipePage() {
@@ -60,13 +75,21 @@ export default function RecipePage() {
   const { user } = useAuth();
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [ingredients, setIngredients] = useState(ingredientDefault);
   const [tags, setTags] = useState<string[]>([]);
+  const [portion, setPortion] = useState<string | null>("1");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [likeCount, setLikeCount] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [dislikeCount, setDislikeCount] = useState(0);
+  const [isDisliked, setIsDisliked] = useState(false);
+  const [isAnimatingLike, setIsAnimatingLike] = useState(false);
+  const [isAnimatingDislike, setIsAnimatingDislike] = useState(false);
+
+  const [animatingRecipe, setAnimatingRecipe] = useState<string | null>(null);
+
   const [likeLoading, setLikeLoading] = useState(false);
 
   // Comments
@@ -81,6 +104,14 @@ export default function RecipePage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [replyLoading, setReplyLoading] = useState(false);
+
+  const [shareOpen, { open: openShare, close: closeShare }] =
+    useDisclosure(false);
+
+  const shareUrl =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.origin}/recipe/${recipeId}`;
 
   // Fetch recipe
   useEffect(() => {
@@ -101,8 +132,9 @@ export default function RecipePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipe");
 
         setRecipe(data as Recipe);
-        setTags(JSON.parse(data.tags))
-        console.log(recipe)
+        setIngredients(JSON.parse(data.ingredients));
+        setTags(JSON.parse(data.tags));
+        console.log(recipe);
         setLikeCount(data.like_count ?? 0);
         setIsLiked(Boolean(data.user_has_liked));
       } catch (e: any) {
@@ -143,35 +175,55 @@ export default function RecipePage() {
     // Consider using toLocaleString with a set timezone if you want consistency.
   };
 
-  const handleLikeToggle = async () => {
+  const handleLikeToggle = async (
+    e: React.MouseEvent,
+    isCurrentlyLiked: boolean,
+    is_dislike: boolean
+  ) => {
     if (!user) {
       alert("Please log in to like recipes");
       return;
     }
     if (likeLoading) return;
 
+    if (!user) return;
+
     setLikeLoading(true);
-    setIsAnimating(true);
+    is_dislike ? setIsAnimatingDislike(true) : setIsAnimatingLike(true);
+
     try {
-      const endpoint = isLiked
+      const endpoint = isCurrentlyLiked
         ? `${API_BASE}/recipes/${recipeId}/unlike`
         : `${API_BASE}/recipes/${recipeId}/like`;
+
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: user.id }),
+        body: JSON.stringify({ user_id: user.id, is_dislike: is_dislike }),
       });
+
       const data = await res.json();
+      console.log(data);
+
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
-      setLikeCount(data.like_count);
-      setIsLiked(Boolean(data.liked));
-    } catch (e: any) {
-      console.error("Error updating like:", e);
-      alert(e.message || "Failed to update like");
+      // Update the UI
+      if (recipe) {
+        setRecipe({
+          ...recipe,
+          like_count: data.like_count,
+          dislike_count: data.dislike_count,
+          user_has_liked: data.liked,
+          user_has_disliked: data.disliked,
+        });
+      }
+    } catch (err: any) {
+      console.error("Error updating like:", err);
+      alert(err.message || "Failed to update like");
     } finally {
       setLikeLoading(false);
-      setTimeout(() => setIsAnimating(false), 300);
+      setTimeout(() => setIsAnimatingLike(false), 300);
+      setTimeout(() => setIsAnimatingDislike(false), 300);
     }
   };
 
@@ -356,11 +408,11 @@ export default function RecipePage() {
     recipe.users?.username || (recipe.author_id ?? "Unknown");
 
   const test = () => {
-    console.log(recipe)
-    console.log(recipe.tags)
+    console.log(recipe);
+    console.log(recipe.tags);
 
-    return true
-  }
+    return true;
+  };
 
   return (
     <AppShell header={{ height: 64 }} padding="md">
@@ -387,7 +439,8 @@ export default function RecipePage() {
                   {authorUsername}
                 </Link>
               </Text>
-              {recipe.image && <Image
+              {recipe.image && (
+                <Image
                   src={recipe.image}
                   alt="preview"
                   radius="sm"
@@ -395,35 +448,130 @@ export default function RecipePage() {
                   h={140}
                   fit="contain"
                   mt="sm"
-              >
-              </Image>
-              }
+                ></Image>
+              )}
             </div>
 
             <Group gap="xs" align="center">
+              {/*
+                Like and Dislike buttons
+              */}
+
               <ActionIcon
-                variant={isLiked ? "filled" : "light"}
-                color={isLiked ? "red" : "gray"}
-                size="lg"
+                variant={recipe.user_has_liked ? "filled" : "light"}
+                color={recipe.user_has_liked ? "red" : "gray"}
+                size="md"
                 radius="xl"
-                onClick={handleLikeToggle}
+                onClick={(e) =>
+                  handleLikeToggle(e, recipe.user_has_liked || false, false)
+                }
                 disabled={likeLoading}
                 style={{
                   transition: "all 0.2s ease",
-                  transform: isAnimating ? "scale(1.2)" : "scale(1)",
+                  transform: isAnimatingLike ? "scale(1.2)" : "scale(1)",
                 }}
-                aria-label={isLiked ? "Unlike" : "Like"}
               >
-                {isLiked ? (
-                  <IconHeartFilled size={20} />
+                {recipe.user_has_liked ? (
+                  <IconHeartFilled size={16} />
                 ) : (
-                  <IconHeart size={20} />
+                  <IconHeart size={16} />
                 )}
               </ActionIcon>
-              <Text fw={600} size="lg">
-                {likeCount}
+              <Text
+                size="sm"
+                fw={500}
+                c="dimmed"
+                style={{ minWidth: "20px", textAlign: "center" }}
+              >
+                {recipe.like_count || 0}
+              </Text>
+              <ActionIcon
+                variant={recipe.user_has_disliked ? "filled" : "light"}
+                color={recipe.user_has_disliked ? "red" : "gray"}
+                size="md"
+                radius="xl"
+                onClick={(e) =>
+                  handleLikeToggle(e, recipe.user_has_disliked || false, true)
+                }
+                style={{
+                  transition: "all 0.2s ease",
+                  transform: isAnimatingDislike ? "scale(1.2)" : "scale(1)",
+                }}
+              >
+                {recipe.user_has_disliked ? (
+                  <IconHeartBrokenFilled size={16} />
+                ) : (
+                  <IconHeartBroken size={16} />
+                )}
+              </ActionIcon>
+              <Text
+                size="sm"
+                fw={500}
+                c="dimmed"
+                style={{ minWidth: "20px", textAlign: "center" }}
+              >
+                {recipe.dislike_count || 0}
               </Text>
             </Group>
+
+            {/* share function, should there be a better url shortener later? */}
+            <Tooltip label="Share" openDelay={250}>
+              <ActionIcon
+                variant="light"
+                size="lg"
+                radius="xl"
+                onClick={openShare}
+                aria-label="Share recipe"
+              >
+                <IconShare3 size={20} />
+              </ActionIcon>
+            </Tooltip>
+            <Modal
+              opened={shareOpen}
+              onClose={closeShare}
+              title="Share this recipe"
+              centered
+            >
+              <Stack>
+                <Text size="sm" c="dimmed">
+                  Copy the link below to share this recipe.
+                </Text>
+
+                <TextInput
+                  value={shareUrl}
+                  readOnly
+                  onFocus={(e) => e.currentTarget.select()}
+                  rightSection={
+                    <CopyButton value={shareUrl} timeout={1400}>
+                      {({ copied, copy }) => (
+                        <Tooltip
+                          label={copied ? "Copied!" : "Copy"}
+                          openDelay={200}
+                        >
+                          <ActionIcon
+                            onClick={copy}
+                            variant="light"
+                            aria-label="Copy link"
+                          >
+                            {copied ? (
+                              <IconCheck size={18} />
+                            ) : (
+                              <IconCopy size={18} />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                    </CopyButton>
+                  }
+                />
+
+                <Group justify="flex-end" mt="sm">
+                  <Button variant="default" onClick={closeShare}>
+                    Close
+                  </Button>
+                </Group>
+              </Stack>
+            </Modal>
           </Group>
 
           {/* Body */}
@@ -436,12 +584,33 @@ export default function RecipePage() {
                 </>
               )}
 
-              {recipe.ingredients && (
+              {ingredients && (
                 <>
                   <Text fw={600} mt="md">
                     Ingredients
                   </Text>
-                  <Text>{recipe.ingredients}</Text>
+
+                  <Group>
+                    <Select
+                      label="Portion"
+                      value={portion}
+                      onChange={(value) => setPortion(value)}
+                      data={["0.5", "1", "2", "3"]}
+                      allowDeselect={false}
+                    ></Select>
+                  </Group>
+                  <Stack>
+                    {ingredients.map((ingredient, index) => {
+                      return (
+                        <Text key={index}>
+                          {" "}
+                          {ingredient.name}:{" "}
+                          {ingredient.quantity * Number(portion)}{" "}
+                          {ingredient.unit}{" "}
+                        </Text>
+                      );
+                    })}
+                  </Stack>
                 </>
               )}
 
@@ -472,16 +641,23 @@ export default function RecipePage() {
                 </>
               )}
 
-              {test() && recipe.tags && (
+              {recipe.tags && (
                 <>
                   <Text fw={600} mt="md">
                     Tags
                   </Text>
                   <Group>
-                    {tags.map((tag, index) => {
-                      return <Text key={index}>{tag}</Text>
-                    })}
-                  </Group> 
+                    {tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        color="indigo" // color
+                        radius="xl" // makes it rounded
+                        variant="light" // soft background
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Group>
                 </>
               )}
             </Stack>

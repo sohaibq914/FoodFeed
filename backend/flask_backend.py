@@ -624,15 +624,17 @@ def get_recipe_handler():
 @app.route("/recipes", methods=["GET"])
 def list_recipes():
     try:
-        res = supabase.table("recipes") \
-            .select("recipe_id,title,posted") \
-            .order("timestamp", desc=True) \
+        res = (
+            supabase.table("recipes")
+            .select('recipe_id,title,posted,"timestamp",tags')  # include it (quoted is safest)
+            .order("timestamp", desc=True)
             .execute()
-
+        )
         return jsonify({"recipes": res.data}), 200
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 
 @app.route("/feed", methods=["GET"])
@@ -834,11 +836,18 @@ def like_recipe_handler(recipe_id):
     try:
         data = request.get_json()
         user_id = data.get("user_id")
+        is_dislike = data.get("is_dislike")
+
+        print(is_dislike)
+        
 
         if not user_id:
             return jsonify({"error": "Missing user_id"}), 400
+        if not is_dislike:
+            is_dislike = False
 
-        result = like_recipe(user_id, recipe_id)
+        result = like_recipe(user_id, recipe_id, is_dislike)
+        print(result)
 
         if "error" in result:
             # If already liked, return 200 with current state
@@ -846,14 +855,18 @@ def like_recipe_handler(recipe_id):
                 return jsonify({
                     "message": "Recipe already liked",
                     "like_count": result.get('like_count', 0),
-                    "liked": True
+                    "dislike_count": result.get('dislike_count', 0),
+                    "liked": (not result.get('is_dislike')),
+                    "disliked": result.get('is_dislike')
                 }), 200
             return jsonify({"error": result["error"]}), 400
 
         return jsonify({
             "message": result["message"],
             "like_count": result["like_count"],
-            "liked": True
+            "dislike_count": result['dislike_count'],
+            "liked": (not result['is_dislike']),
+            "disliked": result['is_dislike']
         }), 200
 
     except Exception as e:
@@ -872,6 +885,7 @@ def unlike_recipe_handler(recipe_id):
             return jsonify({"error": "Missing user_id"}), 400
 
         result = unlike_recipe(user_id, recipe_id)
+        print(result)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -879,7 +893,9 @@ def unlike_recipe_handler(recipe_id):
         return jsonify({
             "message": result["message"],
             "like_count": result["like_count"],
-            "liked": False
+            "dislike_count": result['dislike_count'],
+            "liked": False,
+            "disliked": False
         }), 200
 
     except Exception as e:

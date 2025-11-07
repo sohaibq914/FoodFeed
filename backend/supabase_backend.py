@@ -395,7 +395,7 @@ def insert_r_tags(restaurant_id, tags):
 
 # Recipe methods
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
 
     try:
         image_url = None
@@ -421,6 +421,12 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients: str,
                 "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens,
                 "posted": posting, "image": image_url, "visibility": visibility, "tags": tags}).execute()
         else:
+            # Verify that user is authorized
+            verify = supabase.table('recipes').select('author_id').eq('recipe_id', id).single().execute()
+            print(verify)
+            if (verify.data['author_id'] != author):
+                return {"error": "This account is not the correct author."}
+
             print(f"Updating existing recipe: {id}")
             # Build update payload - only include image if a new one was uploaded
             update_payload = {
@@ -467,6 +473,7 @@ def get_recipe(id: str, user_id: str = None):
 
             print("Full recipe response:", response.data)
 
+
             if response.data and "users" in response.data:
                 print("Author username:",
                       response.data["users"].get("username"))
@@ -490,20 +497,33 @@ def get_recipe(id: str, user_id: str = None):
                     else:
                         return {"error": "This recipe is private. Follow the author to view it.", "private": True}
 
-            # Get actual like count from recipe_likes table
+
+            # Count likes directly (more reliable than waiting for trigger)
             like_count_result = supabase.table('recipe_likes').select(
-                'id', count='exact').eq('recipe_id', id).execute()
-            actual_like_count = like_count_result.count if like_count_result.count is not None else 0
-            response.data['like_count'] = actual_like_count
-            print(f"Actual like count for recipe {id}: {actual_like_count}")
+                'id', count='exact').eq('recipe_id', id).eq('is_dislike', False).execute()
+            like_count = like_count_result.count if like_count_result.count is not None else 0
+            # Count dislikes directly (more reliable than waiting for trigger)
+            dislike_count_result = supabase.table('recipe_likes').select(
+                'id', count='exact').eq('recipe_id', id).eq('is_dislike', True).execute()
+            dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
+            print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+
+            response.data['like_count'] = like_count
+            response.data['dislike_count'] = dislike_count
+
 
             # Check if user has liked this recipe
             if user_id and response.data:
                 liked_response = supabase.table('recipe_likes').select(
-                    'id').eq('recipe_id', id).eq('user_id', user_id).execute()
+                    'id').eq('recipe_id', id).eq('user_id', user_id).eq('is_dislike', False).execute()
                 response.data['user_has_liked'] = len(liked_response.data) > 0
+
+                disliked_response = supabase.table('recipe_likes').select(
+                    'id').eq('recipe_id', id).eq('user_id', user_id).eq('is_dislike', True).execute()
+                response.data['user_has_disliked'] = len(disliked_response.data) > 0
             else:
                 response.data['user_has_liked'] = False
+                response.data['user_has_disliked'] = False
 
             return response.data
         else:
@@ -514,35 +534,58 @@ def get_recipe(id: str, user_id: str = None):
         return {"error": str(e)}
 
 
-def like_recipe(user_id: str, recipe_id: str):
+def like_recipe(user_id: str, recipe_id: str, is_dislike: bool):
     """Add a like to a recipe"""
     try:
         print(f"Like attempt - user_id: {user_id}, recipe_id: {recipe_id}")
 
-        # Check if already liked
+        # Check if already liked or disliked
         existing = supabase.table('recipe_likes').select('id').eq(
             'user_id', user_id).eq('recipe_id', recipe_id).execute()
         print(f"Existing likes: {existing.data}")
 
         if existing.data:
-            # Get current like count
-            recipe = supabase.table('recipes').select('like_count').eq(
-                'recipe_id', recipe_id).single().execute()
-            return {"error": "Recipe already liked", "like_count": recipe.data.get('like_count', 0)}
-
-        # Insert like
-        response = supabase.table('recipe_likes').insert({
-            'user_id': user_id,
-            'recipe_id': recipe_id
-        }).execute()
-        print(f"Insert response: {response.data}")
+            # Check if double-liking or double-disliking
+            double = supabase.table('recipe_likes').select('id').eq('user_id', user_id).eq(
+                'recipe_id', recipe_id).eq('is_dislike', is_dislike).execute()
+            if double.data:
+                # Get current like count
+                recipe = supabase.table('recipes').select('like_count').eq(
+                    'recipe_id', recipe_id).single().execute()
+                # Count likes directly (more reliable than waiting for trigger)
+                like_count_result = supabase.table('recipe_likes').select(
+                    'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', False).execute()
+                like_count = like_count_result.count if like_count_result.count is not None else 0
+                # Count dislikes directly (more reliable than waiting for trigger)
+                dislike_count_result = supabase.table('recipe_likes').select(
+                    'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
+                dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
+                print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+                return {"error": "Recipe already liked", "like_count": like_count, "dislike_count": dislike_count, "is_dislike": is_dislike}
+            else:
+                # Invert like
+                response = supabase.table('recipe_likes').update({'is_dislike': is_dislike}).eq(
+                    'id', existing.data[0]['id']).execute()
+                print(f"Update response: {response.data}")
+        else:
+            # Insert like
+            response = supabase.table('recipe_likes').insert({
+                'user_id': user_id,
+                'recipe_id': recipe_id,
+                'is_dislike': is_dislike
+            }).execute()
+            print(f"Insert response: {response.data}")
 
         if response.data:
             # Count likes directly (more reliable than waiting for trigger)
             like_count_result = supabase.table('recipe_likes').select(
-                'id', count='exact').eq('recipe_id', recipe_id).execute()
+                'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', False).execute()
             like_count = like_count_result.count if like_count_result.count is not None else 0
-            print(f"Direct count of likes: {like_count}")
+            # Count dislikes directly (more reliable than waiting for trigger)
+            dislike_count_result = supabase.table('recipe_likes').select(
+                'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
+            dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
+            print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
 
             # Also get the like_count column value to verify trigger
             recipe = supabase.table('recipes').select('like_count').eq(
@@ -550,9 +593,11 @@ def like_recipe(user_id: str, recipe_id: str):
             print(
                 f"Like count from column: {recipe.data.get('like_count', 0)}")
 
-            return {"message": "Recipe liked", "like_count": like_count}
+            print(response.data)
 
-        return {"error": "Failed to like recipe"}
+            return {"message": "Recipe rated", "like_count": like_count, "dislike_count": dislike_count, "is_dislike": response.data[0]['is_dislike']}
+
+        return {"error": "Failed to rated recipe"}
 
     except Exception as e:
         print(f"Error in like_recipe: {str(e)}")
@@ -579,16 +624,23 @@ def unlike_recipe(user_id: str, recipe_id: str):
 
         # Count likes directly (more reliable than waiting for trigger)
         like_count_result = supabase.table('recipe_likes').select(
-            'id', count='exact').eq('recipe_id', recipe_id).execute()
+            'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', False).execute()
         like_count = like_count_result.count if like_count_result.count is not None else 0
         print(f"Direct count of likes after unlike: {like_count}")
+        # Count dislikes directly (more reliable than waiting for trigger)
+        dislike_count_result = supabase.table('recipe_likes').select(
+            'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
+        dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
+        print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
 
         # Also get the like_count column value to verify trigger
         recipe = supabase.table('recipes').select('like_count').eq(
             'recipe_id', recipe_id).single().execute()
         print(f"Like count from column: {recipe.data.get('like_count', 0)}")
 
-        return {"message": "Recipe unliked", "like_count": like_count}
+        print(response.data)
+
+        return {"message": "Recipe unliked", "like_count": like_count, "dislike_count": dislike_count, "is_dislike": response.data[0]['is_dislike']}
 
     except Exception as e:
         print(f"Error in unlike_recipe: {str(e)}")
@@ -599,7 +651,7 @@ def check_recipe_liked(user_id: str, recipe_id: str):
     """Check if a user has liked a specific recipe"""
     try:
         response = supabase.table('recipe_likes').select('id').eq(
-            'user_id', user_id).eq('recipe_id', recipe_id).execute()
+            'user_id', user_id).eq('recipe_id', recipe_id).eq('is_dislike', False).execute()
         return {"liked": len(response.data) > 0}
     except Exception as e:
         print(f"Error in check_recipe_liked: {str(e)}")
@@ -619,6 +671,7 @@ def get_user_likes(user_id: str):
             supabase.table("recipe_likes")
             .select("recipe_id, recipes!inner(title, author_id, posted)")
             .eq("user_id", user_id)
+            .eq("is_dislike", False)
             .execute()
         )
 
