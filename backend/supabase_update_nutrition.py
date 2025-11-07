@@ -69,10 +69,10 @@ def insert_nutrients(csv_file):
                 .execute()
         id = res.data[0]['id']
         foods = row['foods']
-        if (foods is not []):
-            foods = []
-        else:
+        try:
             foods = foods.split(' ')
+        except Exception as e:
+            continue
         supabase.table('item_has_nutrient') \
             .delete() \
             .eq('nutrient_id', id) \
