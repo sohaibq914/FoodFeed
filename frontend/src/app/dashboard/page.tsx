@@ -19,6 +19,9 @@ import {
   Avatar,
   Badge,
   Divider,
+  Modal,
+  ScrollArea,
+  Checkbox,
 } from "@mantine/core";
 import {
   IconHeart,
@@ -29,6 +32,7 @@ import {
   IconSortAscending,
   IconUser,
   IconLock,
+  IconFilter,
 } from "@tabler/icons-react";
 import Header from "@/components/Header";
 
@@ -40,6 +44,7 @@ type RecipeSummary = {
   dislike_count?: number;
   user_has_liked?: boolean;
   user_has_disliked?: boolean;
+  tags?: string;
 };
 
 type FeedRecipe = {
@@ -65,9 +70,16 @@ export default function Dashboard() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
-  const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(null);
-  const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<string | null>(null);
+  const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(
+    null
+  );
+  const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<
+    string | null
+  >(null);
 
+  const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]); // will fetch later
 
   // Feed state
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
@@ -80,27 +92,32 @@ export default function Dashboard() {
 
   const getTime = (t?: string) => (t ? new Date(t).getTime() : 0);
 
+  const filteredRecipes = useMemo(() => {
+    if (selectedTags.length === 0) return recipes;
+
+    return recipes.filter((r) =>
+      selectedTags.every((tag) => r.tags?.includes(tag))
+    );
+  }, [recipes, selectedTags]);
+
   const sortedRecipes = useMemo(() => {
-    const arr = [...recipes];
+    const arr = [...filteredRecipes];
     if (sortOption === "mostLiked") {
       return arr.sort((a, b) => (b.like_count || 0) - (a.like_count || 0));
     }
     if (sortOption === "oldest") {
-      return arr.sort((a, b) => {
-        const da = getTime(a.timestamp);
-        const db = getTime(b.timestamp);
-        if (da !== db) return da - db; // oldest first
-        return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
-      });
+      return arr.sort(
+        (a, b) =>
+          new Date(a.timestamp || 0).getTime() -
+          new Date(b.timestamp || 0).getTime()
+      );
     }
-    // "newest"
-    return arr.sort((a, b) => {
-      const da = getTime(a.timestamp);
-      const db = getTime(b.timestamp);
-      if (da !== db) return db - da; // newest first
-      return a.recipe_id.localeCompare(b.recipe_id); // tiebreaker
-    });
-  }, [recipes, sortOption]);
+    return arr.sort(
+      (a, b) =>
+        new Date(b.timestamp || 0).getTime() -
+        new Date(a.timestamp || 0).getTime()
+    );
+  }, [filteredRecipes, sortOption]);
 
   // auth redirect
   useEffect(() => {
@@ -108,6 +125,53 @@ export default function Dashboard() {
       router.push("/login");
     }
   }, [user, loading, router]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("http://localhost:5001/recipes");
+        const data = await res.json();
+
+        const seen = new Set<string>(); // lowercase keys for uniqueness
+        const out: string[] = []; // display labels (first-seen casing)
+
+        (data.recipes ?? []).forEach((r: any) => {
+          const raw = r.tags;
+
+          let arr: string[] = [];
+          if (Array.isArray(raw)) {
+            arr = raw;
+          } else if (typeof raw === "string" && raw.trim()) {
+            // handle '["peanut","dairy"]' or 'peanut,dairy'
+            try {
+              const parsed = JSON.parse(raw);
+              arr = Array.isArray(parsed) ? parsed : raw.split(",");
+            } catch {
+              arr = raw.split(",");
+            }
+          }
+
+          arr.forEach((t) => {
+            const tag = String(t).trim();
+            if (!tag) return;
+            const key = tag.toLowerCase();
+            if (!seen.has(key)) {
+              seen.add(key);
+              out.push(tag); // preserve first-seen casing for display
+            }
+          });
+        });
+
+        out.sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base" })
+        );
+        setAllTags(out);
+      } catch (e) {
+        console.error("Failed to load tags from recipes", e);
+        setAllTags([]);
+      }
+    })();
+  }, []);
 
   // Fetch feed from followed users
   useEffect(() => {
@@ -118,7 +182,7 @@ export default function Dashboard() {
         setFeedLoading(true);
         setFeedError(null);
 
-        const res = await fetch(`http://localhost:5001/feed?limit=20`, {
+        const res = await fetch(`http://localhost:5001/feed?limit=40`, {
           headers: {
             "Content-Type": "application/json",
             "X-User-ID": user.id,
@@ -160,8 +224,12 @@ export default function Dashboard() {
           .filter((r: any) => r.posted === true)
           .map((r: any) => ({
             ...r,
-            // normalize to a single field your UI uses
             timestamp: r.timestamp ?? r.created_at ?? r.updated_at ?? null,
+            tags: Array.isArray(r.tags)
+              ? r.tags
+              : typeof r.tags === "string" && r.tags.trim()
+              ? JSON.parse(r.tags)
+              : [],
           }));
 
         // fetch likes ONLY for posted ones
@@ -220,7 +288,9 @@ export default function Dashboard() {
 
     if (!user) return;
 
-    is_dislike ? setAnimatingRecipeDislike(recipeId) : setAnimatingRecipeLike(recipeId)
+    is_dislike
+      ? setAnimatingRecipeDislike(recipeId)
+      : setAnimatingRecipeLike(recipeId);
 
     try {
       const endpoint = isCurrentlyLiked
@@ -492,6 +562,14 @@ export default function Dashboard() {
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>
+              <Button
+                variant="light"
+                size="xs"
+                leftSection={<IconFilter size={16} />}
+                onClick={() => setTagModalOpen(true)}
+              >
+                Filter tags
+              </Button>
             </Group>
 
             {recipesLoading && (
@@ -576,7 +654,10 @@ export default function Dashboard() {
                             }
                             style={{
                               transition: "all 0.2s ease",
-                              transform: animatingRecipeDislike === r.recipe_id ? "scale(1.2)" : "scale(1)",
+                              transform:
+                                animatingRecipeDislike === r.recipe_id
+                                  ? "scale(1.2)"
+                                  : "scale(1)",
                             }}
                           >
                             {r.user_has_disliked ? (
@@ -601,6 +682,57 @@ export default function Dashboard() {
               </Stack>
             )}
           </Container>
+          <Modal
+            opened={tagModalOpen}
+            onClose={() => setTagModalOpen(false)}
+            title="Filter by tags"
+            size="lg"
+            radius="md"
+          >
+            {/* Scrollable checklist area */}
+            <ScrollArea style={{ maxHeight: 300 }}>
+              {allTags.length === 0 ? (
+                <Text c="dimmed" size="sm">
+                  No tags found.
+                </Text>
+              ) : (
+                <Checkbox.Group
+                  value={selectedTags}
+                  onChange={setSelectedTags}
+                  label="Tags column contents"
+                >
+                  <Stack gap="xs" mt="xs">
+                    {allTags.map((t, i) => (
+                      <Checkbox key={i} value={t} label={t} />
+                    ))}
+                  </Stack>
+                </Checkbox.Group>
+              )}
+            </ScrollArea>
+
+            {/* Actions */}
+            <Group justify="space-between" mt="md">
+              <Button variant="subtle" onClick={() => setSelectedTags([])}>
+                Clear
+              </Button>
+              <Group>
+                <Button
+                  variant="default"
+                  onClick={() => setTagModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    // TODO: apply filtering to your recipe lists using `selectedTags`
+                    setTagModalOpen(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              </Group>
+            </Group>
+          </Modal>
         </AppShell.Main>
       </AppShell>
     </div>

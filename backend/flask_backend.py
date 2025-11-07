@@ -624,7 +624,7 @@ def list_recipes():
     try:
         res = (
             supabase.table("recipes")
-            .select('recipe_id,title,posted,"timestamp"')  # include it (quoted is safest)
+            .select('recipe_id,title,posted,"timestamp",tags')  # include it (quoted is safest)
             .order("timestamp", desc=True)
             .execute()
         )

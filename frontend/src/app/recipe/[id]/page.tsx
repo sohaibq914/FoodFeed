@@ -11,6 +11,7 @@ import {
   Loader,
   Center,
   Paper,
+  Badge,
   Stack,
   Group,
   ActionIcon,
@@ -24,7 +25,13 @@ import {
   Select,
 } from "@mantine/core";
 import Header from "@/components/Header";
-import { IconHeart, IconHeartFilled, IconHeartBroken, IconHeartBrokenFilled, IconTrash } from "@tabler/icons-react";
+import {
+  IconHeart,
+  IconHeartFilled,
+  IconHeartBroken,
+  IconHeartBrokenFilled,
+  IconTrash,
+} from "@tabler/icons-react";
 import { CopyButton, Tooltip, TextInput } from "@mantine/core";
 import { IconShare3, IconCheck, IconCopy } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
@@ -168,7 +175,11 @@ export default function RecipePage() {
     // Consider using toLocaleString with a set timezone if you want consistency.
   };
 
-const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, is_dislike: boolean) => {
+  const handleLikeToggle = async (
+    e: React.MouseEvent,
+    isCurrentlyLiked: boolean,
+    is_dislike: boolean
+  ) => {
     if (!user) {
       alert("Please log in to like recipes");
       return;
@@ -178,7 +189,7 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
     if (!user) return;
 
     setLikeLoading(true);
-    is_dislike ? setIsAnimatingDislike(true) : setIsAnimatingLike(true)
+    is_dislike ? setIsAnimatingDislike(true) : setIsAnimatingLike(true);
 
     try {
       const endpoint = isCurrentlyLiked
@@ -192,15 +203,19 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
       });
 
       const data = await res.json();
-      console.log(data)
-      
+      console.log(data);
 
       if (!res.ok) throw new Error(data?.error || "Failed to update like");
 
       // Update the UI
       if (recipe) {
-        setRecipe({ ...recipe, like_count: data.like_count, dislike_count: data.dislike_count, 
-          user_has_liked: data.liked, user_has_disliked: data.disliked });
+        setRecipe({
+          ...recipe,
+          like_count: data.like_count,
+          dislike_count: data.dislike_count,
+          user_has_liked: data.liked,
+          user_has_disliked: data.disliked,
+        });
       }
     } catch (err: any) {
       console.error("Error updating like:", err);
@@ -209,7 +224,6 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
       setLikeLoading(false);
       setTimeout(() => setIsAnimatingLike(false), 300);
       setTimeout(() => setIsAnimatingDislike(false), 300);
-
     }
   };
 
@@ -448,14 +462,13 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
                 color={recipe.user_has_liked ? "red" : "gray"}
                 size="md"
                 radius="xl"
-                onClick={(e) => handleLikeToggle(e, recipe.user_has_liked || false, false)}
+                onClick={(e) =>
+                  handleLikeToggle(e, recipe.user_has_liked || false, false)
+                }
                 disabled={likeLoading}
                 style={{
                   transition: "all 0.2s ease",
-                  transform:
-                    isAnimatingLike
-                      ? "scale(1.2)"
-                      : "scale(1)",
+                  transform: isAnimatingLike ? "scale(1.2)" : "scale(1)",
                 }}
               >
                 {recipe.user_has_liked ? (
@@ -477,15 +490,26 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
                 color={recipe.user_has_disliked ? "red" : "gray"}
                 size="md"
                 radius="xl"
-                onClick={(e) => handleLikeToggle(e, recipe.user_has_disliked || false, true)}
+                onClick={(e) =>
+                  handleLikeToggle(e, recipe.user_has_disliked || false, true)
+                }
                 style={{
                   transition: "all 0.2s ease",
                   transform: isAnimatingDislike ? "scale(1.2)" : "scale(1)",
                 }}
               >
-                {recipe.user_has_disliked ? <IconHeartBrokenFilled size={16} /> : <IconHeartBroken size={16} />}
+                {recipe.user_has_disliked ? (
+                  <IconHeartBrokenFilled size={16} />
+                ) : (
+                  <IconHeartBroken size={16} />
+                )}
               </ActionIcon>
-              <Text size="sm" fw={500} c="dimmed" style={{ minWidth: "20px", textAlign: "center" }}>
+              <Text
+                size="sm"
+                fw={500}
+                c="dimmed"
+                style={{ minWidth: "20px", textAlign: "center" }}
+              >
                 {recipe.dislike_count || 0}
               </Text>
             </Group>
@@ -623,9 +647,16 @@ const handleLikeToggle = async (e: React.MouseEvent, isCurrentlyLiked: boolean, 
                     Tags
                   </Text>
                   <Group>
-                    {tags.map((tag, index) => {
-                      return <Text key={index}>{tag}</Text>;
-                    })}
+                    {tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        color="indigo" // color
+                        radius="xl" // makes it rounded
+                        variant="light" // soft background
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
                   </Group>
                 </>
               )}
