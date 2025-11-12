@@ -1031,10 +1031,10 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
 
 
 def get_user_profile(user_id: str):
-    """Get user profile including profile picture URL"""
+    """Get user profile including profile picture URL and description"""
     try:
         response = supabase.table('users').select(
-            'id, username, email, profile_picture_url, follower_count, following_count').eq('id', user_id).execute()
+            'id, username, email, profile_picture_url, description, follower_count, following_count').eq('id', user_id).execute()
 
         if response.data:
             return {"user": response.data[0]}
@@ -1043,6 +1043,30 @@ def get_user_profile(user_id: str):
 
     except Exception as e:
         print(f"Error in get_user_profile: {str(e)}")
+        return {"error": str(e)}
+
+
+def update_user_description(user_id: str, description: str):
+    """Update user profile description"""
+    try:
+        # Validate description length (optional, but recommended)
+        if description and len(description) > 500:
+            return {"error": "Description must be 500 characters or less"}
+
+        response = supabase.table('users').update({
+            'description': description
+        }).eq('id', user_id).execute()
+
+        if response.data:
+            return {
+                "message": "Description updated successfully",
+                "description": description
+            }
+        else:
+            return {"error": "Failed to update description"}
+
+    except Exception as e:
+        print(f"Error in update_user_description: {str(e)}")
         return {"error": str(e)}
 
 

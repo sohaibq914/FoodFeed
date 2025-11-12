@@ -1,12 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader, Group, Modal, Avatar, FileInput, Alert, Stack, Badge } from "@mantine/core";
+import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader, Group, Modal, Avatar, FileInput, Alert, Stack, Badge, Textarea } from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
 import FollowersModal from "@/components/FollowersModal";
-import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser, IconUserPlus, IconUserMinus, IconUsers, IconUserX, IconUserCheck, IconLock } from "@tabler/icons-react";
+import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser, IconUserPlus, IconUserMinus, IconUsers, IconUserX, IconUserCheck, IconLock, IconCheck, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 
@@ -57,6 +57,13 @@ export default function ProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [youBlockedThem, setYouBlockedThem] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
+
+  // Description states
+  const [description, setDescription] = useState<string>('');
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [tempDescription, setTempDescription] = useState<string>('');
+  const [savingDescription, setSavingDescription] = useState(false);
+  const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
   const profilePictureUrl = useMemo(() => {
     if (profilePictureLoading) {
@@ -155,6 +162,7 @@ export default function ProfilePage() {
 
       if (response.ok) {
         setProfileUser(data.user);
+        setDescription(data.user?.description || '');
 
         // Fetch follower/following counts and follow status
         if (data.user?.id) {
@@ -351,6 +359,51 @@ export default function ProfilePage() {
     setUploadingPicture(false);
   };
 
+  const handleEditDescription = () => {
+    setTempDescription(description);
+    setEditingDescription(true);
+    setDescriptionError(null);
+  };
+
+  const handleCancelEditDescription = () => {
+    setEditingDescription(false);
+    setTempDescription('');
+    setDescriptionError(null);
+  };
+
+  const handleSaveDescription = async () => {
+    if (!user?.id) return;
+
+    setSavingDescription(true);
+    setDescriptionError(null);
+
+    try {
+      const response = await fetch(`http://localhost:5001/user/${user.id}/description`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': user.id,
+        },
+        body: JSON.stringify({ description: tempDescription }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setDescription(tempDescription);
+        setEditingDescription(false);
+        setTempDescription('');
+      } else {
+        setDescriptionError(data.error || 'Failed to update description');
+      }
+    } catch (error) {
+      console.error('Failed to update description:', error);
+      setDescriptionError('Failed to update description');
+    } finally {
+      setSavingDescription(false);
+    }
+  };
+
   const headerTitle = view === "posted" ? (isOwner ? "My Recipes" : `${profileUsername}'s Recipes`) : view === "drafts" ? "Drafts" : "Likes";
 
   if (authLoading) {
@@ -405,10 +458,61 @@ export default function ProfilePage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <Title order={1} style={{ marginBottom: 4 }}>
+              <Title order={1} mb="sm">
                 @{profileUsername}
               </Title>
-              <Text c="dimmed" mb="md">
+              
+              {/* Description Display Section */}
+              {editingDescription ? (
+                <Card withBorder p="md" mb="md" style={{ backgroundColor: '#f8f9fa' }}>
+                  <Stack gap="xs">
+                    <Text size="sm" fw={500}>Edit Description</Text>
+                    <Textarea
+                      placeholder="Add a description to your profile..."
+                      value={tempDescription}
+                      onChange={(e) => setTempDescription(e.currentTarget.value)}
+                      minRows={3}
+                      maxRows={6}
+                      maxLength={500}
+                      error={descriptionError}
+                    />
+                    <Text size="xs" c="dimmed" ta="right">
+                      {tempDescription.length}/500
+                    </Text>
+                    <Group gap="xs">
+                      <Button
+                        size="sm"
+                        leftSection={<IconCheck size={16} />}
+                        onClick={handleSaveDescription}
+                        loading={savingDescription}
+                        disabled={savingDescription}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="light"
+                        color="gray"
+                        leftSection={<IconX size={16} />}
+                        onClick={handleCancelEditDescription}
+                        disabled={savingDescription}
+                      >
+                        Cancel
+                      </Button>
+                    </Group>
+                  </Stack>
+                </Card>
+              ) : (
+                description && (
+                  <Card withBorder p="md" mb="md">
+                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                      {description}
+                    </Text>
+                  </Card>
+                )
+              )}
+
+              <Text c="dimmed" mb="md" size="sm">
                 {isOwner ? "This is your profile" : "Public view."}
               </Text>
 
@@ -427,9 +531,14 @@ export default function ProfilePage() {
               {/* Action Buttons */}
               <Group gap="sm">
                 {isOwner ? (
-                  <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
-                    Edit Profile
-                  </Button>
+                  <>
+                    <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={handleEditDescription}>
+                      {description ? 'Edit Description' : 'Add Description'}
+                    </Button>
+                    <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
+                      Edit Profile
+                    </Button>
+                  </>
                 ) : user ? (
                   <>
                     {/* Show different UI if blocked */}
