@@ -14,8 +14,9 @@ from supabase_access_nutrition import *
 from supabase_meal_planner import *
 from supabase_create_food import *
 from password_reset_handler import create_password_reset_token, validate_reset_token, mark_token_as_used, reset_user_password
-from email_service import send_password_reset_email, send_verification_email
+from email_service import send_password_reset_email, send_verification_email, send_mfa_code_email
 from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
+from mfa_handler import create_mfa_code, validate_mfa_code, mark_mfa_code_as_used, enable_mfa, disable_mfa, check_mfa_enabled
 
 load_dotenv()
 
@@ -142,6 +143,7 @@ def login():
         data = request.get_json()
         login = data.get("login")  # Email or username
         password = data.get("password")
+        mfa_code = data.get("mfa_code")
 
         if not login or not password:
             return jsonify({"error": "Login and password are required"}), 400
@@ -152,10 +154,52 @@ def login():
             return jsonify({"error": result["error"]}), 400
 
         if "user" in result:
-            return jsonify({
-                "message": "Login successful",
-                "user": result["user"]
-            }), 200
+            user = result["user"]
+
+            mfa_status = check_mfa_enabled(user["id"])
+            
+            if mfa_status.get("success") and mfa_status.get("mfa_enabled"):
+                if not mfa_code:
+                    code_result = create_mfa_code(user["id"], user["email"])
+                    
+                    if code_result.get("success"):
+                        email_result = send_mfa_code_email(
+                            user["email"],
+                            code_result["code"],
+                            user["username"]
+                        )
+                        
+                        if email_result.get("success"):
+                            return jsonify({
+                                "mfa_required": True,
+                                "message": "MFA code sent to your email",
+                                "user_id": user["id"]
+                            }), 200
+                        else:
+                            return jsonify({"error": "Failed to send MFA code"}), 500
+                    else:
+                        return jsonify({"error": "Failed to generate MFA code"}), 500
+                else:
+                    validation_result = validate_mfa_code(user["id"], mfa_code)
+                    
+                    if validation_result.get("valid"):
+                        mark_mfa_code_as_used(user["id"], mfa_code)
+                        
+                        return jsonify({
+                            "message": "Login successful",
+                            "user": user
+                        }), 200
+                    else:
+                        return jsonify({
+                            "error": validation_result.get("error", "Invalid MFA code"),
+                            "mfa_required": True,
+                            "user_id": user["id"]
+                        }), 400
+            else:
+                return jsonify({
+                    "message": "Login successful",
+                    "user": user
+                }), 200
         else:
             return jsonify({"error": "Login failed"}), 400
 
@@ -175,6 +219,66 @@ def logout():
         return jsonify({"message": "Logout successful"}), 200
     except Exception as e:
         print(f"Logout exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/mfa/enable", methods=["POST"])
+def enable_mfa_endpoint():
+    try:
+        user_id = request.headers.get('X-User-ID')
+        
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        result = enable_mfa(user_id)
+        
+        if result.get("success"):
+            return jsonify({"message": result["message"]}), 200
+        else:
+            return jsonify({"error": result.get("error", "Failed to enable MFA")}), 400
+            
+    except Exception as e:
+        print(f"Enable MFA exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/mfa/disable", methods=["POST"])
+def disable_mfa_endpoint():
+    try:
+        user_id = request.headers.get('X-User-ID')
+        
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        result = disable_mfa(user_id)
+        
+        if result.get("success"):
+            return jsonify({"message": result["message"]}), 200
+        else:
+            return jsonify({"error": result.get("error", "Failed to disable MFA")}), 400
+            
+    except Exception as e:
+        print(f"Disable MFA exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/mfa/status", methods=["GET"])
+def check_mfa_status():
+    try:
+        user_id = request.headers.get('X-User-ID')
+        
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+        
+        result = check_mfa_enabled(user_id)
+        
+        if result.get("success"):
+            return jsonify({"mfa_enabled": result["mfa_enabled"]}), 200
+        else:
+            return jsonify({"error": result.get("error", "Failed to check MFA status")}), 400
+            
+    except Exception as e:
+        print(f"Check MFA status exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 

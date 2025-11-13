@@ -13,7 +13,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signUp: (email: string, password: string, username: string) => Promise<any>;
-  signIn: (login: string, password: string) => Promise<any>;
+  signIn: (login: string, password: string, mfaCode?: string) => Promise<any>;
   signOut: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<any>;
   deactivateAccount: (password: string) => Promise<any>;
@@ -94,28 +94,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signIn = async (login: string, password: string) => {
+  const signIn = async (login: string, password: string, mfaCode?: string) => {
     try {
+      const requestBody: any = { login, password };
+      if (mfaCode) {
+        requestBody.mfa_code = mfaCode;
+      }
+
       const response = await fetch('http://localhost:5001/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ login, password }),
+        body: JSON.stringify(requestBody),
       });
       
       const data = await response.json();
       
       if (response.ok) {
+        if (data.mfa_required) {
+          return { 
+            data: null, 
+            error: null, 
+            mfaRequired: true, 
+            userId: data.user_id,
+            message: data.message 
+          };
+        }
+
         localStorage.setItem('foodfeed_user', JSON.stringify(data.user));
         setUser(data.user);
         router.push('/dashboard');
-        return { data, error: null };
+        return { data, error: null, mfaRequired: false };
       } else {
-        return { data: null, error: data };
+        return { 
+          data: null, 
+          error: data, 
+          mfaRequired: data.mfa_required || false,
+          userId: data.user_id
+        };
       }
     } catch (error) {
-      return { data: null, error: { message: 'Network error' } };
+      return { data: null, error: { message: 'Network error' }, mfaRequired: false };
     }
   };
 
