@@ -19,8 +19,9 @@ import {
   PasswordInput,
   Alert
 } from '@mantine/core';
-import { IconArrowLeft, IconUser, IconMail, IconKey, IconTrash, IconAlertTriangle, IconShieldLock } from '@tabler/icons-react';
+import { IconArrowLeft, IconUser, IconMail, IconKey, IconTrash, IconAlertTriangle, IconShieldLock, IconBrandTwitter } from '@tabler/icons-react';
 import Header from '@/components/Header';
+import SocialLinksManager from '@/components/SocialLinksManager';
 
 export default function AccountSettings() {
   const { user, loading, deactivateAccount } = useAuth();
@@ -195,6 +196,16 @@ export default function AccountSettings() {
                       {mfaError}
                     </Alert>
                   )}
+                </div>
+
+                <Divider />
+
+                <div>
+                  <Group gap="sm" mb="sm">
+                    <IconBrandTwitter size={20} color="gray" />
+                    <Text fw={500} size="sm">Social Media Links</Text>
+                  </Group>
+                  <SocialLinksManager userId={user.id} />
                 </div>
 
                 <Divider />

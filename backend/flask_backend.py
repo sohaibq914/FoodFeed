@@ -4,7 +4,8 @@ from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
-    upload_profile_picture, get_user_profile, update_user_description, follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
+    upload_profile_picture, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
+    follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
     block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review
 import os
 from dotenv import load_dotenv
@@ -402,6 +403,66 @@ def update_user_description_endpoint(user_id):
 
     except Exception as e:
         print(f"Update user description exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/<user_id>/social-links", methods=["GET"])
+def get_user_social_links(user_id):
+    try:
+        result = get_social_links(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get social links exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/<user_id>/social-links", methods=["POST"])
+def add_user_social_link(user_id):
+    try:
+        requesting_user_id = request.headers.get('X-User-ID')
+        if requesting_user_id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        platform = data.get('platform')
+        url = data.get('url')
+
+        if not platform or not url:
+            return jsonify({"error": "Platform and URL are required"}), 400
+
+        result = add_social_link(user_id, platform, url)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Add social link exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/<user_id>/social-links/<platform>", methods=["DELETE"])
+def delete_user_social_link(user_id, platform):
+    try:
+        requesting_user_id = request.headers.get('X-User-ID')
+        if requesting_user_id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        result = remove_social_link(user_id, platform)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Remove social link exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 

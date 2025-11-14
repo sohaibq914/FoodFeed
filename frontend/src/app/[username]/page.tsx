@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
 import FollowersModal from "@/components/FollowersModal";
-import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser, IconUserPlus, IconUserMinus, IconUsers, IconUserX, IconUserCheck, IconLock, IconCheck, IconX } from "@tabler/icons-react";
+import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser, IconUserPlus, IconUserMinus, IconUsers, IconUserX, IconUserCheck, IconLock, IconCheck, IconX, IconBrandTwitter, IconBrandInstagram, IconBrandFacebook, IconBrandLinkedin, IconBrandYoutube, IconBrandTiktok, IconBrandGithub, IconWorld } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 
@@ -64,6 +64,9 @@ export default function ProfilePage() {
   const [tempDescription, setTempDescription] = useState<string>('');
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
+
+  // Social links states
+  const [socialLinks, setSocialLinks] = useState<any[]>([]);
 
   const profilePictureUrl = useMemo(() => {
     if (profilePictureLoading) {
@@ -167,6 +170,7 @@ export default function ProfilePage() {
         // Fetch follower/following counts and follow status
         if (data.user?.id) {
           fetchFollowData(data.user.id);
+          fetchSocialLinks(data.user.id);
         }
       } else {
         setProfileUser({ username: profileUsername, profile_picture_url: null });
@@ -174,6 +178,19 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Failed to fetch profile user:", error);
       setProfileUser({ username: profileUsername, profile_picture_url: null });
+    }
+  };
+
+  const fetchSocialLinks = async (userId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5001/user/${userId}/social-links`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setSocialLinks(data.links || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch social links:", error);
     }
   };
 
@@ -515,6 +532,53 @@ export default function ProfilePage() {
               <Text c="dimmed" mb="md" size="sm">
                 {isOwner ? "This is your profile" : "Public view."}
               </Text>
+
+              {/* Social Links */}
+              {socialLinks.length > 0 && (
+                <Group gap="xs" mb="md">
+                  {socialLinks.map((link: any) => {
+                    const platformIcons: Record<string, any> = {
+                      twitter: IconBrandTwitter,
+                      instagram: IconBrandInstagram,
+                      facebook: IconBrandFacebook,
+                      linkedin: IconBrandLinkedin,
+                      youtube: IconBrandYoutube,
+                      tiktok: IconBrandTiktok,
+                      github: IconBrandGithub,
+                      website: IconWorld,
+                    };
+                    
+                    const platformColors: Record<string, string> = {
+                      twitter: 'blue',
+                      instagram: 'pink',
+                      facebook: 'blue',
+                      linkedin: 'blue',
+                      youtube: 'red',
+                      tiktok: 'gray',
+                      github: 'gray',
+                      website: 'grape',
+                    };
+
+                    const Icon = platformIcons[link.platform] || IconWorld;
+                    
+                    return (
+                      <Button
+                        key={link.id}
+                        component="a"
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        variant="light"
+                        color={platformColors[link.platform] || 'blue'}
+                        size="sm"
+                        leftSection={<Icon size={18} />}
+                      >
+                        {link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}
+                      </Button>
+                    );
+                  })}
+                </Group>
+              )}
 
               {/* Follower/Following Stats */}
               <Group gap="md" mb="md">

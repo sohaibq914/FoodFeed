@@ -1070,6 +1070,115 @@ def update_user_description(user_id: str, description: str):
         return {"error": str(e)}
 
 
+# Social Links methods
+
+def validate_social_url(platform: str, url: str):
+    """Validate social media URL format"""
+    import re
+
+    url_pattern = re.compile(
+        r'^https?://'
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'
+        r'localhost|'
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+        r'(?::\d+)?'
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+    
+    if not url_pattern.match(url):
+        return False
+
+    platform_patterns = {
+        'twitter': [r'twitter\.com/', r'x\.com/'],
+        'instagram': [r'instagram\.com/'],
+        'facebook': [r'facebook\.com/', r'fb\.com/'],
+        'linkedin': [r'linkedin\.com/'],
+        'youtube': [r'youtube\.com/', r'youtu\.be/'],
+        'tiktok': [r'tiktok\.com/'],
+        'github': [r'github\.com/'],
+        'website': []
+    }
+    
+    if platform in platform_patterns and platform != 'website':
+        patterns = platform_patterns[platform]
+        if not any(re.search(pattern, url, re.IGNORECASE) for pattern in patterns):
+            return False
+    
+    return True
+
+
+def add_social_link(user_id: str, platform: str, url: str):
+    try:
+        valid_platforms = ['twitter', 'instagram', 'facebook', 'linkedin', 
+                          'youtube', 'tiktok', 'github', 'website']
+        
+        if platform not in valid_platforms:
+            return {"error": f"Invalid platform. Must be one of: {', '.join(valid_platforms)}"}
+
+        if not validate_social_url(platform, url):
+            return {"error": f"Invalid {platform} URL format"}
+
+        existing = admin_supabase.table('social_links').select('id').eq(
+            'user_id', user_id).eq('platform', platform).execute()
+        
+        if existing.data:
+            response = admin_supabase.table('social_links').update({
+                'url': url,
+                'updated_at': 'now()'
+            }).eq('user_id', user_id).eq('platform', platform).execute()
+        else:
+            response = admin_supabase.table('social_links').insert({
+                'user_id': user_id,
+                'platform': platform,
+                'url': url
+            }).execute()
+        
+        if response.data:
+            return {
+                "success": True,
+                "message": f"{platform.capitalize()} link added successfully",
+                "link": response.data[0]
+            }
+        else:
+            return {"error": "Failed to add social link"}
+        
+    except Exception as e:
+        print(f"Error in add_social_link: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_social_links(user_id: str):
+    try:
+        response = admin_supabase.table('social_links').select('*').eq(
+            'user_id', user_id).order('created_at').execute()
+        
+        return {
+            "success": True,
+            "links": response.data or []
+        }
+        
+    except Exception as e:
+        print(f"Error in get_social_links: {str(e)}")
+        return {"error": str(e)}
+
+
+def remove_social_link(user_id: str, platform: str):
+    try:
+        response = admin_supabase.table('social_links').delete().eq(
+            'user_id', user_id).eq('platform', platform).execute()
+        
+        if response.data:
+            return {
+                "success": True,
+                "message": f"{platform.capitalize()} link removed successfully"
+            }
+        else:
+            return {"error": "Social link not found"}
+        
+    except Exception as e:
+        print(f"Error in remove_social_link: {str(e)}")
+        return {"error": str(e)}
+
+
 # Follower/Following methods
 
 def follow_user(follower_id: str, following_id: str):
