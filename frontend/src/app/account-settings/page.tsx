@@ -35,6 +35,10 @@ export default function AccountSettings() {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [mfaError, setMfaError] = useState('');
 
+  const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('public');
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [privacyError, setPrivacyError] = useState('');
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
@@ -44,6 +48,7 @@ export default function AccountSettings() {
   useEffect(() => {
     if (user?.id) {
       fetchMfaStatus();
+      fetchPrivacySettings();
     }
   }, [user]);
 
@@ -64,6 +69,59 @@ export default function AccountSettings() {
       }
     } catch (error) {
       console.error('Failed to fetch MFA status:', error);
+    }
+  };
+
+  const fetchPrivacySettings = async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await fetch(`http://localhost:5001/user/${user.id}/privacy`, {
+        headers: {
+          'X-User-ID': user.id,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfileVisibility(data.profile_visibility || 'public');
+      }
+    } catch (error) {
+      console.error('Failed to fetch privacy settings:', error);
+    }
+  };
+
+  const handleTogglePrivacy = async () => {
+    if (!user?.id) return;
+
+    setPrivacyLoading(true);
+    setPrivacyError('');
+
+    const newVisibility = profileVisibility === 'public' ? 'private' : 'public';
+
+    try {
+      const response = await fetch(`http://localhost:5001/user/${user.id}/privacy`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': user.id,
+        },
+        body: JSON.stringify({ profile_visibility: newVisibility }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setProfileVisibility(newVisibility);
+      } else {
+        setPrivacyError(data.error || 'Failed to update privacy settings');
+      }
+    } catch (error) {
+      console.error('Failed to toggle privacy:', error);
+      setPrivacyError('Failed to update privacy settings');
+    } finally {
+      setPrivacyLoading(false);
     }
   };
 
@@ -160,6 +218,42 @@ export default function AccountSettings() {
                     <Text fw={500} size="sm" c="dimmed">Username</Text>
                   </Group>
                   <Text size="lg">{user.username}</Text>
+                </div>
+
+                <Divider />
+
+                <div>
+                  <Group justify="space-between" mb="xs">
+                    <Group gap="sm">
+                      <IconUser size={20} color="gray" />
+                      <div>
+                        <Text fw={500} size="sm">Profile Visibility</Text>
+                        <Text size="xs" c="dimmed">
+                          Control who can view your profile
+                        </Text>
+                      </div>
+                    </Group>
+                    <Button
+                      variant={profileVisibility === 'private' ? "light" : "filled"}
+                      color={profileVisibility === 'private' ? "green" : "red"}
+                      onClick={handleTogglePrivacy}
+                      loading={privacyLoading}
+                      disabled={privacyLoading}
+                      size="sm"
+                    >
+                      {profileVisibility === 'private' ? 'Make Public' : 'Make Private'}
+                    </Button>
+                  </Group>
+                  <Text size="xs" c="dimmed" pl={28}>
+                    {profileVisibility === 'public'
+                      ? '✓ Your profile is currently public and visible to all users.'
+                      : '🔒 Your profile is currently private. Only you can view your profile information.'}
+                  </Text>
+                  {privacyError && (
+                    <Alert color="red" variant="light" mt="xs">
+                      {privacyError}
+                    </Alert>
+                  )}
                 </div>
 
                 <Divider />

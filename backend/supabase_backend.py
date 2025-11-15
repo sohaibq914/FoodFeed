@@ -1030,14 +1030,31 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
         return {"error": f"Failed to upload profile picture: {str(e)}"}
 
 
-def get_user_profile(user_id: str):
-    """Get user profile including profile picture URL and description"""
+def get_user_profile(user_id: str, viewer_id: str = None):
+    """Get user profile including profile picture URL, description, and privacy settings"""
     try:
         response = supabase.table('users').select(
-            'id, username, email, profile_picture_url, description, follower_count, following_count').eq('id', user_id).execute()
+            'id, username, email, profile_picture_url, description, follower_count, following_count, profile_visibility').eq('id', user_id).execute()
 
         if response.data:
-            return {"user": response.data[0]}
+            user_data = response.data[0]
+            profile_visibility = user_data.get('profile_visibility', 'public')
+            
+            # Check if viewer is the owner
+            is_owner = viewer_id and viewer_id == user_id
+            
+            # If profile is private and viewer is not the owner, return limited info
+            if profile_visibility == 'private' and not is_owner:
+                return {
+                    "user": {
+                        "id": user_data['id'],
+                        "username": user_data['username'],
+                        "profile_visibility": "private"
+                    },
+                    "is_private": True
+                }
+            
+            return {"user": user_data, "is_private": False}
         else:
             return {"error": "User not found"}
 
@@ -1069,8 +1086,68 @@ def update_user_description(user_id: str, description: str):
         print(f"Error in update_user_description: {str(e)}")
         return {"error": str(e)}
 
+def get_privacy_settings(user_id: str):
+    try:
+        response = admin_supabase.table('users').select(
+            'profile_visibility'
+        ).eq('id', user_id).execute()
 
-# Social Links methods
+        if response.data:
+            return {
+                "profile_visibility": response.data[0].get('profile_visibility', 'public')
+            }
+        else:
+            return {"error": "User not found"}
+
+    except Exception as e:
+        print(f"Error in get_privacy_settings: {str(e)}")
+        return {"error": str(e)}
+
+
+def update_privacy_settings(user_id: str, profile_visibility: str):
+    try:
+        if profile_visibility not in ['public', 'private']:
+            return {"error": "Invalid visibility setting. Must be 'public' or 'private'"}
+
+        response = admin_supabase.table('users').update({
+            'profile_visibility': profile_visibility
+        }).eq('id', user_id).execute()
+
+        if response.data:
+            return {
+                "message": "Privacy settings updated successfully",
+                "profile_visibility": profile_visibility
+            }
+        else:
+            return {"error": "Failed to update privacy settings"}
+
+    except Exception as e:
+        print(f"Error in update_privacy_settings: {str(e)}")
+        return {"error": str(e)}
+
+
+def check_profile_visibility(user_id: str, viewer_id: str = None):
+    try:
+        response = admin_supabase.table('users').select(
+            'profile_visibility'
+        ).eq('id', user_id).execute()
+
+        if not response.data:
+            return {"visible": False, "reason": "User not found"}
+
+        profile_visibility = response.data[0].get('profile_visibility', 'public')
+
+        if viewer_id and viewer_id == user_id:
+            return {"visible": True, "is_owner": True}
+
+        if profile_visibility == 'private':
+            return {"visible": False, "reason": "private"}
+
+        return {"visible": True}
+
+    except Exception as e:
+        print(f"Error in check_profile_visibility: {str(e)}")
+        return {"visible": False, "reason": str(e)}
 
 def validate_social_url(platform: str, url: str):
     """Validate social media URL format"""

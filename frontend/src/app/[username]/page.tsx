@@ -68,6 +68,9 @@ export default function ProfilePage() {
   // Social links states
   const [socialLinks, setSocialLinks] = useState<any[]>([]);
 
+  // Privacy state
+  const [isPrivateProfile, setIsPrivateProfile] = useState(false);
+
   const profilePictureUrl = useMemo(() => {
     if (profilePictureLoading) {
       return null;
@@ -160,11 +163,20 @@ export default function ProfilePage() {
 
   const fetchProfileUser = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/user/by-username/${encodeURIComponent(profileUsername)}`);
+      const response = await fetch(`http://localhost:5001/user/by-username/${encodeURIComponent(profileUsername)}`, {
+        headers: user?.id ? { 'X-User-ID': user.id } : {},
+      });
       const data = await response.json();
 
       if (response.ok) {
         setProfileUser(data.user);
+
+        if (data.is_private) {
+          setIsPrivateProfile(true);
+          return;
+        }
+
+        setIsPrivateProfile(false);
         setDescription(data.user?.description || '');
 
         // Fetch follower/following counts and follow status
@@ -196,11 +208,18 @@ export default function ProfilePage() {
 
   const fetchFollowData = async (userId: string) => {
     try {
-      // Fetch profile to get follower/following counts
-      const profileRes = await fetch(`http://localhost:5001/user/${userId}/profile`);
+      const profileRes = await fetch(`http://localhost:5001/user/${userId}/profile`, {
+        headers: user?.id ? { 'X-User-ID': user.id } : {},
+      });
       const profileData = await profileRes.json();
 
       if (profileRes.ok && profileData.user) {
+        if (profileData.is_private) {
+          setIsPrivateProfile(true);
+          return;
+        }
+
+        setIsPrivateProfile(false);
         setFollowerCount(profileData.user.follower_count || 0);
         setFollowingCount(profileData.user.following_count || 0);
       }
@@ -448,6 +467,20 @@ export default function ProfilePage() {
 
       <AppShell.Main>
         <Container size="xl">
+          {isPrivateProfile && !isOwner && (
+            <Alert
+              icon={<IconLock size={20} />}
+              title="Private Profile"
+              color="gray"
+              variant="light"
+              mb="xl"
+            >
+              <Text size="sm">
+                This profile is private. Only <strong>@{profileUsername}</strong> can view their profile information.
+              </Text>
+            </Alert>
+          )}
+
           {/* Profile Header */}
           <Group align="start" gap="xl" mb="xl">
             <div>
@@ -479,7 +512,8 @@ export default function ProfilePage() {
                 @{profileUsername}
               </Title>
               
-              {/* Description Display Section */}
+              {(!isPrivateProfile || isOwner) && (
+                <>
               {editingDescription ? (
                 <Card withBorder p="md" mb="md" style={{ backgroundColor: '#f8f9fa' }}>
                   <Stack gap="xs">
@@ -625,11 +659,26 @@ export default function ProfilePage() {
                   </>
                 ) : null}
               </Group>
+              </>
+              )}
             </div>
           </Group>
 
-          {/* Show blocked message or recipes */}
-          {isBlocked && !youBlockedThem ? (
+          {isPrivateProfile && !isOwner ? (
+            <Card withBorder p="xl" mt="xl">
+              <Center>
+                <Stack align="center" gap="sm">
+                  <IconLock size={48} color="gray" />
+                  <Text size="lg" fw={500} c="dimmed">
+                    This Profile is Private
+                  </Text>
+                  <Text size="sm" c="dimmed" ta="center">
+                    Only <strong>@{profileUsername}</strong> can view their content.
+                  </Text>
+                </Stack>
+              </Center>
+            </Card>
+          ) : isBlocked && !youBlockedThem ? (
             <Card withBorder p="xl" mt="xl">
               <Center>
                 <Stack align="center" gap="sm">

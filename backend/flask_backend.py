@@ -371,7 +371,10 @@ def upload_user_profile_picture():
 @app.route("/user/<user_id>/profile", methods=["GET"])
 def get_user_profile_endpoint(user_id):
     try:
-        result = get_user_profile(user_id)
+        # Get the viewer's ID from headers (if authenticated)
+        viewer_id = request.headers.get('X-User-ID')
+        
+        result = get_user_profile(user_id, viewer_id)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 404
@@ -465,16 +468,79 @@ def delete_user_social_link(user_id, platform):
         print(f"Remove social link exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+@app.route("/user/<user_id>/privacy", methods=["GET"])
+def get_user_privacy_settings(user_id):
+    try:
+        from supabase_backend import get_privacy_settings
+        
+        requesting_user_id = request.headers.get('X-User-ID')
+        if requesting_user_id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        result = get_privacy_settings(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get privacy settings exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route("/user/<user_id>/privacy", methods=["PUT"])
+def update_user_privacy_settings(user_id):
+    try:
+        from supabase_backend import update_privacy_settings
+        
+        requesting_user_id = request.headers.get('X-User-ID')
+        if requesting_user_id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
+        data = request.get_json()
+        profile_visibility = data.get('profile_visibility')
+
+        if not profile_visibility:
+            return jsonify({"error": "profile_visibility is required"}), 400
+
+        result = update_privacy_settings(user_id, profile_visibility)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Update privacy settings exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/user/by-username/<username>", methods=["GET"])
 def get_user_by_username(username):
     try:
         from supabase_backend import supabase
+        viewer_id = request.headers.get('X-User-ID')
+        
         response = supabase.table('users').select(
-            'id, username, profile_picture_url, description').eq('username', username).execute()
+            'id, username, profile_picture_url, description, profile_visibility').eq('username', username).execute()
 
         if response.data:
-            return jsonify({"user": response.data[0]}), 200
+            user_data = response.data[0]
+            profile_visibility = user_data.get('profile_visibility', 'public')
+            is_owner = viewer_id and viewer_id == user_data['id']
+
+            if profile_visibility == 'private' and not is_owner:
+                return jsonify({
+                    "user": {
+                        "id": user_data['id'],
+                        "username": user_data['username'],
+                        "profile_visibility": "private"
+                    },
+                    "is_private": True
+                }), 200
+            
+            return jsonify({"user": user_data, "is_private": False}), 200
         else:
             return jsonify({"error": "User not found"}), 404
 
