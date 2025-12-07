@@ -395,6 +395,7 @@ def insert_r_tags(restaurant_id, tags):
 
 # Recipe methods
 
+
 def update_recipe(id: str, author: str, title: str, desc: str, ingredients, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
 
     try:
@@ -422,7 +423,8 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients, inst
                 "posted": posting, "image": image_url, "visibility": visibility, "tags": tags}).execute()
         else:
             # Verify that user is authorized
-            verify = supabase.table('recipes').select('author_id').eq('recipe_id', id).single().execute()
+            verify = supabase.table('recipes').select(
+                'author_id').eq('recipe_id', id).single().execute()
             print(verify)
             if (verify.data['author_id'] != author):
                 return {"error": "This account is not the correct author."}
@@ -473,7 +475,6 @@ def get_recipe(id: str, user_id: str = None):
 
             print("Full recipe response:", response.data)
 
-
             if response.data and "users" in response.data:
                 print("Author username:",
                       response.data["users"].get("username"))
@@ -497,7 +498,6 @@ def get_recipe(id: str, user_id: str = None):
                     else:
                         return {"error": "This recipe is private. Follow the author to view it.", "private": True}
 
-
             # Count likes directly (more reliable than waiting for trigger)
             like_count_result = supabase.table('recipe_likes').select(
                 'id', count='exact').eq('recipe_id', id).eq('is_dislike', False).execute()
@@ -506,11 +506,11 @@ def get_recipe(id: str, user_id: str = None):
             dislike_count_result = supabase.table('recipe_likes').select(
                 'id', count='exact').eq('recipe_id', id).eq('is_dislike', True).execute()
             dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
-            print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+            print(
+                f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
 
             response.data['like_count'] = like_count
             response.data['dislike_count'] = dislike_count
-
 
             # Check if user has liked this recipe
             if user_id and response.data:
@@ -520,7 +520,8 @@ def get_recipe(id: str, user_id: str = None):
 
                 disliked_response = supabase.table('recipe_likes').select(
                     'id').eq('recipe_id', id).eq('user_id', user_id).eq('is_dislike', True).execute()
-                response.data['user_has_disliked'] = len(disliked_response.data) > 0
+                response.data['user_has_disliked'] = len(
+                    disliked_response.data) > 0
             else:
                 response.data['user_has_liked'] = False
                 response.data['user_has_disliked'] = False
@@ -560,7 +561,8 @@ def like_recipe(user_id: str, recipe_id: str, is_dislike: bool):
                 dislike_count_result = supabase.table('recipe_likes').select(
                     'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
                 dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
-                print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+                print(
+                    f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
                 return {"error": "Recipe already liked", "like_count": like_count, "dislike_count": dislike_count, "is_dislike": is_dislike}
             else:
                 # Invert like
@@ -585,7 +587,8 @@ def like_recipe(user_id: str, recipe_id: str, is_dislike: bool):
             dislike_count_result = supabase.table('recipe_likes').select(
                 'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
             dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
-            print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+            print(
+                f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
 
             # Also get the like_count column value to verify trigger
             recipe = supabase.table('recipes').select('like_count').eq(
@@ -631,7 +634,8 @@ def unlike_recipe(user_id: str, recipe_id: str):
         dislike_count_result = supabase.table('recipe_likes').select(
             'id', count='exact').eq('recipe_id', recipe_id).eq('is_dislike', True).execute()
         dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
-        print(f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+        print(
+            f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
 
         # Also get the like_count column value to verify trigger
         recipe = supabase.table('recipes').select('like_count').eq(
@@ -1039,10 +1043,10 @@ def get_user_profile(user_id: str, viewer_id: str = None):
         if response.data:
             user_data = response.data[0]
             profile_visibility = user_data.get('profile_visibility', 'public')
-            
+
             # Check if viewer is the owner
             is_owner = viewer_id and viewer_id == user_id
-            
+
             # If profile is private and viewer is not the owner, return limited info
             if profile_visibility == 'private' and not is_owner:
                 return {
@@ -1053,7 +1057,7 @@ def get_user_profile(user_id: str, viewer_id: str = None):
                     },
                     "is_private": True
                 }
-            
+
             return {"user": user_data, "is_private": False}
         else:
             return {"error": "User not found"}
@@ -1085,6 +1089,7 @@ def update_user_description(user_id: str, description: str):
     except Exception as e:
         print(f"Error in update_user_description: {str(e)}")
         return {"error": str(e)}
+
 
 def get_privacy_settings(user_id: str):
     try:
@@ -1135,7 +1140,8 @@ def check_profile_visibility(user_id: str, viewer_id: str = None):
         if not response.data:
             return {"visible": False, "reason": "User not found"}
 
-        profile_visibility = response.data[0].get('profile_visibility', 'public')
+        profile_visibility = response.data[0].get(
+            'profile_visibility', 'public')
 
         if viewer_id and viewer_id == user_id:
             return {"visible": True, "is_owner": True}
@@ -1149,6 +1155,7 @@ def check_profile_visibility(user_id: str, viewer_id: str = None):
         print(f"Error in check_profile_visibility: {str(e)}")
         return {"visible": False, "reason": str(e)}
 
+
 def validate_social_url(platform: str, url: str):
     """Validate social media URL format"""
     import re
@@ -1160,7 +1167,7 @@ def validate_social_url(platform: str, url: str):
         r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
         r'(?::\d+)?'
         r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-    
+
     if not url_pattern.match(url):
         return False
 
@@ -1174,20 +1181,20 @@ def validate_social_url(platform: str, url: str):
         'github': [r'github\.com/'],
         'website': []
     }
-    
+
     if platform in platform_patterns and platform != 'website':
         patterns = platform_patterns[platform]
         if not any(re.search(pattern, url, re.IGNORECASE) for pattern in patterns):
             return False
-    
+
     return True
 
 
 def add_social_link(user_id: str, platform: str, url: str):
     try:
-        valid_platforms = ['twitter', 'instagram', 'facebook', 'linkedin', 
-                          'youtube', 'tiktok', 'github', 'website']
-        
+        valid_platforms = ['twitter', 'instagram', 'facebook', 'linkedin',
+                           'youtube', 'tiktok', 'github', 'website']
+
         if platform not in valid_platforms:
             return {"error": f"Invalid platform. Must be one of: {', '.join(valid_platforms)}"}
 
@@ -1196,7 +1203,7 @@ def add_social_link(user_id: str, platform: str, url: str):
 
         existing = admin_supabase.table('social_links').select('id').eq(
             'user_id', user_id).eq('platform', platform).execute()
-        
+
         if existing.data:
             response = admin_supabase.table('social_links').update({
                 'url': url,
@@ -1208,7 +1215,7 @@ def add_social_link(user_id: str, platform: str, url: str):
                 'platform': platform,
                 'url': url
             }).execute()
-        
+
         if response.data:
             return {
                 "success": True,
@@ -1217,7 +1224,7 @@ def add_social_link(user_id: str, platform: str, url: str):
             }
         else:
             return {"error": "Failed to add social link"}
-        
+
     except Exception as e:
         print(f"Error in add_social_link: {str(e)}")
         return {"error": str(e)}
@@ -1227,12 +1234,12 @@ def get_social_links(user_id: str):
     try:
         response = admin_supabase.table('social_links').select('*').eq(
             'user_id', user_id).order('created_at').execute()
-        
+
         return {
             "success": True,
             "links": response.data or []
         }
-        
+
     except Exception as e:
         print(f"Error in get_social_links: {str(e)}")
         return {"error": str(e)}
@@ -1242,7 +1249,7 @@ def remove_social_link(user_id: str, platform: str):
     try:
         response = admin_supabase.table('social_links').delete().eq(
             'user_id', user_id).eq('platform', platform).execute()
-        
+
         if response.data:
             return {
                 "success": True,
@@ -1250,7 +1257,7 @@ def remove_social_link(user_id: str, platform: str):
             }
         else:
             return {"error": "Social link not found"}
-        
+
     except Exception as e:
         print(f"Error in remove_social_link: {str(e)}")
         return {"error": str(e)}
@@ -1662,4 +1669,192 @@ def insert_restaurant_review(restaurant_id: str, author_name: str, body_text: st
             "rating": r.get("rating"),
         }
     except Exception as e:
+        return {"error": str(e)}
+
+
+# Notification methods
+
+def get_notifications(user_id: str, limit: int = 50, offset: int = 0, unread_only: bool = False):
+    """Get notifications for a user"""
+    try:
+        print(f"Fetching notifications for user: {user_id}")
+
+        # Build query
+        query = supabase.table('notifications').select(
+            '*, actor:users!notifications_actor_id_fkey(username, profile_picture_url), recipe:recipes(title)'
+        ).eq('user_id', user_id)
+
+        if unread_only:
+            query = query.eq('is_read', False)
+
+        response = query.order('created_at', desc=True).range(
+            offset, offset + limit - 1).execute()
+
+        # Format notifications
+        notifications = []
+        for notif in response.data:
+            notification_data = {
+                'id': notif['id'],
+                'type': notif['type'],
+                'message': notif.get('message'),
+                'is_read': notif['is_read'],
+                'created_at': notif['created_at'],
+                'actor': {
+                    'id': notif['actor_id'],
+                    'username': notif['actor']['username'] if notif.get('actor') else 'Unknown',
+                    'profile_picture_url': notif['actor'].get('profile_picture_url') if notif.get('actor') else None
+                }
+            }
+
+            # Add recipe info if present
+            if notif.get('recipe_id') and notif.get('recipe'):
+                notification_data['recipe'] = {
+                    'id': notif['recipe_id'],
+                    'title': notif['recipe'].get('title', 'Untitled')
+                }
+
+            # Add comment ID if present
+            if notif.get('comment_id'):
+                notification_data['comment_id'] = notif['comment_id']
+
+            notifications.append(notification_data)
+
+        # Get unread count
+        unread_count_response = supabase.table('notifications').select(
+            'id', count='exact').eq('user_id', user_id).eq('is_read', False).execute()
+        unread_count = unread_count_response.count if unread_count_response.count is not None else 0
+
+        return {
+            "notifications": notifications,
+            "unread_count": unread_count
+        }
+
+    except Exception as e:
+        print(f"Error in get_notifications: {str(e)}")
+        return {"error": str(e)}
+
+
+def mark_notification_as_read(notification_id: str, user_id: str):
+    """Mark a specific notification as read"""
+    try:
+        response = supabase.table('notifications').update({
+            'is_read': True
+        }).eq('id', notification_id).eq('user_id', user_id).execute()
+
+        if response.data:
+            return {"message": "Notification marked as read"}
+        return {"error": "Notification not found"}
+
+    except Exception as e:
+        print(f"Error in mark_notification_as_read: {str(e)}")
+        return {"error": str(e)}
+
+
+def mark_all_notifications_as_read(user_id: str):
+    """Mark all notifications as read for a user"""
+    try:
+        response = supabase.table('notifications').update({
+            'is_read': True
+        }).eq('user_id', user_id).eq('is_read', False).execute()
+
+        count = len(response.data) if response.data else 0
+        return {"message": f"Marked {count} notifications as read", "count": count}
+
+    except Exception as e:
+        print(f"Error in mark_all_notifications_as_read: {str(e)}")
+        return {"error": str(e)}
+
+
+def delete_notification(notification_id: str, user_id: str):
+    """Delete a specific notification"""
+    try:
+        response = supabase.table('notifications').delete().eq(
+            'id', notification_id).eq('user_id', user_id).execute()
+
+        if response.data:
+            return {"message": "Notification deleted"}
+        return {"error": "Notification not found"}
+
+    except Exception as e:
+        print(f"Error in delete_notification: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_unread_notification_count(user_id: str):
+    """Get count of unread notifications"""
+    try:
+        response = supabase.table('notifications').select(
+            'id', count='exact').eq('user_id', user_id).eq('is_read', False).execute()
+
+        count = response.count if response.count is not None else 0
+        return {"unread_count": count}
+
+    except Exception as e:
+        print(f"Error in get_unread_notification_count: {str(e)}")
+        return {"error": str(e)}
+
+
+def get_notification_preferences(user_id: str):
+    """Get user's notification preferences"""
+    try:
+        response = supabase.table('users').select(
+            'notification_preferences').eq('id', user_id).single().execute()
+
+        if response.data:
+            prefs = response.data.get('notification_preferences', {
+                'likes': True,
+                'comments': True,
+                'replies': True,
+                'follows': True,
+                'recipe_updates': True
+            })
+            return {"preferences": prefs}
+
+        return {"error": "User not found"}
+
+    except Exception as e:
+        print(f"Error in get_notification_preferences: {str(e)}")
+        return {"error": str(e)}
+
+
+def update_notification_preferences(user_id: str, preferences: dict):
+    """Update user's notification preferences"""
+    try:
+        # Validate preferences structure
+        valid_keys = {'likes', 'comments',
+                      'replies', 'follows', 'recipe_updates'}
+        prefs = {}
+
+        for key in valid_keys:
+            if key in preferences:
+                prefs[key] = bool(preferences[key])
+
+        if not prefs:
+            return {"error": "No valid preferences provided"}
+
+        # Get current preferences
+        current_response = supabase.table('users').select(
+            'notification_preferences').eq('id', user_id).single().execute()
+
+        current_prefs = current_response.data.get(
+            'notification_preferences', {}) if current_response.data else {}
+
+        # Merge with new preferences
+        updated_prefs = {**current_prefs, **prefs}
+
+        # Update in database
+        response = supabase.table('users').update({
+            'notification_preferences': updated_prefs
+        }).eq('id', user_id).execute()
+
+        if response.data:
+            return {
+                "message": "Notification preferences updated",
+                "preferences": updated_prefs
+            }
+
+        return {"error": "Failed to update preferences"}
+
+    except Exception as e:
+        print(f"Error in update_notification_preferences: {str(e)}")
         return {"error": str(e)}
