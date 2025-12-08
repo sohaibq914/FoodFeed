@@ -3,41 +3,37 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  Container, 
-  Title, 
-  Button, 
-  Group,
-  Text, 
-  Center, 
-  Loader,
-  AppShell,
-  Paper,
-  Stack,
-  Divider,
-  Modal,
-  PasswordInput,
-  Alert
-} from '@mantine/core';
-import { IconArrowLeft, IconUser, IconMail, IconKey, IconTrash, IconAlertTriangle, IconShieldLock, IconBrandTwitter } from '@tabler/icons-react';
-import Header from '@/components/Header';
-import SocialLinksManager from '@/components/SocialLinksManager';
+import { Container, Title, Button, Group, Text, Center, Loader, AppShell, Paper, Stack, Divider, Modal, PasswordInput, Alert, Switch } from "@mantine/core";
+import { IconArrowLeft, IconUser, IconMail, IconKey, IconTrash, IconAlertTriangle, IconShieldLock, IconBrandTwitter, IconBell } from "@tabler/icons-react";
+import Header from "@/components/Header";
+import SocialLinksManager from "@/components/SocialLinksManager";
 
 export default function AccountSettings() {
   const { user, loading, deactivateAccount } = useAuth();
   const router = useRouter();
   const [deactivateModalOpen, setDeactivateModalOpen] = useState(false);
-  const [deactivatePassword, setDeactivatePassword] = useState('');
-  const [deactivateError, setDeactivateError] = useState('');
+  const [deactivatePassword, setDeactivatePassword] = useState("");
+  const [deactivateError, setDeactivateError] = useState("");
   const [isDeactivating, setIsDeactivating] = useState(false);
 
   const [mfaEnabled, setMfaEnabled] = useState(false);
   const [mfaLoading, setMfaLoading] = useState(false);
-  const [mfaError, setMfaError] = useState('');
+  const [mfaError, setMfaError] = useState("");
 
-  const [profileVisibility, setProfileVisibility] = useState<'public' | 'private'>('public');
+  const [profileVisibility, setProfileVisibility] = useState<"public" | "private">("public");
   const [privacyLoading, setPrivacyLoading] = useState(false);
-  const [privacyError, setPrivacyError] = useState('');
+  const [privacyError, setPrivacyError] = useState("");
+
+  // Notification preferences state
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    likes: true,
+    comments: true,
+    replies: true,
+    follows: true,
+    recipe_updates: true,
+  });
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -49,6 +45,7 @@ export default function AccountSettings() {
     if (user?.id) {
       fetchMfaStatus();
       fetchPrivacySettings();
+      fetchNotificationPreferences();
     }
   }, [user]);
 
@@ -56,9 +53,9 @@ export default function AccountSettings() {
     if (!user?.id) return;
 
     try {
-      const response = await fetch('http://localhost:5001/mfa/status', {
+      const response = await fetch("http://localhost:5001/mfa/status", {
         headers: {
-          'X-User-ID': user.id,
+          "X-User-ID": user.id,
         },
       });
 
@@ -68,7 +65,7 @@ export default function AccountSettings() {
         setMfaEnabled(data.mfa_enabled || false);
       }
     } catch (error) {
-      console.error('Failed to fetch MFA status:', error);
+      console.error("Failed to fetch MFA status:", error);
     }
   };
 
@@ -78,17 +75,74 @@ export default function AccountSettings() {
     try {
       const response = await fetch(`http://localhost:5001/user/${user.id}/privacy`, {
         headers: {
-          'X-User-ID': user.id,
+          "X-User-ID": user.id,
         },
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setProfileVisibility(data.profile_visibility || 'public');
+        setProfileVisibility(data.profile_visibility || "public");
       }
     } catch (error) {
-      console.error('Failed to fetch privacy settings:', error);
+      console.error("Failed to fetch privacy settings:", error);
+    }
+  };
+
+  const fetchNotificationPreferences = async () => {
+    if (!user?.id) return;
+
+    try {
+      const response = await fetch("http://localhost:5001/notification-preferences", {
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user.id,
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.preferences) {
+        setNotificationPrefs(data.preferences);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notification preferences:", error);
+    }
+  };
+
+  const handleToggleNotification = async (key: "likes" | "comments" | "replies" | "follows" | "recipe_updates", value: boolean) => {
+    if (!user?.id) return;
+
+    setNotificationLoading(true);
+    setNotificationError("");
+
+    const newPrefs = { ...notificationPrefs, [key]: value };
+    setNotificationPrefs(newPrefs);
+
+    try {
+      const response = await fetch("http://localhost:5001/notification-preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": user.id,
+        },
+        body: JSON.stringify({ preferences: newPrefs }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Revert on error
+        setNotificationPrefs({ ...notificationPrefs, [key]: !value });
+        setNotificationError(data.error || "Failed to update notification preferences");
+      }
+    } catch (error) {
+      console.error("Failed to update notification preferences:", error);
+      // Revert on error
+      setNotificationPrefs({ ...notificationPrefs, [key]: !value });
+      setNotificationError("Failed to update notification preferences");
+    } finally {
+      setNotificationLoading(false);
     }
   };
 
@@ -96,16 +150,16 @@ export default function AccountSettings() {
     if (!user?.id) return;
 
     setPrivacyLoading(true);
-    setPrivacyError('');
+    setPrivacyError("");
 
-    const newVisibility = profileVisibility === 'public' ? 'private' : 'public';
+    const newVisibility = profileVisibility === "public" ? "private" : "public";
 
     try {
       const response = await fetch(`http://localhost:5001/user/${user.id}/privacy`, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': user.id,
+          "Content-Type": "application/json",
+          "X-User-ID": user.id,
         },
         body: JSON.stringify({ profile_visibility: newVisibility }),
       });
@@ -115,11 +169,11 @@ export default function AccountSettings() {
       if (response.ok) {
         setProfileVisibility(newVisibility);
       } else {
-        setPrivacyError(data.error || 'Failed to update privacy settings');
+        setPrivacyError(data.error || "Failed to update privacy settings");
       }
     } catch (error) {
-      console.error('Failed to toggle privacy:', error);
-      setPrivacyError('Failed to update privacy settings');
+      console.error("Failed to toggle privacy:", error);
+      setPrivacyError("Failed to update privacy settings");
     } finally {
       setPrivacyLoading(false);
     }
@@ -129,15 +183,15 @@ export default function AccountSettings() {
     if (!user?.id) return;
 
     setMfaLoading(true);
-    setMfaError('');
+    setMfaError("");
 
     try {
-      const endpoint = mfaEnabled ? '/mfa/disable' : '/mfa/enable';
+      const endpoint = mfaEnabled ? "/mfa/disable" : "/mfa/enable";
       const response = await fetch(`http://localhost:5001${endpoint}`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': user.id,
+          "Content-Type": "application/json",
+          "X-User-ID": user.id,
         },
       });
 
@@ -146,11 +200,11 @@ export default function AccountSettings() {
       if (response.ok) {
         setMfaEnabled(!mfaEnabled);
       } else {
-        setMfaError(data.error || 'Failed to update MFA settings');
+        setMfaError(data.error || "Failed to update MFA settings");
       }
     } catch (error) {
-      console.error('Failed to toggle MFA:', error);
-      setMfaError('Failed to update MFA settings');
+      console.error("Failed to toggle MFA:", error);
+      setMfaError("Failed to update MFA settings");
     } finally {
       setMfaLoading(false);
     }
@@ -158,17 +212,17 @@ export default function AccountSettings() {
 
   const handleDeactivateAccount = async () => {
     if (!deactivatePassword) {
-      setDeactivateError('Password is required');
+      setDeactivateError("Password is required");
       return;
     }
 
     setIsDeactivating(true);
-    setDeactivateError('');
+    setDeactivateError("");
 
     const { error } = await deactivateAccount(deactivatePassword);
-    
+
     if (error) {
-      setDeactivateError(error.error || error.message || 'Failed to deactivate account');
+      setDeactivateError(error.error || error.message || "Failed to deactivate account");
       setIsDeactivating(false);
     }
     // If successful, the deactivateAccount function will redirect to home
@@ -176,36 +230,39 @@ export default function AccountSettings() {
 
   if (loading) {
     return (
-      <Container size="lg" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
-        <Center style={{ width: '100%' }}>
-          <div style={{ textAlign: 'center' }}>
+      <Container size="lg" style={{ minHeight: "100vh", display: "flex", alignItems: "center" }}>
+        <Center style={{ width: "100%" }}>
+          <div style={{ textAlign: "center" }}>
             <Loader size="lg" />
-            <Text mt="md" c="dimmed">Loading...</Text>
+            <Text mt="md" c="dimmed">
+              Loading...
+            </Text>
           </div>
         </Center>
       </Container>
     );
   }
-  
+
   if (!user) return null;
 
   return (
-    <div style={{ minHeight: '100vh' }}>
-      <AppShell
-        header={{ height: 70 }}
-        padding="md"
-      >
+    <div style={{ minHeight: "100vh" }}>
+      <AppShell header={{ height: 70 }} padding="md">
         <Header showSettingsButton={false} showBackButton={true} />
         <AppShell.Main>
           <Container size="sm" py="xl">
             <Paper shadow="sm" p="xl" radius="md">
-              <Title order={2} mb="lg">Account Settings</Title>
-              
+              <Title order={2} mb="lg">
+                Account Settings
+              </Title>
+
               <Stack gap="lg">
                 <div>
                   <Group gap="sm" mb="xs">
                     <IconMail size={20} color="gray" />
-                    <Text fw={500} size="sm" c="dimmed">Email</Text>
+                    <Text fw={500} size="sm" c="dimmed">
+                      Email
+                    </Text>
                   </Group>
                   <Text size="lg">{user.email}</Text>
                 </div>
@@ -215,7 +272,9 @@ export default function AccountSettings() {
                 <div>
                   <Group gap="sm" mb="xs">
                     <IconUser size={20} color="gray" />
-                    <Text fw={500} size="sm" c="dimmed">Username</Text>
+                    <Text fw={500} size="sm" c="dimmed">
+                      Username
+                    </Text>
                   </Group>
                   <Text size="lg">{user.username}</Text>
                 </div>
@@ -227,27 +286,20 @@ export default function AccountSettings() {
                     <Group gap="sm">
                       <IconUser size={20} color="gray" />
                       <div>
-                        <Text fw={500} size="sm">Profile Visibility</Text>
+                        <Text fw={500} size="sm">
+                          Profile Visibility
+                        </Text>
                         <Text size="xs" c="dimmed">
                           Control who can view your profile
                         </Text>
                       </div>
                     </Group>
-                    <Button
-                      variant={profileVisibility === 'private' ? "light" : "filled"}
-                      color={profileVisibility === 'private' ? "green" : "red"}
-                      onClick={handleTogglePrivacy}
-                      loading={privacyLoading}
-                      disabled={privacyLoading}
-                      size="sm"
-                    >
-                      {profileVisibility === 'private' ? 'Make Public' : 'Make Private'}
+                    <Button variant={profileVisibility === "private" ? "light" : "filled"} color={profileVisibility === "private" ? "green" : "red"} onClick={handleTogglePrivacy} loading={privacyLoading} disabled={privacyLoading} size="sm">
+                      {profileVisibility === "private" ? "Make Public" : "Make Private"}
                     </Button>
                   </Group>
                   <Text size="xs" c="dimmed" pl={28}>
-                    {profileVisibility === 'public'
-                      ? '✓ Your profile is currently public and visible to all users.'
-                      : '🔒 Your profile is currently private. Only you can view your profile information.'}
+                    {profileVisibility === "public" ? "✓ Your profile is currently public and visible to all users." : "🔒 Your profile is currently private. Only you can view your profile information."}
                   </Text>
                   {privacyError && (
                     <Alert color="red" variant="light" mt="xs">
@@ -263,27 +315,20 @@ export default function AccountSettings() {
                     <Group gap="sm">
                       <IconShieldLock size={20} color="gray" />
                       <div>
-                        <Text fw={500} size="sm">Multi-Factor Authentication</Text>
+                        <Text fw={500} size="sm">
+                          Multi-Factor Authentication
+                        </Text>
                         <Text size="xs" c="dimmed">
                           Add an extra layer of security to your account
                         </Text>
                       </div>
                     </Group>
-                    <Button
-                      variant={mfaEnabled ? "light" : "filled"}
-                      color={mfaEnabled ? "red" : "green"}
-                      onClick={handleToggleMfa}
-                      loading={mfaLoading}
-                      disabled={mfaLoading}
-                      size="sm"
-                    >
-                      {mfaEnabled ? 'Disable' : 'Enable'}
+                    <Button variant={mfaEnabled ? "light" : "filled"} color={mfaEnabled ? "red" : "green"} onClick={handleToggleMfa} loading={mfaLoading} disabled={mfaLoading} size="sm">
+                      {mfaEnabled ? "Disable" : "Enable"}
                     </Button>
                   </Group>
                   <Text size="xs" c="dimmed" pl={28}>
-                    {mfaEnabled 
-                      ? '✓ MFA is currently enabled. You will receive a 6-digit code via email when logging in.'
-                      : 'MFA is currently disabled. Enable it to receive a verification code via email when logging in.'}
+                    {mfaEnabled ? "✓ MFA is currently enabled. You will receive a 6-digit code via email when logging in." : "MFA is currently disabled. Enable it to receive a verification code via email when logging in."}
                   </Text>
                   {mfaError && (
                     <Alert color="red" variant="light" mt="xs">
@@ -295,59 +340,116 @@ export default function AccountSettings() {
                 <Divider />
 
                 <div>
+                  <Group gap="sm" mb="md">
+                    <IconBell size={20} color="gray" />
+                    <div>
+                      <Text fw={500} size="sm">
+                        Notification Preferences
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        Choose which notifications you want to receive
+                      </Text>
+                    </div>
+                  </Group>
+
+                  <Stack gap="sm" pl={28}>
+                    <Group justify="space-between">
+                      <div>
+                        <Text size="sm" fw={500}>
+                          Recipe Likes
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Get notified when someone likes your recipe
+                        </Text>
+                      </div>
+                      <Switch checked={notificationPrefs.likes} onChange={(e) => handleToggleNotification("likes", e.currentTarget.checked)} disabled={notificationLoading} color="blue" />
+                    </Group>
+
+                    <Group justify="space-between">
+                      <div>
+                        <Text size="sm" fw={500}>
+                          Recipe Comments
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Get notified when someone comments on your recipe
+                        </Text>
+                      </div>
+                      <Switch checked={notificationPrefs.comments} onChange={(e) => handleToggleNotification("comments", e.currentTarget.checked)} disabled={notificationLoading} color="blue" />
+                    </Group>
+
+                    <Group justify="space-between">
+                      <div>
+                        <Text size="sm" fw={500}>
+                          Comment Replies
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Get notified when someone replies to your comment
+                        </Text>
+                      </div>
+                      <Switch checked={notificationPrefs.replies} onChange={(e) => handleToggleNotification("replies", e.currentTarget.checked)} disabled={notificationLoading} color="blue" />
+                    </Group>
+
+                    <Group justify="space-between">
+                      <div>
+                        <Text size="sm" fw={500}>
+                          New Followers
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Get notified when someone follows you
+                        </Text>
+                      </div>
+                      <Switch checked={notificationPrefs.follows} onChange={(e) => handleToggleNotification("follows", e.currentTarget.checked)} disabled={notificationLoading} color="blue" />
+                    </Group>
+
+                    <Group justify="space-between">
+                      <div>
+                        <Text size="sm" fw={500}>
+                          Liked Recipe Updates
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Get notified when a recipe you liked is updated
+                        </Text>
+                      </div>
+                      <Switch checked={notificationPrefs.recipe_updates} onChange={(e) => handleToggleNotification("recipe_updates", e.currentTarget.checked)} disabled={notificationLoading} color="blue" />
+                    </Group>
+                  </Stack>
+
+                  {notificationError && (
+                    <Alert color="red" variant="light" mt="xs">
+                      {notificationError}
+                    </Alert>
+                  )}
+                </div>
+
+                <Divider />
+
+                <div>
                   <Group gap="sm" mb="sm">
                     <IconBrandTwitter size={20} color="gray" />
-                    <Text fw={500} size="sm">Social Media Links</Text>
+                    <Text fw={500} size="sm">
+                      Social Media Links
+                    </Text>
                   </Group>
                   <SocialLinksManager userId={user.id} />
                 </div>
 
                 <Divider />
 
-                <Button
-                  component={Link}
-                  href="/change-password"
-                  variant="outline"
-                  leftSection={<IconKey size={16} />}
-                  fullWidth
-                  size="md"
-                  color="orange"
-                >
+                <Button component={Link} href="/change-password" variant="outline" leftSection={<IconKey size={16} />} fullWidth size="md" color="orange">
                   Change Password
                 </Button>
 
-                <Button
-                  component={Link}
-                  href="/restrictions"
-                  fullWidth
-                  size="md"
-                  color="blue"
-                >
+                <Button component={Link} href="/restrictions" fullWidth size="md" color="blue">
                   Dietary Restrictions
                 </Button>
 
                 <Divider />
 
-                <Button
-                  onClick={() => setDeactivateModalOpen(true)}
-                  variant="outline"
-                  leftSection={<IconTrash size={16} />}
-                  fullWidth
-                  size="md"
-                  color="red"
-                >
+                <Button onClick={() => setDeactivateModalOpen(true)} variant="outline" leftSection={<IconTrash size={16} />} fullWidth size="md" color="red">
                   Deactivate Account
                 </Button>
 
-                <Button
-                  component={Link}
-                  href="/dashboard"
-                  variant="light"
-                  leftSection={<IconArrowLeft size={16} />}
-                  fullWidth
-                  size="md"
-                  mt="lg"
-                >
+                <Button component={Link} href="/dashboard" variant="light" leftSection={<IconArrowLeft size={16} />} fullWidth size="md" mt="lg">
                   Back to Dashboard
                 </Button>
               </Stack>
@@ -360,33 +462,22 @@ export default function AccountSettings() {
         opened={deactivateModalOpen}
         onClose={() => {
           setDeactivateModalOpen(false);
-          setDeactivatePassword('');
-          setDeactivateError('');
+          setDeactivatePassword("");
+          setDeactivateError("");
         }}
         title="Deactivate Account"
         size="md"
         centered
       >
         <Stack gap="md">
-          <Alert
-            icon={<IconAlertTriangle size={16} />}
-            color="red"
-            variant="light"
-          >
-            <Text size="sm" fw={500}>Warning: This action cannot be undone</Text>
-            <Text size="sm">
-              Deactivating your account will permanently delete all your data and you will no longer be able to log in.
+          <Alert icon={<IconAlertTriangle size={16} />} color="red" variant="light">
+            <Text size="sm" fw={500}>
+              Warning: This action cannot be undone
             </Text>
+            <Text size="sm">Deactivating your account will permanently delete all your data and you will no longer be able to log in.</Text>
           </Alert>
 
-          <PasswordInput
-            label="Enter your password to confirm"
-            placeholder="Password"
-            value={deactivatePassword}
-            onChange={(e) => setDeactivatePassword(e.currentTarget.value)}
-            required
-            size="md"
-          />
+          <PasswordInput label="Enter your password to confirm" placeholder="Password" value={deactivatePassword} onChange={(e) => setDeactivatePassword(e.currentTarget.value)} required size="md" />
 
           {deactivateError && (
             <Alert color="red" variant="filled">
@@ -399,21 +490,16 @@ export default function AccountSettings() {
               variant="light"
               onClick={() => {
                 setDeactivateModalOpen(false);
-                setDeactivatePassword('');
-                setDeactivateError('');
+                setDeactivatePassword("");
+                setDeactivateError("");
               }}
               disabled={isDeactivating}
             >
               Cancel
             </Button>
-            
-            <Button
-              color="red"
-              onClick={handleDeactivateAccount}
-              loading={isDeactivating}
-              leftSection={<IconTrash size={16} />}
-            >
-              {isDeactivating ? 'Deactivating...' : 'Deactivate Account'}
+
+            <Button color="red" onClick={handleDeactivateAccount} loading={isDeactivating} leftSection={<IconTrash size={16} />}>
+              {isDeactivating ? "Deactivating..." : "Deactivate Account"}
             </Button>
           </Group>
         </Stack>

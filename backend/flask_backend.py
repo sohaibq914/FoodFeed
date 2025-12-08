@@ -4,7 +4,8 @@ from flask_socketio import SocketIO, emit, join_room
 from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_user_password, deactivate_user_account, update_recipe, get_recipe, add_restaurant, \
     fetch_restaurants, fetch_reviews, create_review, get_r_tags, insert_r_tags, get_all_r_tags, like_recipe, unlike_recipe, check_recipe_liked, \
     add_comment, get_comments, delete_comment, like_comment, unlike_comment, add_reply, edit_user_tags, get_user_tags, get_user_likes, \
-    upload_profile_picture, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
+    upload_profile_picture, get_notifications, mark_notification_as_read, mark_all_notifications_as_read, delete_notification, get_unread_notification_count, \
+    get_notification_preferences, update_notification_preferences, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
     follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
     block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review
 import os
@@ -158,18 +159,18 @@ def login():
             user = result["user"]
 
             mfa_status = check_mfa_enabled(user["id"])
-            
+
             if mfa_status.get("success") and mfa_status.get("mfa_enabled"):
                 if not mfa_code:
                     code_result = create_mfa_code(user["id"], user["email"])
-                    
+
                     if code_result.get("success"):
                         email_result = send_mfa_code_email(
                             user["email"],
                             code_result["code"],
                             user["username"]
                         )
-                        
+
                         if email_result.get("success"):
                             return jsonify({
                                 "mfa_required": True,
@@ -182,10 +183,9 @@ def login():
                         return jsonify({"error": "Failed to generate MFA code"}), 500
                 else:
                     validation_result = validate_mfa_code(user["id"], mfa_code)
-                    
+
                     if validation_result.get("valid"):
                         mark_mfa_code_as_used(user["id"], mfa_code)
-                        
                         return jsonify({
                             "message": "Login successful",
                             "user": user
@@ -227,17 +227,17 @@ def logout():
 def enable_mfa_endpoint():
     try:
         user_id = request.headers.get('X-User-ID')
-        
+
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
-        
+
         result = enable_mfa(user_id)
-        
+
         if result.get("success"):
             return jsonify({"message": result["message"]}), 200
         else:
             return jsonify({"error": result.get("error", "Failed to enable MFA")}), 400
-            
+
     except Exception as e:
         print(f"Enable MFA exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -247,17 +247,17 @@ def enable_mfa_endpoint():
 def disable_mfa_endpoint():
     try:
         user_id = request.headers.get('X-User-ID')
-        
+
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
-        
+
         result = disable_mfa(user_id)
-        
+
         if result.get("success"):
             return jsonify({"message": result["message"]}), 200
         else:
             return jsonify({"error": result.get("error", "Failed to disable MFA")}), 400
-            
+
     except Exception as e:
         print(f"Disable MFA exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -267,17 +267,17 @@ def disable_mfa_endpoint():
 def check_mfa_status():
     try:
         user_id = request.headers.get('X-User-ID')
-        
+
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
-        
+
         result = check_mfa_enabled(user_id)
-        
+
         if result.get("success"):
             return jsonify({"mfa_enabled": result["mfa_enabled"]}), 200
         else:
             return jsonify({"error": result.get("error", "Failed to check MFA status")}), 400
-            
+
     except Exception as e:
         print(f"Check MFA status exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -373,7 +373,7 @@ def get_user_profile_endpoint(user_id):
     try:
         # Get the viewer's ID from headers (if authenticated)
         viewer_id = request.headers.get('X-User-ID')
-        
+
         result = get_user_profile(user_id, viewer_id)
 
         if "error" in result:
@@ -468,11 +468,12 @@ def delete_user_social_link(user_id, platform):
         print(f"Remove social link exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/user/<user_id>/privacy", methods=["GET"])
 def get_user_privacy_settings(user_id):
     try:
         from supabase_backend import get_privacy_settings
-        
+
         requesting_user_id = request.headers.get('X-User-ID')
         if requesting_user_id != user_id:
             return jsonify({"error": "Unauthorized"}), 403
@@ -493,7 +494,7 @@ def get_user_privacy_settings(user_id):
 def update_user_privacy_settings(user_id):
     try:
         from supabase_backend import update_privacy_settings
-        
+
         requesting_user_id = request.headers.get('X-User-ID')
         if requesting_user_id != user_id:
             return jsonify({"error": "Unauthorized"}), 403
@@ -521,7 +522,7 @@ def get_user_by_username(username):
     try:
         from supabase_backend import supabase
         viewer_id = request.headers.get('X-User-ID')
-        
+
         response = supabase.table('users').select(
             'id, username, profile_picture_url, description, profile_visibility').eq('username', username).execute()
 
@@ -539,7 +540,7 @@ def get_user_by_username(username):
                     },
                     "is_private": True
                 }), 200
-            
+
             return jsonify({"user": user_data, "is_private": False}), 200
         else:
             return jsonify({"error": "User not found"}), 404
@@ -836,7 +837,8 @@ def update_recipe_handler():
         if not visibility:
             visibility = "public"
 
-        result = update_recipe(id, author, title, desc, ingredients, instructions, nutrition, allergens, posting, images, tags, visibility)
+        result = update_recipe(id, author, title, desc, ingredients, instructions,
+                               nutrition, allergens, posting, images, tags, visibility)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400
@@ -880,7 +882,8 @@ def list_recipes():
     try:
         res = (
             supabase.table("recipes")
-            .select('recipe_id,title,posted,"timestamp",tags')  # include it (quoted is safest)
+            # include it (quoted is safest)
+            .select('recipe_id,title,posted,"timestamp",tags')
             .order("timestamp", desc=True)
             .execute()
         )
@@ -888,7 +891,6 @@ def list_recipes():
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
-
 
 
 @app.route("/feed", methods=["GET"])
@@ -1093,7 +1095,6 @@ def like_recipe_handler(recipe_id):
         is_dislike = data.get("is_dislike")
 
         print(is_dislike)
-        
 
         if not user_id:
             return jsonify({"error": "Missing user_id"}), 400
@@ -1569,7 +1570,8 @@ def get_food_of_nutrient():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/favorite_food", methods=["POST"])
 def favorite_food_for_user():
     try:
@@ -1581,7 +1583,8 @@ def favorite_food_for_user():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/defavorite_food", methods=["POST"])
 def defavorite_food_for_user():
     try:
@@ -1593,7 +1596,8 @@ def defavorite_food_for_user():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/get_calorie_intake", methods=["POST"])
 def get_user_calorie_intake():
     try:
@@ -1606,7 +1610,8 @@ def get_user_calorie_intake():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/dieting/calculate_calorie_intake", methods=["POST"])
 def calculate_user_calorie_intake():
     try:
@@ -1617,13 +1622,16 @@ def calculate_user_calorie_intake():
         height = data.get('height')
         age = data.get('age')
         activity = data.get('activity')
-        res = calculate_calorie_intake(user_id, sex, weight, height, age, activity)
+        res = calculate_calorie_intake(
+            user_id, sex, weight, height, age, activity)
         return jsonify({"result": res}), 200
     except Exception as e:
         print(f"Exception calc: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # New Food Items
+
+
 @app.route("/create_foods/submit_form", methods=["POST"])
 def submit_user_form_for_food():
     try:
@@ -1631,12 +1639,13 @@ def submit_user_form_for_food():
         user_id = data.get('user_id')
         name = data.get('name')
         type = data.get('type')
-        description = data.get('description') 
+        description = data.get('description')
         submit_form(user_id, name, type, description)
         return jsonify({"data": "Success"}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 
 @app.route("/create_foods/get_all_pending_forms", methods=["POST"])
 def get_all_pending_food_forms():
@@ -1647,7 +1656,8 @@ def get_all_pending_food_forms():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/create_foods/get_user_forms", methods=["POST"])
 def get_user_food_forms():
     print('eeee')
@@ -1661,7 +1671,8 @@ def get_user_food_forms():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/create_foods/reject_form", methods=["POST"])
 def reject_food_form():
     try:
@@ -1672,7 +1683,8 @@ def reject_food_form():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/create_foods/accept_form", methods=["POST"])
 def accept_food_form():
     try:
@@ -1685,6 +1697,7 @@ def accept_food_form():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # Meal Plans
+
 
 @app.route("/meal_plan/get_meal_plan", methods=["POST"])
 def get_user_meal_plan():
@@ -1699,6 +1712,7 @@ def get_user_meal_plan():
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+
 @app.route("/meal_plan/create_meal_plan", methods=["POST"])
 def create_user_meal_plan():
     try:
@@ -1711,7 +1725,8 @@ def create_user_meal_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/add_component", methods=["POST"])
 def add_component_to_plan():
     try:
@@ -1724,7 +1739,8 @@ def add_component_to_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/update_component", methods=["POST"])
 def update_component_of_plan():
     try:
@@ -1736,7 +1752,8 @@ def update_component_of_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/delete_component", methods=["POST"])
 def delete_component_in_plan():
     try:
@@ -1747,7 +1764,8 @@ def delete_component_in_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/get_days_plan_is_completed", methods=["POST"])
 def get_days_of_plan():
     try:
@@ -1759,7 +1777,8 @@ def get_days_of_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/mark_day", methods=["POST"])
 def mark_day_of_plan():
     try:
@@ -1772,7 +1791,8 @@ def mark_day_of_plan():
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
 @app.route("/meal_plan/get_nutrients_to_food", methods=["POST"])
 def get_map_of_nutrients_to_food():
     try:
@@ -1790,6 +1810,7 @@ def get_map_of_nutrients_to_food():
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 # Forgot password
+
 
 @app.route('/forgot-password', methods=['POST'])
 def handle_forgot_password():
@@ -2389,6 +2410,142 @@ def rest_trending_list():
     except Exception as e:
         print(f"/rest_trending error: {e}")
         return jsonify({"error": "Failed to fetch trending"}), 500
+
+
+# ==================== NOTIFICATIONS ROUTES ====================
+
+@app.route('/notifications', methods=['GET'])
+@require_auth
+def get_notifications_handler():
+    """Get notifications for the current user"""
+    try:
+        user_id = request.current_user_id
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+        unread_only = request.args.get(
+            'unread_only', 'false').lower() == 'true'
+
+        result = get_notifications(user_id, limit, offset, unread_only)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get notifications exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notifications/unread-count', methods=['GET'])
+@require_auth
+def get_unread_count_handler():
+    """Get count of unread notifications"""
+    try:
+        user_id = request.current_user_id
+        result = get_unread_notification_count(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get unread count exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notifications/<notification_id>/read', methods=['POST'])
+@require_auth
+def mark_notification_read_handler(notification_id):
+    """Mark a notification as read"""
+    try:
+        user_id = request.current_user_id
+        result = mark_notification_as_read(notification_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Mark notification read exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notifications/mark-all-read', methods=['POST'])
+@require_auth
+def mark_all_read_handler():
+    """Mark all notifications as read"""
+    try:
+        user_id = request.current_user_id
+        result = mark_all_notifications_as_read(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Mark all read exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notifications/<notification_id>', methods=['DELETE'])
+@require_auth
+def delete_notification_handler(notification_id):
+    """Delete a notification"""
+    try:
+        user_id = request.current_user_id
+        result = delete_notification(notification_id, user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Delete notification exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notification-preferences', methods=['GET'])
+@require_auth
+def get_notification_preferences_handler():
+    """Get user's notification preferences"""
+    try:
+        user_id = request.current_user_id
+        result = get_notification_preferences(user_id)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Get notification preferences exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+
+@app.route('/notification-preferences', methods=['POST'])
+@require_auth
+def update_notification_preferences_handler():
+    """Update user's notification preferences"""
+    try:
+        user_id = request.current_user_id
+        data = request.get_json()
+
+        preferences = data.get('preferences', {})
+        result = update_notification_preferences(user_id, preferences)
+
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+
+        return jsonify(result), 200
+
+    except Exception as e:
+        print(f"Update notification preferences exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
