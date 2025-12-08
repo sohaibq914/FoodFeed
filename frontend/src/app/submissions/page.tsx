@@ -13,6 +13,9 @@ export default function DietPage() {
       if (!loading && !user) {
         router.push("/login");
       }
+      else if (!user?.isAdmin) {
+        router.push("/")
+      }
       window.addEventListener('beforeunload', alertUser)
 
       return () => {

@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Container, Title, Text, Center, Loader, AppShell, Paper, Group, Avatar, Stack, Button, Alert, Badge, ActionIcon, Menu } from "@mantine/core";
-import { IconUser, IconHeart, IconMessage, IconUserPlus, IconTrash, IconDots, IconCheck, IconRefresh } from "@tabler/icons-react";
+import { IconUser, IconHeart, IconMessage, IconUserPlus, IconTrash, IconDots, IconCheck, IconRefresh, IconBell } from "@tabler/icons-react";
 import Header from "@/components/Header";
 import Link from "next/link";
 
