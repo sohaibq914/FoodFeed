@@ -74,6 +74,7 @@ def sign_up_user(email: str, password: str, username: str):
                         "id": response.user.id,
                         "email": response.user.email,
                         "username": username,
+                        "isAdmin": False,
                         "profile_picture_url": None
                     },
                     "session": response.session
@@ -108,12 +109,14 @@ def sign_in_user(login: str, password: str):
 
         if response.user:
             user_profile = supabase.table('users').select(
-                'username, profile_picture_url').eq('id', response.user.id).execute()
+                'username, profile_picture_url, isAdmin').eq('id', response.user.id).execute()
+            print(user_profile.data[0])
             if user_profile.data:
                 return {
                     "user": {
                         "id": response.user.id,
                         "email": response.user.email,
+                        "isAdmin": user_profile.data[0]['isAdmin'],
                         "username": user_profile.data[0]['username'],
                         "profile_picture_url": user_profile.data[0].get('profile_picture_url')
                     },

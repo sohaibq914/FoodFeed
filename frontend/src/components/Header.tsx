@@ -64,7 +64,7 @@ export default function CommonHeader({
             >
               Messages
             </Button>
-
+              
             <Button
                 component={Link}
                 href="/submission-history"
@@ -72,14 +72,14 @@ export default function CommonHeader({
                 leftSection={<IconFolderCheck size={16} />}
               >
               </Button>
-
+            {user?.isAdmin ?
             <Button
                 component={Link}
                 href="/submissions"
                 variant="light"
                 leftSection={<IconFilesFilled size={16} />}
               >
-              </Button>
+              </Button> : <></>}
 
             <Button
                 component={Link}

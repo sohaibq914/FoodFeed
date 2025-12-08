@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 interface User {
   id: string;
   email: string;
+  isAdmin: boolean;
   username: string;
   profile_picture_url?: string;
 }
