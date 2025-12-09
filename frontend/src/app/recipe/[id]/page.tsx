@@ -52,6 +52,8 @@ type Recipe = {
   user_has_disliked?: boolean;
   image?: string;
   tags?: Array<string>;
+  prep_time: number;
+  cook_time: number;
 };
 
 type RecipeComment = {
@@ -584,6 +586,22 @@ export default function RecipePage() {
                 </>
               )}
 
+              {/* Prep and cook time */}
+              {(recipe.prep_time || recipe.cook_time) && (<Group justify="flex" gap="xl">
+                {recipe.prep_time &&  (
+                  <Stack>
+                    <Text fw={600}>Preparation Time </Text>
+                    <Text>{recipe.prep_time} minutes</Text>
+                  </Stack>
+                )}
+                {recipe.cook_time && (
+                  <Stack>
+                    <Text fw={600}>Cooking Time</Text>
+                    <Text>{recipe.cook_time} minutes</Text>
+                  </Stack>
+                )}
+              </Group>)}
+
               {ingredients && (
                 <>
                   <Text fw={600} mt="md">
@@ -641,7 +659,7 @@ export default function RecipePage() {
                 </>
               )}
 
-              {recipe.tags && (
+              {recipe.tags && (recipe.tags.length === 0 && (
                 <>
                   <Text fw={600} mt="md">
                     Tags
@@ -659,7 +677,7 @@ export default function RecipePage() {
                     ))}
                   </Group>
                 </>
-              )}
+              ))}
             </Stack>
           </Paper>
 

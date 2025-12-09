@@ -396,7 +396,8 @@ def insert_r_tags(restaurant_id, tags):
 # Recipe methods
 
 
-def update_recipe(id: str, author: str, title: str, desc: str, ingredients, instructions: str, nutrition, allergens, posting: bool, images, tags, visibility: str = 'public'):
+def update_recipe(id: str, author: str, title: str, desc: str, ingredients, instructions: str, nutrition, allergens,
+                  posting: bool, images, tags,  prep_time: int, cook_time: int, visibility: str = 'public'):
 
     try:
         image_url = None
@@ -420,7 +421,8 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients, inst
             response = supabase.table('recipes').insert({
                 "author_id": author, "title": title, "description": desc, "ingredients": ingredients,
                 "instructions": instructions, "nutrition_facts": nutrition, "allergens": allergens,
-                "posted": posting, "image": image_url, "visibility": visibility, "tags": tags}).execute()
+                "posted": posting, "image": image_url, "visibility": visibility, "tags": tags,
+                "prep_time": prep_time, "cook_time": cook_time}).execute()
         else:
             # Verify that user is authorized
             verify = supabase.table('recipes').select(
@@ -442,7 +444,9 @@ def update_recipe(id: str, author: str, title: str, desc: str, ingredients, inst
                 "allergens": allergens,
                 "posted": posting,
                 "visibility": visibility,
-                "tags": tags
+                "tags": tags,
+                "prep_time": prep_time,
+                "cook_time": cook_time
             }
 
             # Only update image if a new one was provided
