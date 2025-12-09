@@ -809,11 +809,6 @@ def update_recipe_handler():
             print("form")
             f = request.form
             file = request.files.get("image")
-            # if file:
-            # name_ok = file.filename.lower().endswith(".png")
-            # type_ok = (file.mimetype or "").lower() == "image/png"
-            # if not (name_ok and type_ok):
-            #    return jsonify({"error": "Only PNG images are allowed"}), 400
 
             id = f.get("recipe_id")
             author = f.get("author")
@@ -827,9 +822,12 @@ def update_recipe_handler():
             visibility = f.get("visibility", "public")
             images = file
             tags = f.get("tags")
+            prep_time = f.get("prep_time")
+            cook_time = f.get("cook_time")
         else:
             print("data")
             data = request.get_json()
+
             id = data.get("recipe_id")
             author = data.get("author")
             title = data.get("title")
@@ -843,6 +841,9 @@ def update_recipe_handler():
             images = None
             tags = data.get("tags")
 
+            prep_time = f.get("prep_time")
+            cook_time = f.get("cook_time")
+
         if not author or not title or not desc or not ingredients or not instructions:
             return jsonify({"error": "Missing author, title, description, ingredients, or instructions"}), 400
 
@@ -854,7 +855,8 @@ def update_recipe_handler():
             visibility = "public"
 
         result = update_recipe(id, author, title, desc, ingredients, instructions,
-                               nutrition, allergens, posting, images, tags, visibility)
+                               nutrition, allergens, posting, images, tags,
+                               prep_time, cook_time, visibility)
 
         if "error" in result:
             return jsonify({"error": result["error"]}), 400

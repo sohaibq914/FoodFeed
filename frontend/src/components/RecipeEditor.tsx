@@ -40,6 +40,8 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   const [files, setFiles] = useState<File | null>(null);
   const [previews, setPreviews] = useState<string>();
   const [tags, setTags] = useState<string[]>([]);
+  const [prepTime, setPrepTime] = useState(0);
+  const [cookTime, setCookTime] = useState(0);
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -111,7 +113,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
         setVisibility(data.visibility || "public");
-        setTags(JSON.parse(data.tags) || [])
+        setTags(JSON.parse(data.tags) || []);
+        setPrepTime(JSON.parse(data.prep_time))
+        setCookTime(JSON.parse(data.cook_time))
 
         console.log(user)
         console.log("author id: " + data.author_id)
@@ -132,7 +136,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
 
   const update_recipe = async (recipe_id: string, author: string, title: string, description: string, 
     ingredients: {name: string, quantity: number, unit: string}[], instructions: string, nutrition: string, 
-    allergens: string, posting: boolean, image: File | null, visibility: string) => {
+    allergens: string, posting: boolean, image: File | null, visibility: string, prep_time: number, cook_time: number) => {
 
     try {
       const fd = new FormData();
@@ -150,6 +154,8 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         fd.append("image", image)
       }
       fd.append("tags", JSON.stringify(tags).toLowerCase())
+      fd.append("prep_time", String(prepTime))
+      fd.append("cook_time", String(cookTime))
 
       const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
       const data = await response.json();
@@ -195,7 +201,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       allergens,
       posting,
       files,
-      visibility
+      visibility,
+      prepTime,
+      cookTime
     );
 
     setLoading(false);
@@ -270,7 +278,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
                   </Group>
                 ))}
               </Stack>
-              <Group justify="center">
+              <Group justify="flex-start">
                 <Button size="md" onClick={() => addIngredient()} >
                   Add ingredient
                 </Button>
@@ -278,6 +286,11 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             </Stack>
             
             <Textarea label="Instructions" placeholder="Your recipe's directions" autosize minRows={4} maxRows={10} value={instructions} onChange={(e) => setInstructions(e.currentTarget.value)} required size="md" />
+
+            <Group justify="space-between" grow>
+              <NumberInput label="Preparation Time" placeholder="in minutes" value={prepTime} onChange={(e) => setPrepTime(Number(e))} size="md" suffix=" minutes" allowNegative={false} allowDecimal={false}/>
+              <NumberInput label="Cooking Time" placeholder="in minutes" value={cookTime} onChange={(e) => setCookTime(Number(e))} size="md" suffix=" minutes" allowNegative={false} allowDecimal={false}/>
+            </Group>
 
             <Textarea label="Nutrition Facts" placeholder="Your recipe's nutritional information" autosize minRows={2} maxRows={6} value={nutrition} onChange={(e) => setNutrition(e.currentTarget.value)} size="md" />
 
