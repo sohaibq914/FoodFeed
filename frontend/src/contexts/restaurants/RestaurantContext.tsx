@@ -1,7 +1,8 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {useAuth} from "@/contexts/AuthContext";
 
-type Restaurant = { id: string; name: string; address: string; owner: string };
+type Restaurant = { id: string; name: string; address: string; owner: string; approved: boolean};
 type Review = {
     id: string;
     restaurant_id: string;
@@ -42,7 +43,7 @@ interface RestaurantsContextType {
     allTags: string[];
     refreshAllTags: () => Promise<{ data: string[]; error: any }>;
     refresh: () => Promise<{ data: any; error: any }>;
-    addRestaurant: (name: string, address: string, owner: string) => Promise<{ data: any; error: any }>;
+    addRestaurant: (name: string, address: string, owner: string, u_id: any) => Promise<{ data: any; error: any }>;
     reviews: Review[];
     reviewsLoading: boolean;
     reviewsError: string | null;
@@ -93,7 +94,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 const name = r.name;
                 const address = r.address;
                 const owner = r.owner;
-                if (id && name && address && owner) next.push({ id, name, address, owner });
+                const approved = r.approved;
+                if (id && name && address && owner) next.push({ id, name, address, owner, approved});
             }
             setItems(next);
             return { data, error: null };
@@ -104,7 +106,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         }
     };
 
-    const addRestaurant = async (name: string, address: string, owner: string) => {
+    const addRestaurant = async (name: string, address: string, owner: string, u: any) => {
         try {
             const n = (name || "").trim();
             const a = (address || "").trim();
@@ -113,7 +115,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
             const res = await fetch(`${Endpoint}/create_restaurants`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: n, address: a, owner: o }),
+                body: JSON.stringify({ name: n, address: a, owner: o, u_id: u}),
             });
             const data = await res.json();
             if (!res.ok) return { data: null, error: data };
@@ -124,6 +126,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 name: row.name,
                 address: row.address,
                 owner: row.owner,
+                approved: row.approved,
+                u_id: row.u_id,
             };
             setItems((prev) => [newItem, ...prev]);
             return { data, error: null };
@@ -313,6 +317,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         return res.json();
     };
 
+
+
     useEffect(() => {
         refresh();
         refreshAllTags();
@@ -345,7 +351,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 restaurantReviewsLoading,
                 restaurantReviewsError,
                 refreshRestaurantReviews,
-                fetchRestaurantAverageRating
+                fetchRestaurantAverageRating,
             }}
         >
             {children}

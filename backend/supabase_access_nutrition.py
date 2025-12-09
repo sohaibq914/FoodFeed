@@ -233,18 +233,18 @@ def calculate_calorie_intake(user_id, sex, weight, height, age, activity):
         calorie_intake += 161
     elif sex == 'f':
         calorie_intake -= 5
-    
-    match activity:
-        case 4:
-            calorie_intake *= 1.9
-        case 3:
-            calorie_intake *= 1.725
-        case 2:
-            calorie_intake *= 1.55
-        case 1:
-            calorie_intake *= 1.375
-        case 0:
-            calorie_intake *= 1.2
+
+    if activity == 4:
+        calorie_intake *= 1.9
+    elif activity == 3:
+        calorie_intake *= 1.725
+    elif activity == 2:
+        calorie_intake *= 1.55
+    elif activity == 1:
+        calorie_intake *= 1.375
+    elif activity == 0:
+        calorie_intake *= 1.2
+
     supabase.table('calorie_intake') \
         .insert({  
             'user_id': user_id,

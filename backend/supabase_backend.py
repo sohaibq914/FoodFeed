@@ -266,7 +266,7 @@ def deactivate_user_account(email: str, password: str):
         return {"error": "Failed to deactivate account"}
 
 
-def add_restaurant(name: str, address: str, owner: str):
+def add_restaurant(name: str, address: str, owner: str, u_id):
     try:
         n, a, o = name.strip(), address.strip(), owner.strip()
         if not n or not a or not o:
@@ -274,7 +274,7 @@ def add_restaurant(name: str, address: str, owner: str):
 
         res = (
             supabase.table("restaurant")
-            .insert({"name": n, "address": a, "owner": o})
+            .insert({"name": n, "address": a, "owner": o, "approved": False, "u_id": u_id})
             .execute()
         )
         rows = res.data or []
@@ -288,7 +288,7 @@ def add_restaurant(name: str, address: str, owner: str):
 def fetch_restaurants():
     try:
         res = supabase.table("restaurant").select(
-            "id,name,address,owner").order("name").execute()
+            "id,name,address,owner, approved").order("name").execute()
         return res.data
     except Exception as e:
         return {"error": str(e)}
@@ -1872,3 +1872,113 @@ def is_admin(user_id: str):
     res = supabase.table('users').select('isAdmin') \
         .eq('id', user_id).execute()
     return res.data[0]['isAdmin']
+
+def insert_restaurant_review_draft(restaurant_id: str, author_name: str, body_text: str, rating: int, uid: str):
+
+    try:
+        payload = {
+            "r_id": restaurant_id,
+            "name": author_name,
+            "text": body_text,
+            "rating": int(rating),
+            "u_id": uid
+        }
+
+        res = supabase.table("about_restaurant_review_draft").insert(
+            payload).execute()
+        if getattr(res, "error", None):
+            return {"error": str(res.error)}
+        if not res.data:
+            return {"error": "insert failed"}
+        r = res.data[0]
+        return {
+            "id": r.get("id"),
+            "restaurant_id": r.get("r_id"),
+            "author": r.get("name"),
+            "text": r.get("text"),
+            "rating": r.get("rating"),
+        }
+    except Exception as e:
+        print(e)
+        return {"error": str(e)}
+
+def fetch_about_restaurant_review_drafts_for_user(u_id: str):
+    try:
+        res = (
+            supabase
+            .table("about_restaurant_review_draft")
+            .select("*")
+            .eq("u_id", u_id)
+            .order("id", desc=True)
+            .execute()
+        )
+
+        rows = res.data or []
+
+        return [
+            {
+                "id": row["id"],
+                "r_id": row["r_id"],
+                "u_id": row["u_id"],
+                "name": row["name"],
+                "text": row["text"],
+                "rating": row["rating"],
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
+def fetch_restaurants_by_ids(ids: list[str]):
+    if not ids:
+        return []
+
+    try:
+        res = (
+            supabase
+            .table("restaurant")
+            .select("*")
+            .in_("id", ids)
+            .execute()
+        )
+
+        rows = res.data or []
+
+        return [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "address": row.get("address"),
+                "owner": row.get("owner"),
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def fetch_unapproved_restaurants():
+    try:
+        res = (
+            supabase
+            .table("restaurant")
+            .select("*")
+            .eq("approved", False)
+            .execute()
+        )
+
+        rows = res.data or []
+
+        return [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "address": row.get("address"),
+                "owner": row.get("owner"),
+                "approved": row.get("approved"),
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        return {"error": str(e)}
+
