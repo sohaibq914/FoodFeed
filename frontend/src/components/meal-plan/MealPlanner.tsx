@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { Calendar } from "@mantine/dates";
 import { PieChart, PieChartCell } from '@mantine/charts';
 import NutritionCard from '../diet-related/NutritionCard';
-import { IconDeviceFloppy, IconHeartFilled, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
+import { IconDeviceFloppy, IconHeartFilled, IconLoader, IconPlus, IconSearch, IconTrash } from '@tabler/icons-react';
 
 interface MealPlannerInfo {
     user_id: string
@@ -49,9 +49,66 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
     const [days, setDays] = useState([] as Date[])
 
     const [fQuery, setFQuery] = useState('')
+    const [fLoaded, setFLoaded] = useState(0)
     const [vQuery, setVQuery] = useState('')
+    const [vLoaded, setVLoaded] = useState(0)
     const [pQuery, setPQuery] = useState('')
+    const [pLoaded, setPLoaded] = useState(0)
     const [dQuery, setDQuery] = useState('')
+    const [dLoaded, setDLoaded] = useState(0)
+
+    const load_foods_of_type = async (type: string) => {
+        const idItemMap = new Map<String, FoodItem>(idToItem);
+        const tempIdToTypes = new Map<String, String>(idToTypes);
+        switch (type) {
+            case 'f':
+                const {success: fSuccess, foods: fFoods} = await get_food_of_type(user_id, 'fruit', fQuery, fLoaded)
+                if (fSuccess) {
+                    setFLoaded(fLoaded + fFoods?.length!)
+                    setFruits(fruits.concat(fFoods!))
+                    fFoods!.forEach((value) => {
+                        tempIdToTypes.set(value.id, 'fruit')
+                        idItemMap.set(value.id, value)
+                    })
+                }
+                break
+            case 'v':
+                const {success: vSuccess, foods: vFoods} = await get_food_of_type(user_id, 'vegetable', vQuery, vLoaded)
+                if (vSuccess) {
+                    setVLoaded(vLoaded + vFoods?.length!)
+                    setVegetables(vegetables.concat(vFoods!))
+                    vFoods!.forEach((value) => {
+                        tempIdToTypes.set(value.id, 'vegetable')
+                        idItemMap.set(value.id, value)
+                    })
+                }
+                break
+            case 'p':
+                const {success: pSuccess, foods: pFoods} = await get_food_of_type(user_id, 'protein', pQuery, pLoaded)
+                if (pSuccess) {
+                    setPLoaded(pLoaded + pFoods?.length!)
+                    setProteins(proteins.concat(pFoods!))
+                    pFoods!.forEach((value) => {
+                        tempIdToTypes.set(value.id, 'protein')
+                        idItemMap.set(value.id, value)
+                    })
+                }
+                break
+            case 'd':
+                const {success: dSuccess, foods: dFoods} = await get_food_of_type(user_id, 'dairy', dQuery, dLoaded)
+                if (dSuccess) {
+                    setDLoaded(dLoaded + dFoods?.length!)
+                    setDairy(dairy.concat(dFoods!))
+                    dFoods!.forEach((value) => {
+                        tempIdToTypes.set(value.id, 'dairy')
+                        idItemMap.set(value.id, value)
+                    })
+                }
+                break
+        }
+        setIdToTypes(tempIdToTypes)
+        setIdToItem(idItemMap)
+    }
 
     useEffect(() => {
         const runner = async() => {
@@ -74,48 +131,15 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
             if (nutrSuccess) {
                 setNutrToFoods(nutrs_to_foods!)
             }
-            const tempIdToTypes = new Map<String, String>();
 
             const {success: getNutrSuccess, nutrients} = await get_all_nutrients(user_id)
             if (getNutrSuccess) {
                 setNutrients(nutrients!)
             }
-
-            let idItemMap = new Map<String, FoodItem>();
-            const {success: fSuccess, foods: fFoods} = await get_food_of_type(user_id, 'fruit')
-            if (fSuccess) {
-                setFruits(fFoods!)
-                fFoods!.forEach((value) => {
-                    tempIdToTypes.set(value.id, 'fruit')
-                    idItemMap.set(value.id, value)
-                })
-            }
-            const {success: vSuccess, foods: vFoods} = await get_food_of_type(user_id, 'vegetable')
-            if (vSuccess) {
-                setVegetables(vFoods!)
-                vFoods!.forEach((value) => {
-                    tempIdToTypes.set(value.id, 'vegetable')
-                    idItemMap.set(value.id, value)
-                })
-            }
-            const {success: pSuccess, foods: pFoods} = await get_food_of_type(user_id, 'protein')
-            if (pSuccess) {
-                setProteins(pFoods!)
-                pFoods!.forEach((value) => {
-                    tempIdToTypes.set(value.id, 'protein')
-                    idItemMap.set(value.id, value)
-                })
-            }
-            const {success: dSuccess, foods: dFoods} = await get_food_of_type(user_id, 'daity')
-            if (dSuccess) {
-                setDairy(dFoods!)
-                dFoods!.forEach((value) => {
-                    tempIdToTypes.set(value.id, 'dairy')
-                    idItemMap.set(value.id, value)
-                })
-            }
-            setIdToTypes(tempIdToTypes)
-            setIdToItem(idItemMap)
+            await load_foods_of_type('f')
+            await load_foods_of_type('v')
+            await load_foods_of_type('p')
+            await load_foods_of_type('d')
             setLoading(false)
         }
         runner()
@@ -318,15 +342,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 onChange={(e) => setFQuery(e.currentTarget.value)}
                                 style={{ flex: 1, minWidth: 120 }}
                             />
-                            <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
+                            <Button type="button" leftSection={<IconSearch size={16} /> as React.ReactNode}
+                                onClick={(e) => {
+                                    setFLoaded(0)
+                                    setFruits([] as FoodItem[])
+                                    load_foods_of_type('f')
+                                }}>
                             </Button>
                         </Group>
                         {
-                            fruits.filter((value) => {
-                                return value.name.toLowerCase().includes(fQuery.toLowerCase()) 
-                                    && !selected.has(value.id)
-                            })
-                                .sort((a, b) => {
+                            fruits.toSorted((a, b) => {
                                     if (a.favorite) {
                                         return -1
                                     }
@@ -355,6 +380,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 </Group></Card>
                             })
                         }
+                        <ActionIcon
+                            color="blue"
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => {load_foods_of_type('f')}}
+                            style={{
+                            transition: "all 0.2s ease",
+                            }}>
+                            <IconLoader/>
+                        </ActionIcon>
                     </Stack>
                     {/* Vegetable */}
                     <Stack>
@@ -367,15 +402,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 onChange={(e) => setVQuery(e.currentTarget.value)}
                                 style={{ flex: 1, minWidth: 120 }}
                             />
-                            <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
+                            <Button type="button" leftSection={<IconSearch size={16} /> as React.ReactNode}
+                                onClick={(e) => {
+                                    setVLoaded(0)
+                                    setVegetables([] as FoodItem[])
+                                    load_foods_of_type('v')
+                                }}>
                             </Button>
                         </Group>
                         {
-                            vegetables.filter((value) => {
-                                return value.name.toLowerCase().includes(vQuery.toLowerCase()) 
-                                    && !selected.has(value.id)
-                            })
-                                .sort((a, b) => {
+                            vegetables.toSorted((a, b) => {
                                     if (a.favorite) {
                                         return -1
                                     }
@@ -404,6 +440,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 </Group></Card>
                             })
                         }
+                        <ActionIcon
+                            color="blue"
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => {load_foods_of_type('v')}}
+                            style={{
+                            transition: "all 0.2s ease",
+                            }}>
+                            <IconLoader/>
+                        </ActionIcon>
                     </Stack>
                     {/* Protein */}
                     <Stack>
@@ -416,15 +462,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 onChange={(e) => setPQuery(e.currentTarget.value)}
                                 style={{ flex: 1, minWidth: 120 }}
                             />
-                            <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
+                            <Button type="button" leftSection={<IconSearch size={16} /> as React.ReactNode}
+                                onClick={(e) => {
+                                    setPLoaded(0)
+                                    setProteins([] as FoodItem[])
+                                    load_foods_of_type('p')
+                                }}>
                             </Button>
                         </Group>
                         {
-                            proteins.filter((value) => {
-                                return value.name.toLowerCase().includes(pQuery.toLowerCase()) 
-                                    && !selected.has(value.id)
-                            })
-                                .sort((a, b) => {
+                            proteins.toSorted((a, b) => {
                                     if (a.favorite) {
                                         return -1
                                     }
@@ -453,6 +500,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 </Group></Card>
                             })
                         }
+                        <ActionIcon
+                            color="blue"
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => {load_foods_of_type('p')}}
+                            style={{
+                            transition: "all 0.2s ease",
+                            }}>
+                            <IconLoader/>
+                        </ActionIcon>
                     </Stack>
                     {/* Dairy */}
                     <Stack>
@@ -465,15 +522,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 onChange={(e) => setDQuery(e.currentTarget.value)}
                                 style={{ flex: 1, minWidth: 120 }}
                             />
-                            <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
+                            <Button type="button" leftSection={<IconSearch size={16} /> as React.ReactNode}
+                                onClick={(e) => {
+                                    setDLoaded(0)
+                                    setDairy([] as FoodItem[])
+                                    load_foods_of_type('d')
+                                }}>
                             </Button>
                         </Group>
                         {
-                            dairy.filter((value) => {
-                                return value.name.toLowerCase().includes(dQuery.toLowerCase()) 
-                                    && !selected.has(value.id)
-                            })
-                                .sort((a, b) => {
+                            dairy.toSorted((a, b) => {
                                     if (a.favorite) {
                                         return -1
                                     }
@@ -502,6 +560,16 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
                                 </Group></Card>
                             })
                         }
+                        <ActionIcon
+                            color="blue"
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => {load_foods_of_type('d')}}
+                            style={{
+                            transition: "all 0.2s ease",
+                            }}>
+                            <IconLoader/>
+                        </ActionIcon>
                     </Stack>
                 </Group>
             </Container>}

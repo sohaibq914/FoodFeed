@@ -1,9 +1,21 @@
 import os
+import re
 from supabase_instance import supabase
 from dotenv import load_dotenv
 from storage_objs import FoodItem, NutrientItem
 
 load_dotenv()
+
+def get_all_favorite_foods(user_id):
+    res = supabase.table('favorited_foods') \
+        .select("food_id") \
+        .eq('user_id', user_id) \
+        .execute()
+    favorite_set = set()
+    for row in res.data:
+        favorite_set.add(row['food_id'])
+    return favorite_set
+    
 
 def get_food_is_favorite(user_id, food_id):
     res = supabase.table('favorited_foods') \
@@ -13,11 +25,13 @@ def get_food_is_favorite(user_id, food_id):
         .execute() 
     return len(res.data) > 0
 
-def get_food_items(user_id, type):
+def get_food_items(user_id, type, query):
     try:
         items = []
-        res = supabase.table('food_item').select('*')\
-            .eq("type", type).execute()
+        res = supabase.table('food_item').select('*') \
+            .eq("type", type) \
+            .ilike('name', query) \
+            .execute()
         for row in res.data:
             items.append(
                 FoodItem(row['id'], row['name'], row['description'], get_food_is_favorite(user_id, row['id']))
@@ -94,10 +108,10 @@ def get_nutrients(user_id):
         print("Nutrient Exception: " + str(e))
         return []
 
-def get_foods_with_nutrient(user_id, nutr_id):
+def get_foods_with_nutrient(user_id, nutr_id, query):
     try:
-        res = supabase.table('item_has_nutrient') \
-            .select('food_id') \
+        res = supabase.from_('item_has_nutrient') \
+            .select('food_id, food_item(name)') \
             .eq('nutrient_id', nutr_id) \
             .execute()
         foods = []
@@ -106,7 +120,8 @@ def get_foods_with_nutrient(user_id, nutr_id):
                 .select('*') \
                 .eq('id', row['food_id']) \
                 .execute()
-            
+            if (not re.search(query, info.data[0]['name'], flags=re.IGNORECASE)):
+                continue
             foods.append(
                 FoodItem(info.data[0]['id'], info.data[0]['name'], info.data[0]['description'],
                     get_food_is_favorite(user_id, info.data[0]['id']))
@@ -247,11 +262,11 @@ def get_calorie_intake(user_id):
         return None
     return res.data[0]['intake']
 
-def get_elligble_foods_type(user_id, type):
-    food_items = get_food_items(user_id, type)
+def get_elligble_foods_type(user_id, type, query):
+    food_items = get_food_items(user_id, type, query)
     return get_elligble_foods(user_id, food_items)
 
-def get_elligble_foods_nutrient(user_id, nutr_id):
-    return get_elligble_foods(user_id, get_foods_with_nutrient(user_id, nutr_id))
+def get_elligble_foods_nutrient(user_id, nutr_id, query):
+    return get_elligble_foods(user_id, get_foods_with_nutrient(user_id, nutr_id, query))
 
 

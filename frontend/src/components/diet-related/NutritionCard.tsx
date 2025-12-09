@@ -7,13 +7,14 @@ import {
   Text,
   AppShell,
   Stack,
-  Divider
+  Divider,
+  ActionIcon
 } from '@mantine/core';
 import {} from '@mantine/notifications'
 import {FoodItem, NutritionItem, get_food_of_nutrient} from '@/services/DietService'
 import FoodCard from './FoodCard'
 import { useEffect, useState } from 'react'
-import { IconHeart, IconHeartFilled } from '@tabler/icons-react';
+import { IconHeart, IconHeartFilled, IconLoader } from '@tabler/icons-react';
 
 export interface NutritionInfo {
     user_id: string;
@@ -29,16 +30,23 @@ class NutrItemHolder implements NutritionItem {
 }
 
 export default function NutritionCard({user_id, item}: NutritionInfo) {
+    const [query, set_query] = useState('')
     const [food_items, set_food_items] = useState([] as FoodItem[])
+    const [loaded_foods, set_loaded_foods] = useState(0)
     const [loading, setLoading] = useState(true);
+    
+    const load_more_foods = async () => {
+        const {success, message, foods} = await get_food_of_nutrient(user_id, item.id, query, loaded_foods);
+        if (success) {
+            const len = loaded_foods + foods?.length!
+            set_food_items(food_items.concat(foods!));
+            set_loaded_foods(len)
+        }
+    }
     useEffect(() => {
         const runner = async () => {
             setLoading(true)
-            const {success, message, foods} = await get_food_of_nutrient(user_id, item.id);
-            console.log("Obtained foods: " + ", " + String(message) + ", " + String(foods))
-            if (success) {
-                set_food_items(foods!);
-            }
+            await load_more_foods()
             setLoading(false);
         }
         runner();
@@ -71,6 +79,16 @@ export default function NutritionCard({user_id, item}: NutritionInfo) {
                                 {value.favorite && <IconHeartFilled color='red'/>}
                             </Group>
                     })}
+                    <ActionIcon
+                        color="blue"
+                        size="md"
+                        radius="xl"
+                        onClick={(e) => {load_more_foods()}}
+                        style={{
+                        transition: "all 0.2s ease",
+                        }}>
+                        <IconLoader/>
+                    </ActionIcon>
                 </Stack>}
         </Container>
     )

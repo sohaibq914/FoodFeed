@@ -29,6 +29,17 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [old_names, set_old_names] = useState([] as string[])
     const [loading, set_loading] = useState(true);
     const [error, set_error] = useState(null as null|string)
+    const [meals_loaded, set_meals_loaded] = useState(0)
+    
+    const load_more_meals = async () => {
+        const {success: mealSuccess, message: mealMessage, meals: cur_meal_set} = await get_user_meals(user_id, meals_loaded)
+        if (mealSuccess) {
+            const len = meals.length + cur_meal_set?.length!
+            set_meals(meals.concat(cur_meal_set!))
+            set_meals_loaded(len)
+        }
+    }
+    
     useEffect(() => {
         const runner = async () => {
             set_loading(true)
@@ -41,10 +52,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                     })
                 )
             }
-            const {success: mealSuccess, message: mealMessage, meals} = await get_user_meals(user_id)
-            if (mealSuccess) {
-                set_meals(meals!)
-            }
+            await load_more_meals()
             set_loading(false)
         }
         runner()
@@ -223,6 +231,16 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                                 </Container>
                             })
                         }
+                        <ActionIcon
+                            color="blue"
+                            size="md"
+                            radius="xl"
+                            onClick={(e) => {load_more_meals()}}
+                            style={{
+                            transition: "all 0.2s ease",
+                            }}>
+                            <IconLoader/>
+                        </ActionIcon>
                         </ScrollArea>
                     </Stack>
                 }

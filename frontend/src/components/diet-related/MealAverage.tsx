@@ -32,7 +32,7 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     const router = useRouter();
 
     const get_all_meals = async () => {
-        const {success, message, averages} = await get_user_meals(user_id)
+        const {success, message, averages} = await get_user_meals(user_id, 0)
         if (success) {
             console.log("Averages: " + averages)
             const records = averages!.map((value, index) => {
@@ -52,7 +52,7 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     }
 
     const get_meals_within_range = async () => {
-        const {success, message, averages} = await get_user_meals_range(user_id, start, end)
+        const {success, message, averages} = await get_user_meals_range(user_id, start, end, 0)
         if (success) {
             console.log("Given averages: ")
             console.log(averages)

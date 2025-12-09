@@ -123,6 +123,7 @@ def get_all_user_meals(user_id):
         res = supabase.table('meal') \
             .select('*') \
             .eq('owner', user_id) \
+            .order('ate_at', desc=True) \
             .execute()
         meals = []
         for row in res.data:
@@ -139,6 +140,7 @@ def get_meals(user_id, start, end):
             .eq('owner', user_id) \
             .gte('ate_at', start) \
             .lte('ate_at', end) \
+            .order('ate_at', desc=True) \
             .execute()
         meals = []
         for row in res.data:

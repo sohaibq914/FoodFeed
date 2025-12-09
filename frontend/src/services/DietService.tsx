@@ -201,11 +201,12 @@ export const delete_meal = async (meal_id: string): Promise<{success: boolean, m
     return {success: false, message: data.error};
 }
 
-export const get_user_meals = async (user_id: string): Promise<{success: boolean, message: string|null, meals: Meal[]|null, averages: number[]|null}> => {   
+export const get_user_meals = async (user_id: string, loaded: number): Promise<{success: boolean, message: string|null, meals: Meal[]|null, averages: number[]|null}> => {   
     const {response, data} = await caller.call_function(
         'dieting/get_meals',
         JSON.stringify({
             'user_id': user_id,
+            'loaded': loaded
         }),
     );
     try {
@@ -228,13 +229,14 @@ export const get_user_meals = async (user_id: string): Promise<{success: boolean
     return {success: false, message: data.error, meals: null, averages: averages};
 }
 
-export const get_user_meals_range = async (user_id: string, start: Date, end: Date): Promise<{success: boolean, message: string|null, meals: Meal[]|null, averages: number[]|null}> => {    
+export const get_user_meals_range = async (user_id: string, start: Date, end: Date, loaded: number): Promise<{success: boolean, message: string|null, meals:Meal[]|null, averages: number[]|null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_meal_range',
         JSON.stringify({
             'user_id': user_id,
             'start': start.toISOString(),
-            'end': end.toISOString()
+            'end': end.toISOString(),
+            'loaded': loaded
         })
     );
       
@@ -245,7 +247,6 @@ export const get_user_meals_range = async (user_id: string, start: Date, end: Da
                 value.time_aten = new Date(Date.parse(value.time_aten as unknown as string))
                 return value
             }) as Meal[]
-            console.log("Meals: " + String(items.meals))
             console.log("Averages: " + String(items.averages))
             return {success: true, message: null, meals: items.meals, averages: items.averages}
         }
@@ -255,11 +256,13 @@ export const get_user_meals_range = async (user_id: string, start: Date, end: Da
     return {success: false, message: data.error, meals: null, averages: null};
 }
 
-export const get_food_items = async (type: string): Promise<{success: boolean, message: string|null, foods: FoodItem[]|null}> => {    
+export const get_food_items = async (type: string, query: string, loaded: number): Promise<{success: boolean, message: string|null, foods: FoodItem[]|null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_food_items',
         JSON.stringify({
-            'type': type
+            'type': type,
+            'query': query,
+            'loaded': loaded
         }),
     );
         
@@ -383,12 +386,14 @@ export const defavorite_food = async (user_id: string, food_id: string): Promise
     return {success: false, message: data.error};
 }
 
-export const get_food_of_type = async (user_id: string, type: string): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
+export const get_food_of_type = async (user_id: string, type: string, query: string, loaded: number): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_elligible_foods',
         JSON.stringify({
             'user_id': user_id,
-            'type': type
+            'type': type,
+            'query': query,
+            'loaded': loaded
         })
     );
         
@@ -404,12 +409,14 @@ export const get_food_of_type = async (user_id: string, type: string): Promise<{
     return {success: false, message: data.error, foods: null};
 }
 
-export const get_food_of_nutrient = async (user_id: string, nutrient_id: string): Promise<{success: boolean, message: string|null, foods: FoodItem[] | null}> => {    
+export const get_food_of_nutrient = async (user_id: string, nutrient_id: string, query: string, loaded: number): Promise<{success: boolean, message: string|null, foods: FoodItem[] | null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_foods_for_nutrient',
         JSON.stringify({
             'user_id': user_id,
-            'nutrient_id': nutrient_id
+            'nutrient_id': nutrient_id,
+            'query': query,
+            'loaded': loaded
         }),
     );
     

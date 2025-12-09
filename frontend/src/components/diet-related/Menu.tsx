@@ -4,7 +4,7 @@ import { ActionIcon, Button, Container, Group, Stack, Text, TextInput, Title} fr
 import {FoodItem, get_food_of_type, favorite_food, defavorite_food} from '@/services/DietService'
 import { useEffect, useState } from "react";
 import FoodCard from "./FoodCard";
-import { IconHeart, IconHeartFilled, IconSearch } from "@tabler/icons-react";
+import { IconHeart, IconHeartFilled, IconLoader, IconSearch } from "@tabler/icons-react";
 interface MenuInfo {
     user_id: string;
     type: string;
@@ -13,14 +13,22 @@ interface MenuInfo {
 export default function Menu({user_id, type}: MenuInfo) {
     const [query, set_query] = useState('')
     const [food_items, set_food_items] = useState([] as FoodItem[])
+    const [loaded_foods, set_loaded_foods] = useState(0)
     const [loading, setLoading] = useState(true);
+
+    const load_more_foods = async() => {
+        const {success, message, foods} = await get_food_of_type(user_id, type, query, loaded_foods);
+        if (success) {
+            const len = food_items.length + foods?.length!
+            set_food_items(food_items.concat(foods!));
+            set_loaded_foods(len)
+        }
+    }
+
     useEffect(() => {
         const runner = async () => {
             setLoading(true)
-            const {success, message, foods} = await get_food_of_type(user_id, type);
-            if (success) {
-                set_food_items(foods!);
-            }
+            await load_more_foods()
             setLoading(false);
         }
         runner();
@@ -51,7 +59,12 @@ export default function Menu({user_id, type}: MenuInfo) {
                         onChange={(e) => set_query(e.currentTarget.value)}
                         style={{ flex: 1, minWidth: 120 }}
                     />
-                    <Button type="button" disabled leftSection={<IconSearch size={16} /> as React.ReactNode}>
+                    <Button type="button" leftSection={<IconSearch size={16} /> as React.ReactNode}
+                        onClick={(e) => {
+                            set_loaded_foods(0)
+                            set_food_items([] as FoodItem[])
+                            load_more_foods()
+                        }}>
                     </Button>
                 </Group>
                 {food_items
@@ -64,9 +77,7 @@ export default function Menu({user_id, type}: MenuInfo) {
                         }
                         return 0;
                     })
-                    .filter((value) => {
-                        return value.name.toLowerCase().includes(query.toLowerCase())
-                    }).map((value, index) => {
+                    .map((value, index) => {
                         return <Group key={index}>
                                 <FoodCard food_name={String(value.name)} 
                                 description={String(value.description)}></FoodCard>
@@ -86,6 +97,16 @@ export default function Menu({user_id, type}: MenuInfo) {
                                 </Group>
                             </Group>
                     })}
+                <ActionIcon
+                    color="blue"
+                    size="md"
+                    radius="xl"
+                    onClick={(e) => {load_more_foods()}}
+                    style={{
+                    transition: "all 0.2s ease",
+                    }}>
+                    <IconLoader/>
+                </ActionIcon>
             </Stack>}
     </Container>)
 }
