@@ -15,6 +15,7 @@ import {
     ActionIcon,
 } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
+import {useAuth} from "@/contexts/AuthContext";
 
 const toMsg = (e: any): string => {
     if (!e) return "";
@@ -39,6 +40,7 @@ export default function RestaurantCreateForm() {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const { user } = useAuth();
 
     function addTag() {
         const t = tagInput.trim();
@@ -59,7 +61,7 @@ export default function RestaurantCreateForm() {
 
         try {
             console.log("[Create] calling addRestaurant", { name, address, owner });
-            const { data, error: addErr } = await addRestaurant(name, address, owner);
+            const { data, error: addErr } = await addRestaurant(name, address, owner, user?.id);
             console.log("[Create] addRestaurant response", { data, addErr });
 
             if (addErr) {
@@ -177,7 +179,7 @@ export default function RestaurantCreateForm() {
 
                     <Group>
                         <Button type="submit" loading={submitting}>
-                            Submit
+                            Submit for Review
                         </Button>
                         <Button component="a" href="/restaurants" variant="light" color="blue">
                             Go to Restaurants

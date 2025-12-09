@@ -266,7 +266,7 @@ def deactivate_user_account(email: str, password: str):
         return {"error": "Failed to deactivate account"}
 
 
-def add_restaurant(name: str, address: str, owner: str):
+def add_restaurant(name: str, address: str, owner: str, u_id):
     try:
         n, a, o = name.strip(), address.strip(), owner.strip()
         if not n or not a or not o:
@@ -274,7 +274,7 @@ def add_restaurant(name: str, address: str, owner: str):
 
         res = (
             supabase.table("restaurant")
-            .insert({"name": n, "address": a, "owner": o})
+            .insert({"name": n, "address": a, "owner": o, "approved": False, "u_id": u_id})
             .execute()
         )
         rows = res.data or []
@@ -288,7 +288,7 @@ def add_restaurant(name: str, address: str, owner: str):
 def fetch_restaurants():
     try:
         res = supabase.table("restaurant").select(
-            "id,name,address,owner").order("name").execute()
+            "id,name,address,owner, approved").order("name").execute()
         return res.data
     except Exception as e:
         return {"error": str(e)}
@@ -1956,4 +1956,29 @@ def fetch_restaurants_by_ids(ids: list[str]):
     except Exception as e:
         return {"error": str(e)}
 
+
+def fetch_unapproved_restaurants():
+    try:
+        res = (
+            supabase
+            .table("restaurant")
+            .select("*")
+            .eq("approved", False)
+            .execute()
+        )
+
+        rows = res.data or []
+
+        return [
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "address": row.get("address"),
+                "owner": row.get("owner"),
+                "approved": row.get("approved"),
+            }
+            for row in rows
+        ]
+    except Exception as e:
+        return {"error": str(e)}
 

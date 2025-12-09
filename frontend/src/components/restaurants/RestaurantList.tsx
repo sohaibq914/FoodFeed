@@ -145,12 +145,18 @@ export default function RestaurantList(): React.ReactElement {
     }, []);
 
     const textFiltered = useMemo(() => {
+        const approvedOnly = items.filter((r) => r.approved === true);
+
         const q = (filter || "").toLowerCase().trim();
-        if (!q) return items;
-        return items.filter((r) =>
-            [r.name, r.address, r.owner].some((v) => v.toLowerCase().includes(q))
+        if (!q) return approvedOnly;
+
+        return approvedOnly.filter((r) =>
+            [r.name, r.address, r.owner]
+                .filter(Boolean)
+                .some((v) => v.toLowerCase().includes(q))
         );
     }, [items, filter]);
+
 
     const [tagMatches, setTagMatches] = useState<Set<string>>(new Set());
     const [tagLoading, setTagLoading] = useState(false);

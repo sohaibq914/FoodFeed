@@ -8,7 +8,7 @@ from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_u
     get_notification_preferences, update_notification_preferences, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
     follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
     block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review, \
-    is_admin, insert_restaurant_review_draft, fetch_about_restaurant_review_drafts_for_user, fetch_restaurants_by_ids
+    is_admin, insert_restaurant_review_draft, fetch_about_restaurant_review_drafts_for_user, fetch_restaurants_by_ids, fetch_unapproved_restaurants
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -48,8 +48,16 @@ def get_admin_status():
     except Exception as e:
         print(f"Admin exception: {str(e)}")
         return jsonify({"error": "Failed to get admin status."}), 500
-    
 
+@app.route("/is_admin", methods=["POST"])
+def get_is_admin():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        return jsonify(is_admin(user_id)), 200
+    except Exception as e:
+        print(f"Admin exception: {str(e)}")
+        return jsonify({"error": "Failed to get admin status."}), 500
 # Auth decorator for messages routes
 
 
@@ -572,11 +580,12 @@ def create_restaurants():
     name = (data.get("name") or "").strip()
     address = (data.get("address") or "").strip()
     owner = (data.get("owner") or "").strip()
+    u_id = (data.get("u_id") or "").strip()
 
     if not name or not address or not owner:
         return jsonify({"error": "Fields 'name', 'address', and 'owner' are required."}), 400
 
-    created = add_restaurant(name=name, address=address, owner=owner)
+    created = add_restaurant(name=name, address=address, owner=owner, u_id=u_id)
 
     if isinstance(created, dict) and created.get("error"):
         return jsonify({"error": created["error"]}), 400
@@ -2718,6 +2727,107 @@ def delete_restaurant_review_draft(draft_id):
         return jsonify({"deleted": True}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+@app.route("/restaurants/unapproved", methods=["GET"])
+def restaurants_unapproved():
+    try:
+
+        res = (
+            supabase
+            .table("restaurant")
+            .select("*")
+            .eq("approved", False)
+            .execute()
+        )
+
+        rows = res.data or []
+
+        u_ids = {row.get("u_id") for row in rows if row.get("u_id")}
+        emails_by_id: dict[str, str] = {}
+
+        if u_ids:
+            users_res = (
+                supabase
+                .table("users")
+                .select("id, email")
+                .in_("id", list(u_ids))
+                .execute()
+            )
+
+            for urow in users_res.data or []:
+                uid = urow.get("id")
+                email = urow.get("email")
+                if uid:
+                    emails_by_id[uid] = email
+
+        results = []
+        for row in rows:
+            u_id = row.get("u_id")
+            results.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "address": row.get("address"),
+                    "owner": row.get("owner"),
+                    "owner_email": emails_by_id.get(u_id),
+                    "approved": row.get("approved"),
+                }
+            )
+
+        return jsonify({"restaurants": results}), 200
+
+    except Exception as e:
+        print(f"Error fetching unapproved restaurants: {e}")
+        return jsonify({"error": "Failed to load unapproved restaurants"}), 500
+
+
+@app.route("/restaurants/<restaurant_id>/approve", methods=["POST"])
+def approve_restaurant(restaurant_id):
+    try:
+        res = (
+            supabase
+            .table("restaurant")
+            .update({"approved": True})
+            .eq("id", restaurant_id)
+            .execute()
+        )
+
+        rows = res.data or []
+        if not rows:
+            return jsonify({"error": "restaurant not found"}), 404
+
+        return jsonify({"restaurant": rows[0]}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/restaurants/<restaurant_id>", methods=["DELETE"])
+def delete_restaurant(restaurant_id):
+    try:
+
+        res = (
+            supabase
+            .table("restaurant_tags")
+            .delete()
+            .eq("r_id", restaurant_id)
+            .execute()
+        )
+
+        res = (
+            supabase
+            .table("restaurant")
+            .delete()
+            .eq("id", restaurant_id)
+            .execute()
+        )
+
+        rows = res.data or []
+        if not rows:
+            return jsonify({"error": "restaurant not found"}), 404
+
+        return jsonify({"deleted": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
 
 
 if __name__ == "__main__":
