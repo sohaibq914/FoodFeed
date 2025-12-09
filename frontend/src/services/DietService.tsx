@@ -58,6 +58,12 @@ export interface NutrFood {
     food_ids: string[];
 }
 
+export interface RestrictionItem {
+    id: string;
+    name: string;
+    user_has: string;
+}  
+
 class MealHolder implements Meal {
     id: string;
     name: string;
@@ -722,4 +728,54 @@ export const get_nutrients_to_foods = async (): Promise<{success: boolean, messa
         
     }
     return {success: false, message: data.error, nutrs_to_foods: null};
+}
+
+export const get_restrictions = async(user_id: string): Promise<{success: boolean, message: string|null, 
+        restrictions: RestrictionItem[] | null}> => {
+    const {response, data} = await caller.call_function(
+        'settings/get_restrictions',
+        JSON.stringify({'user_id': user_id}),
+    );
+    try {
+        if (response.ok) {
+            const items: { data: RestrictionItem[] } = data
+            return {success: true, message: null, restrictions: items.data}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error, restrictions: null};
+}
+
+export const add_restriction = async(user_id: string, restr_id: string): Promise<{success: boolean, message: string|null}> => {
+    const {response, data} = await caller.call_function(
+        'settings/add_restriction',
+        JSON.stringify({'user_id': user_id, 'restr_id' : restr_id}),
+    );
+    try {
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error};
+}
+
+export const remove_restriction = async(user_id: string, restr_id: string): Promise<{success: boolean, message: string|null}> => {
+    const {response, data} = await caller.call_function(
+        'settings/remove_restriction',
+        JSON.stringify({'user_id': user_id, 'restr_id' : restr_id}),
+    );
+    try {
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+
+    }
+    return {success: false, message: data.error};
 }

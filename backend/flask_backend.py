@@ -7,7 +7,8 @@ from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_u
     upload_profile_picture, get_notifications, mark_notification_as_read, mark_all_notifications_as_read, delete_notification, get_unread_notification_count, \
     get_notification_preferences, update_notification_preferences, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
     follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
-    block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review
+    block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review, \
+    is_admin
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -15,6 +16,7 @@ from supabase_access_meal import *
 from supabase_access_nutrition import *
 from supabase_meal_planner import *
 from supabase_create_food import *
+from supabase_restrictions import *
 from password_reset_handler import create_password_reset_token, validate_reset_token, mark_token_as_used, reset_user_password
 from email_service import send_password_reset_email, send_verification_email, send_mfa_code_email
 from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
@@ -33,6 +35,20 @@ try:
 except Exception as e:
     print(f"✗ Failed to import supabase: {e}")
     raise
+
+# Admin status
+
+
+@app.route("/is_admin", methods=["GET"])
+def get_admin_status():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        return jsonify({"recipes": is_admin(user_id)}), 200
+    except Exception as e:
+        print(f"Admin exception: {str(e)}")
+        return jsonify({"error": "Failed to get admin status."}), 500
+    
 
 # Auth decorator for messages routes
 
@@ -1353,6 +1369,46 @@ def add_reply_handler(comment_id):
         print(f"Add reply exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
+# Update restrictions
+@app.route("/settings/get_restrictions", methods=["POST"])
+def get_all_restrictions():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        res = get_restrictions(user_id)
+        print(res)
+        vals = []
+        for value in res.values():
+            vals.append(value.to_json())
+        return jsonify({"data": vals}), 200
+    except Exception as e:
+        print(f"Exception with getting restrictions: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/settings/add_restriction", methods=["POST"])
+def add_a_restriction():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        restr_id = data.get("restr_id")
+        add_restriction(user_id, restr_id)
+        return jsonify({"result": "Successfully added!"}), 200
+    except Exception as e:
+        print(f"Exception with adding restrictions: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/settings/remove_restriction", methods=["POST"])
+def remove_a_restriction():
+    try:
+        data = request.get_json()
+        user_id = data.get("user_id")
+        restr_id = data.get("restr_id")
+        remove_restriction(user_id, restr_id)
+        return jsonify({"result": "Successfully removed!"}), 200
+    except Exception as e:
+        print(f"Exception with removing restrictions: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
 
 # Get meals
 @app.route("/dieting/get_meal_templates", methods=["POST"])

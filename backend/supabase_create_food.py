@@ -1,17 +1,9 @@
 import os
-from supabase import create_client, Client
+from supabase_instance import supabase
 from dotenv import load_dotenv
 from storage_objs import FoodForm
 
 load_dotenv()
-
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_ANON_KEY")
-
-print(f"Supabase URL: {url}")
-print(f"Supabase Key exists: {bool(key)}")
-
-supabase: Client = create_client(url, key)
 
 def submit_form(user_id, name, type, description):
     supabase.table('user_food_forms') \

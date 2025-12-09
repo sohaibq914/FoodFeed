@@ -1,20 +1,9 @@
 import os
-from supabase import create_client, Client
+from supabase_instance import supabase
 from dotenv import load_dotenv
 from pandas import read_csv
 
 load_dotenv()
-
-url: str = os.environ.get("SUPABASE_URL")
-key: str = os.environ.get("SUPABASE_ANON_KEY")
-
-print(f"Supabase URL: {url}")
-print(f"Supabase Key exists: {bool(key)}")
-
-supabase: Client = create_client(url, key)
-
-if not url or not key:
-    raise ValueError("SUPABASE_URL and SUPABASE_ANON_KEY must be set in environment variables")
 
 def update_names(csv_file):
     data = read_csv(csv_file, header=0, index_col=False)

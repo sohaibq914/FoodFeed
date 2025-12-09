@@ -1861,3 +1861,10 @@ def update_notification_preferences(user_id: str, preferences: dict):
     except Exception as e:
         print(f"Error in update_notification_preferences: {str(e)}")
         return {"error": str(e)}
+
+# Is admin:
+
+def is_admin(user_id: str):
+    res = supabase.table('users').select('isAdmin') \
+        .eq('id', user_id).execute()
+    return res.data[0]['isAdmin']

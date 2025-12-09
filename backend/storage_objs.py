@@ -105,3 +105,16 @@ class Plan:
             'plan_id': self.plan_id,
             'components': [comp.to_json() for comp in self.components]
         }
+
+class RestrictionItem:
+    def __init__(self, restr_id, name, user_has):
+        self.restr_id = restr_id
+        self.name = name
+        self.user_has = user_has
+
+    def to_json(self):
+        return {
+            'id': self.restr_id,
+            'name': self.name,
+            'user_has': self.user_has
+        }
