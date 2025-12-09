@@ -22,6 +22,7 @@ import {
   Modal,
   ScrollArea,
   Checkbox,
+  Pagination,
 } from "@mantine/core";
 import {
   IconHeart,
@@ -70,6 +71,8 @@ export default function Dashboard() {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
   const [recipesLoading, setRecipesLoading] = useState(true);
   const [recipesError, setRecipesError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [animatingRecipeLike, setAnimatingRecipeLike] = useState<string | null>(
     null
   );
@@ -131,6 +134,9 @@ export default function Dashboard() {
       try {
         const res = await fetch("http://localhost:5001/recipes");
         const data = await res.json();
+
+        console.log(data)
+        setPages(data.count)
 
         const tagCounts: Record<string, number> = {};
         const displayNames: Record<string, string> = {};
@@ -590,7 +596,7 @@ export default function Dashboard() {
                 {recipes.length === 0 ? (
                   <Text c="dimmed">No recipes found.</Text>
                 ) : (
-                  sortedRecipes.map((r) => (
+                  sortedRecipes.slice((page - 1) * 5, (page) * 5).map((r) => (
                     <Card
                       key={r.recipe_id}
                       withBorder
@@ -682,6 +688,10 @@ export default function Dashboard() {
                     </Card>
                   ))
                 )}
+                <Group justify="center">
+                  <Pagination total={pages} value={page} onChange={setPage} withEdges>
+                  </Pagination>
+                </Group>
               </Stack>
             )}
           </Container>
