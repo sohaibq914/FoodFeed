@@ -21,7 +21,7 @@ from password_reset_handler import create_password_reset_token, validate_reset_t
 from email_service import send_password_reset_email, send_verification_email, send_mfa_code_email
 from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
 from mfa_handler import create_mfa_code, validate_mfa_code, mark_mfa_code_as_used, enable_mfa, disable_mfa, check_mfa_enabled
-
+import math
 load_dotenv()
 
 app = Flask(__name__)
@@ -841,8 +841,8 @@ def update_recipe_handler():
             images = None
             tags = data.get("tags")
 
-            prep_time = f.get("prep_time")
-            cook_time = f.get("cook_time")
+            prep_time = data.get("prep_time")
+            cook_time = data.get("cook_time")
 
         if not author or not title or not desc or not ingredients or not instructions:
             return jsonify({"error": "Missing author, title, description, ingredients, or instructions"}), 400
@@ -898,14 +898,24 @@ def get_recipe_handler():
 @app.route("/recipes", methods=["GET"])
 def list_recipes():
     try:
+        #TODO: optimize, make get_recipe unnecessary
+
+        limit = 5
         res = (
             supabase.table("recipes")
             # include it (quoted is safest)
-            .select('recipe_id,title,posted,"timestamp",tags')
+            .select('recipe_id,title,posted,"timestamp",tags', count='exact')
+            .eq("posted", True)
             .order("timestamp", desc=True)
             .execute()
         )
-        return jsonify({"recipes": res.data}), 200
+
+        page_count = math.ceil(res.count / limit)
+        res.count = page_count
+
+        print(res)
+        print("pages:" + str(res.count))
+        return jsonify({"recipes": res.data, "count": res.count}), 200
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
