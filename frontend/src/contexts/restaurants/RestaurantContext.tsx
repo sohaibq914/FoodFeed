@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import {useAuth} from "@/contexts/AuthContext";
 
 type Restaurant = { id: string; name: string; address: string; owner: string };
 type Review = {
@@ -313,6 +314,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
         return res.json();
     };
 
+
+
     useEffect(() => {
         refresh();
         refreshAllTags();
@@ -345,7 +348,7 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 restaurantReviewsLoading,
                 restaurantReviewsError,
                 refreshRestaurantReviews,
-                fetchRestaurantAverageRating
+                fetchRestaurantAverageRating,
             }}
         >
             {children}

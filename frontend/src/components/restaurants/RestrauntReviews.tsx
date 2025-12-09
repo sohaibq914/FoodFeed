@@ -16,6 +16,18 @@ import {
 } from "@mantine/core";
 import { IconStar } from "@tabler/icons-react";
 import { useRestaurants } from "@/contexts/restaurants/RestaurantContext";
+import { useAuth } from "@/contexts/AuthContext";
+
+const API_BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:5001";
+
+type DraftPayload = {
+    restaurant_id: string;
+    author: string;
+    text: string;
+    rating: number | null;
+    u_id: string;
+};
 
 export default function RestaurantReviews(): React.ReactElement {
     const {
@@ -26,6 +38,8 @@ export default function RestaurantReviews(): React.ReactElement {
         restaurantReviewsError,
     } = useRestaurants() as any;
 
+    const { user } = useAuth();
+
     const [rid, setRid] = useState<string>("");
     const [author, setAuthor] = useState("");
     const [text, setText] = useState("");
@@ -34,6 +48,7 @@ export default function RestaurantReviews(): React.ReactElement {
     const [err, setErr] = useState<string | null>(null);
     const [ok, setOk] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [savingDraft, setSavingDraft] = useState(false);
 
     useEffect(() => {
         try {
@@ -41,7 +56,9 @@ export default function RestaurantReviews(): React.ReactElement {
             if (!raw) return;
             const parsed = JSON.parse(raw);
             if (parsed && typeof parsed.id === "string") setRid(parsed.id);
-        } catch {}
+        } catch {
+            // ignore
+        }
     }, []);
 
     const canSubmit = useMemo(
@@ -70,7 +87,6 @@ export default function RestaurantReviews(): React.ReactElement {
             rating,
         });
 
-
         if (error) {
             setErr(error?.message ?? error?.error ?? String(error));
         } else {
@@ -83,6 +99,65 @@ export default function RestaurantReviews(): React.ReactElement {
         setSubmitting(false);
     };
 
+    const createRestaurantReviewDraft = async (
+        payload: DraftPayload
+    ): Promise<{ data: any | null; error: any | null }> => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/restaurant_review_drafts`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+                return { data: null, error: json };
+            }
+
+            return { data: json.draft, error: null };
+        } catch (error) {
+            return { data: null, error: { message: "Network error" } };
+        }
+    };
+
+    const onSaveDraft = async () => {
+        setErr(null);
+        setOk(null);
+
+        if (!rid) {
+            setErr("No restaurant selected.");
+            return;
+        }
+
+        if (!user?.id) {
+            setErr("You must be logged in to save a draft.");
+            return;
+        }
+
+        const finalAuthor = author.trim() || "Anonymous";
+        const finalText = text.trim() || "";
+
+        setSavingDraft(true);
+        const { error } = await createRestaurantReviewDraft({
+            restaurant_id: rid,
+            author: finalAuthor,
+            text: finalText,
+            rating: rating || null,
+            u_id: user.id,
+        });
+
+        if (error) {
+            setErr(error?.message ?? error?.error ?? String(error));
+        } else {
+            setOk("Draft saved");
+            setText("");
+            setRating(0);
+            setAuthor("");
+        }
+        setSavingDraft(false);
+    };
+
     if (!rid) return <Text c="dimmed">No restaurant selected.</Text>;
 
     return (
@@ -93,10 +168,14 @@ export default function RestaurantReviews(): React.ReactElement {
                         <Group justify="space-between" align="center">
                             <Group gap="xs" align="center">
                                 <IconStar size={18} />
-                                <Text fw={700} fz="lg">Write a Restaurant Review</Text>
+                                <Text fw={700} fz="lg">
+                                    Write a Restaurant Review
+                                </Text>
                             </Group>
                             <Group gap="sm">
-                                <Text size="sm" c="dimmed">Your rating</Text>
+                                <Text size="sm" c="dimmed">
+                                    Your rating
+                                </Text>
                                 <Rating value={rating} onChange={setRating} size="lg" />
                             </Group>
                         </Group>
@@ -127,6 +206,15 @@ export default function RestaurantReviews(): React.ReactElement {
 
                         <Group justify="flex-end">
                             <Button
+                                variant="outline"
+                                radius="md"
+                                onClick={onSaveDraft}
+                                loading={savingDraft}
+                                disabled={restaurantReviewsLoading || savingDraft}
+                            >
+                                Save Draft
+                            </Button>
+                            <Button
                                 type="submit"
                                 radius="md"
                                 loading={submitting}
@@ -141,7 +229,9 @@ export default function RestaurantReviews(): React.ReactElement {
 
             <Paper withBorder radius="lg" p="lg" shadow="xs">
                 <Group justify="space-between" align="center" mb="sm">
-                    <Text fw={700} fz="lg">Recent Restaurant Reviews</Text>
+                    <Text fw={700} fz="lg">
+                        Recent Restaurant Reviews
+                    </Text>
                     <Button
                         variant="light"
                         onClick={() => void refreshRestaurantReviews(rid)}
@@ -164,7 +254,9 @@ export default function RestaurantReviews(): React.ReactElement {
                                     <Rating value={r.rating} readOnly />
                                 </Group>
                                 <Text size="xs" c="dimmed" mt={4}>
-                                    {r.timestamp ? new Date(r.timestamp).toLocaleString() : ""}
+                                    {r.timestamp
+                                        ? new Date(r.timestamp).toLocaleString()
+                                        : ""}
                                 </Text>
                                 {r.text && <Text mt="sm">{r.text}</Text>}
                             </Card>

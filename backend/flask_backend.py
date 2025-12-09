@@ -8,7 +8,7 @@ from supabase_backend import sign_up_user, sign_in_user, sign_out_user, change_u
     get_notification_preferences, update_notification_preferences, get_user_profile, update_user_description, add_social_link, get_social_links, remove_social_link, \
     follow_user, unfollow_user, check_is_following, get_followers, get_following, get_feed_recipes, \
     block_user, unblock_user, check_is_blocked, get_blocked_users, fetch_restaurant_reviews, insert_restaurant_review, \
-    is_admin
+    is_admin, insert_restaurant_review_draft, fetch_about_restaurant_review_drafts_for_user, fetch_restaurants_by_ids
 import os
 from dotenv import load_dotenv
 from functools import wraps
@@ -2614,6 +2614,110 @@ def update_notification_preferences_handler():
     except Exception as e:
         print(f"Update notification preferences exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/restaurant_review_drafts", methods=["POST"])
+def restaurant_review_drafts_create():
+    data = request.get_json(silent=True) or {}
+    print(data)
+    rid = (data.get("restaurant_id") or "").strip()
+    name = (data.get("author") or "").strip()
+    body = (data.get("text") or "").strip()
+    rating = (data.get("rating"))
+    if rating == None:
+        rating = 0
+    uid = (data.get("u_id"))
+
+    if not rid:
+        return jsonify({"error": "missing restaurant_id"}), 400
+
+    if not name:
+        name = "Anonymous"
+
+    row = insert_restaurant_review_draft(rid, name, body, rating, uid)
+    if isinstance(row, dict) and "error" in row:
+        return jsonify({"error": row["error"]}), 400
+
+    return jsonify({"draft": row}), 201
+
+@app.route("/restaurant_review_drafts", methods=["GET"])
+def restaurant_review_drafts_for_user():
+    u_id = (request.args.get("u_id") or "").strip()
+    if not u_id:
+        return jsonify({"error": "missing u_id"}), 400
+
+    # 1) Get this user's drafts from about_restaurant_reviews_drafts
+    drafts = fetch_about_restaurant_review_drafts_for_user(u_id)
+    if isinstance(drafts, dict) and "error" in drafts:
+        return jsonify({"error": drafts["error"]}), 400
+
+    # If no drafts, just return empty lists
+    if not drafts:
+        return jsonify({"drafts": [], "restaurants": []}), 200
+
+    # 2) Collect unique restaurant IDs from drafts
+    restaurant_ids = sorted({d["r_id"] for d in drafts if d.get("r_id")})
+
+    # 3) Fetch restaurants info separately
+    restaurants = fetch_restaurants_by_ids(restaurant_ids)
+    if isinstance(restaurants, dict) and "error" in restaurants:
+        return jsonify({"error": restaurants["error"]}), 400
+
+    # All good
+    return jsonify({
+        "drafts": drafts,
+        "restaurants": restaurants,
+    }), 200
+@app.route("/restaurant_review_drafts/<int:draft_id>", methods=["PATCH"])
+def update_restaurant_review_draft(draft_id):
+    data = request.get_json(silent=True) or {}
+
+    raw_text = data.get("text", None)
+    raw_rating = data.get("rating", None)
+
+    update_data = {}
+
+    if "text" in data:
+        update_data["text"] = (raw_text or "").strip()
+
+    if "rating" in data:
+        rating = raw_rating if raw_rating not in (None, "", "null") else 0
+        update_data["rating"] = int(rating)
+
+    try:
+        res = (
+            supabase
+            .table("about_restaurant_review_draft")
+            .update(update_data)
+            .eq("id", draft_id)
+            .execute()
+        )
+
+        rows = res.data or []
+        if not rows:
+            return jsonify({"error": "draft not found"}), 404
+
+        return jsonify({"draft": rows[0]}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route("/restaurant_review_drafts/<int:draft_id>", methods=["DELETE"])
+def delete_restaurant_review_draft(draft_id):
+    try:
+        res = (
+            supabase
+            .table("about_restaurant_review_draft")
+            .delete()
+            .eq("id", draft_id)
+            .execute()
+        )
+
+        rows = res.data or []
+        if not rows:
+            return jsonify({"error": "draft not found"}), 404
+
+        return jsonify({"deleted": True}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 
 if __name__ == "__main__":
