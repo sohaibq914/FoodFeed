@@ -29,17 +29,17 @@ def get_food_items(user_id, type, query):
     try:
         items = []
         res = supabase.table('food_item').select('*') \
-            .eq("type", type) \
-            .ilike('name', query) \
-            .execute()
+            .eq("type", type)
+        if query != "":
+            res = res.ilike('name', '%' + query + '%')
+        res = res.execute()
         for row in res.data:
             items.append(
                 FoodItem(row['id'], row['name'], row['description'], get_food_is_favorite(user_id, row['id']))
             )
         return items
     except Exception as e:
-        print("Food Items: " + str(e))
-        return [FoodItem('', '', '')]
+        return []
     
 def add_user_nutrient(user_id, nutrient_id, amount):
     try: 
@@ -120,7 +120,7 @@ def get_foods_with_nutrient(user_id, nutr_id, query):
                 .select('*') \
                 .eq('id', row['food_id']) \
                 .execute()
-            if (not re.search(query, info.data[0]['name'], flags=re.IGNORECASE)):
+            if (query != "" and not re.search(query, info.data[0]['name'], flags=re.IGNORECASE)):
                 continue
             foods.append(
                 FoodItem(info.data[0]['id'], info.data[0]['name'], info.data[0]['description'],
@@ -174,7 +174,7 @@ def get_elligble_foods(user_id, foods):
                 if row['food_id'] in ids_to_food:
                     ids_to_food.pop(row['food_id'])
         elligble_foods = []
-        for food in ids_to_food.items():
+        for id, food in ids_to_food.items():
             elligble_foods.append(food)
         return elligble_foods
     except Exception as e:

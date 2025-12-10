@@ -409,6 +409,28 @@ export const get_food_of_type = async (user_id: string, type: string, query: str
     return {success: false, message: data.error, foods: null};
 }
 
+export const get_all_food_of_type = async (user_id: string, type: string, query: string): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
+    const {response, data} = await caller.call_function(
+        'dieting/get_all_elligible_foods',
+        JSON.stringify({
+            'user_id': user_id,
+            'type': type,
+            'query': query,
+        })
+    );
+        
+    try {
+        if (response.ok) {
+            console.log()
+            const items: { foods: FoodItem[] } = data
+            return {success: true, message: null, foods: items.foods}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error, foods: null};
+}
+
 export const get_food_of_nutrient = async (user_id: string, nutrient_id: string, query: string, loaded: number): Promise<{success: boolean, message: string|null, foods: FoodItem[] | null}> => {    
     const {response, data} = await caller.call_function(
         'dieting/get_foods_for_nutrient',

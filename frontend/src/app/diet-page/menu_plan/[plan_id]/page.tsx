@@ -32,17 +32,19 @@ export default function NutrientPage() {
     const params = useParams<{ plan_id: string }>()
     const [isUserPlan, setIsUserPlan] = useState(true)
 
-    if (!user) return null;
-
     useEffect(() => {
       const runner = async () => {
+        if (!user) return;
         const {success, plan} = await get_meal_plan(user.id)
         if (success) {
           console.log("Found plan id: " + plan?.plan_id)
           setIsUserPlan(plan!.plan_id === params.plan_id)
         }
       }
-    }, ['plan']);    
+      runner()
+    }, ['plan']);  
+    
+    if (!user) return null;
     
     // params
     return (<div style={{ minHeight: '100vh' }}>

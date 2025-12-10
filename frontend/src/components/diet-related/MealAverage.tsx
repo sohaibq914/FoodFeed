@@ -1,5 +1,7 @@
 'use client';
 
+import '@mantine/dates/styles.css';
+
 import { Meal, get_user_meals, get_user_meals_range } from "@/services/DietService"
 import { Button, Checkbox, Container, Group, Stack, Text } from "@mantine/core"
 import { BarChart } from "@mantine/charts"
@@ -34,19 +36,15 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     const get_all_meals = async () => {
         const {success, message, averages} = await get_user_meals(user_id, 0)
         if (success) {
-            console.log("Averages: " + averages)
-            const records = averages!.map((value, index) => {
+            let date = new Date()
+            const records = []
+            for (let i = 0; i < 24; i++) {
                 const record: MealRecord = {
-                    time: `${index}:00`,
-                    average: value
+                    time: `${i}:00`,
+                    average: averages![(i + (date.getTimezoneOffset() / 60) + 24) % 24]
                 }
-                console.log("Given record: " + record.average + ", " + record.time)
-                return record
-            })
-            console.log(String(records) + ", " + records.length) 
-            console.log("Given records: " + records.forEach((value, index) => {
-                console.log("{" + value.time + ", " + value.average + "}")
-            }))
+                records.push(record)
+            }
             set_averages(records)
         }
     }
@@ -54,17 +52,16 @@ export default function MealAverage({user_id}: MealAverageInfo) {
     const get_meals_within_range = async () => {
         const {success, message, averages} = await get_user_meals_range(user_id, start, end, 0)
         if (success) {
-            console.log("Given averages: ")
-            console.log(averages)
-            const records = averages!.map((value, index) => {
+            let date = new Date()
+            const records = []
+            for (let i = 0; i < 24; i++) {
                 const record: MealRecord = {
-                    time: `${index}:00`,
-                    average: value
+                    time: `${i}:00`,
+                    average: averages![(i + (date.getTimezoneOffset() / 60) + 24) % 24]
                 }
-                return record
-            })
+                records.push(record)
+            }
             set_averages(records)
-            console.log("Given records: " + String(records))
         }
     }
 
@@ -89,7 +86,7 @@ export default function MealAverage({user_id}: MealAverageInfo) {
                     <Group justify="space-between" grow wrap="nowrap" preventGrowOverflow={false} align='top'>
                         <BarChart 
                             h={300}
-                            w={500}
+                            w={800}
                             data={avgs} 
                             type='default'
                             series={[
@@ -124,13 +121,15 @@ export default function MealAverage({user_id}: MealAverageInfo) {
                                         set_end(new Date(value))
                                     }
                                 }}></DateTimePicker>
-                            <Button onClick={() => {
-                                get_meals_within_range()
-                            }}>Search Within Range</Button>
+                            <Stack>
+                                <Button onClick={() => {
+                                    get_meals_within_range()
+                                }}>Search Within Range</Button>
+                                <Button onClick={() => {
+                                    get_all_meals();
+                                }}>Get Total Average</Button>
+                            </Stack>
                         </form>
-                        <Button onClick={() => {
-                            get_all_meals();
-                        }}>Get Total Average</Button>
                     </Group>
                 </Stack>}
         </Stack>

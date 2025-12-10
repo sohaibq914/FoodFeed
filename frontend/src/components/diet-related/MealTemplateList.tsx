@@ -1,5 +1,7 @@
 'use client';
 
+import '@mantine/dates/styles.css';
+
 import { Meal, MealTemplate, add_meal, add_meal_template, delete_meal_template, get_meal_templates, get_user_meals, update_meal_template, delete_meal } from "@/services/DietService";
 import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text, Divider, Alert, Card, ScrollArea, ActionIcon } from "@mantine/core";
 import { DateInput, DateTimePicker } from "@mantine/dates"
@@ -31,11 +33,16 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [error, set_error] = useState(null as null|string)
     const [meals_loaded, set_meals_loaded] = useState(0)
     
-    const load_more_meals = async () => {
+    const load_more_meals = async (currently_loaded: number) => {
         const {success: mealSuccess, message: mealMessage, meals: cur_meal_set} = await get_user_meals(user_id, meals_loaded)
         if (mealSuccess) {
-            const len = meals.length + cur_meal_set?.length!
-            set_meals(meals.concat(cur_meal_set!))
+            const len = currently_loaded + cur_meal_set?.length!
+            if (currently_loaded == 0) {
+                set_meals(cur_meal_set!)
+            }
+            else {
+                set_meals(meals.concat(cur_meal_set!))
+            }
             set_meals_loaded(len)
         }
     }
@@ -52,7 +59,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                     })
                 )
             }
-            await load_more_meals()
+            await load_more_meals(0)
             set_loading(false)
         }
         runner()
@@ -235,7 +242,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                             color="blue"
                             size="md"
                             radius="xl"
-                            onClick={(e) => {load_more_meals()}}
+                            onClick={(e) => {load_more_meals(meals_loaded)}}
                             style={{
                             transition: "all 0.2s ease",
                             }}>

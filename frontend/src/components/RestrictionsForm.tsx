@@ -39,12 +39,26 @@ export default function RestrictionsForm() {
     const runner = async () => {
       const {success, message, restrictions} = await get_restrictions(user?.id!)
       if (success) {
-        setUserRestrictions(restrictions!.filter((value) => {
+        const userRestr = restrictions!.filter((value) => {
           return value.user_has
-        }))
-        setOtherRestrictions(restrictions!.filter((value) => {
+        })
+        const otherRestr = restrictions!.filter((value) => {
           return !value.user_has
-        }))
+        })
+        setUserRestrictions(userRestr)
+        setOtherRestrictions(otherRestr)
+        if (otherRestr.length > 0) {
+          setRestrToAdd(otherRestr[0].name)
+        }
+        else {
+          setRestrToAdd('')
+        }
+        if (userRestr.length > 0) {
+          setRestrToRemove(userRestr[0].name)
+        }
+        else {
+          setRestrToRemove('')
+        }
       }
       else {
         setError(message!)
@@ -68,12 +82,24 @@ export default function RestrictionsForm() {
           const item = otherRestrictions.find((value) => {
             return value.id === restr_id
           })!
-          setUserRestrictions(userRestrictions.concat(item))
-          setOtherRestrictions(otherRestrictions.filter((value) => {
+          const newUserRestr = userRestrictions.concat(item)
+          setUserRestrictions(newUserRestr)
+          const newOtherRestr = otherRestrictions.filter((value) => {
             return value.id !== restr_id
-          }))
-          setRestrToAdd('')
-          setRestrToRemove('')
+          })
+          setOtherRestrictions(newOtherRestr)
+          if (newOtherRestr.length > 0) {
+            setRestrToAdd(newOtherRestr[0].name)
+          }
+          else {
+            setRestrToAdd('')
+          }
+          if (newUserRestr.length > 0) {
+            setRestrToRemove(newUserRestr[0].name)
+          }
+          else {
+            setRestrToRemove('')
+          }
         }
       }
     }
@@ -98,12 +124,24 @@ export default function RestrictionsForm() {
           const item = userRestrictions.find((value) => {
             return value.id === restr_id
           })!
-          setOtherRestrictions(otherRestrictions.concat(item))
-          setUserRestrictions(userRestrictions.filter((value) => {
+          const newOtherRestr = otherRestrictions.concat(item)
+          const newUserRestr = userRestrictions.filter((value) => {
             return value.id !== restr_id
-          }))
-          setRestrToAdd('')
-          setRestrToRemove('')
+          })
+          setOtherRestrictions(newOtherRestr)
+          setUserRestrictions(newUserRestr)
+          if (newOtherRestr.length > 0) {
+            setRestrToAdd(newOtherRestr[0].name)
+          }
+          else {
+            setRestrToAdd('')
+          }
+          if (newUserRestr.length > 0) {
+            setRestrToRemove(newUserRestr[0].name)
+          }
+          else {
+            setRestrToRemove('')
+          }
         }
       }
     }
@@ -232,6 +270,7 @@ export default function RestrictionsForm() {
                       setError("Have to select a value.")
                       return
                     }
+                    console.log("Restriction: " + chosenRestrToRemove)
                     removeRestriction(userRestrictions.find((value) => {return value.name === chosenRestrToRemove})!.id)
                   }}
                   loading={loading}

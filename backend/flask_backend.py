@@ -1529,12 +1529,12 @@ def get_user_meals():
     try:
         data = request.get_json()
         user_id = data.get("user_id")
-        loaded = data.get("loaded", default=0)
-        amount = 10
+        loaded = data.get("loaded")
+        amount = 2
         meals = get_all_user_meals(user_id)
         sent_meals = []
         averages = get_hour_average(meals)
-        for i in range(loaded, max(loaded + amount + 1, len(meals))):
+        for i in range(loaded, min(loaded + amount, len(meals))):
             sent_meals.append(meals[i].to_json())
         res = jsonify({"meals": sent_meals,
                        "averages": [str(average) for average in averages]})
@@ -1551,12 +1551,14 @@ def get_user_meals_range():
         user_id = data.get("user_id")
         start = data.get("start")
         end = data.get("end")
-        loaded = data.get("loaded", default=0)
-        amount = 10
+        loaded = data.get("loaded")
+        amount = 1
         meals = get_meals(user_id, start, end)
+        print(meals)
+        print(str(start) + ", " + str(end))
         sent_meals = []
         averages = get_hour_average(meals)
-        for i in range(loaded, max(loaded + amount + 1, len(meals))):
+        for i in range(loaded, min(loaded + amount, len(meals))):
             sent_meals.append(meals[i].to_json())
         return jsonify({"meals": [meal.to_json() for meal in meals],
                         "averages": [str(average) for average in averages]}), 200
@@ -1567,7 +1569,10 @@ def get_user_meals_range():
 # Get nutrition
 
 def sort_by_favorite(food):
-    return 1 if food.isFavorite else 0
+    return 0 if food.favorite else 1
+
+def sort_by_name(food):
+    return food.name
 
 @app.route("/dieting/get_food_items", methods=["POST"])
 def get_food_of_type():
@@ -1575,13 +1580,13 @@ def get_food_of_type():
         data = request.get_json()
         type = data.get('type')
         user_id = data.get('user_id')
-        query = data.get('query', default='')
-        loaded = data.get("loaded", default=0)
-        amount = 10
+        query = data.get('query')
+        loaded = data.get("loaded")
+        amount = 2
         foods = get_food_items(user_id, type, query)
-        foods.sort(key=sort_by_favorite, reverse=True)
+        foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []
-        for i in range(loaded, max(loaded + amount + 1, len(foods))):
+        for i in range(loaded, min(loaded + amount, len(foods))):
             sent_foods.append(foods[i].to_json())
         return jsonify({'foods': sent_foods}), 200
     except Exception as e:
@@ -1648,15 +1653,29 @@ def get_elligible_foods():
         data = request.get_json()
         user_id = data.get('user_id')
         type = data.get('type')
-        query = data.get('query', default='')
-        loaded = data.get("loaded", default=0)
-        amount = 10
+        query = data.get('query')
+        loaded = data.get("loaded")
+        amount = 2
         foods = get_elligble_foods_type(user_id, type, query)
-        foods.sort(key=sort_by_favorite, reverse=True)
+        foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []
-        for i in range(loaded, max(loaded + amount + 1, len(foods))):
+        for i in range(loaded, min(loaded + amount, len(foods))):
             sent_foods.append(foods[i].to_json())
         return jsonify({"foods": sent_foods}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/dieting/get_all_elligible_foods", methods=["POST"])
+def get_all_elligible_foods():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        type = data.get('type')
+        query = data.get('query')
+        foods = get_elligble_foods_type(user_id, type, query)
+        foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
+        return jsonify({"foods": [food.to_json() for food in foods]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
@@ -1668,13 +1687,13 @@ def get_food_of_nutrient():
         data = request.get_json()
         user_id = data.get('user_id')
         nutr_id = data.get('nutrient_id')
-        query = data.get("query", default='')
-        loaded = data.get("loaded", default=0)
-        amount = 10
+        query = data.get("query")
+        loaded = data.get("loaded")
+        amount = 2
         foods = get_elligble_foods_nutrient(user_id, nutr_id, query)
-        foods.sort(reverse=True, key=sort_by_favorite)
+        foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []
-        for i in range(loaded, max(loaded + amount + 1, len(foods))):
+        for i in range(loaded, min(loaded + amount, len(foods))):
             sent_foods.append(foods[i].to_json())
         return jsonify({"foods": sent_foods}), 200
     except Exception as e:

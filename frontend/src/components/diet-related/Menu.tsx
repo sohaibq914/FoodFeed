@@ -16,11 +16,17 @@ export default function Menu({user_id, type}: MenuInfo) {
     const [loaded_foods, set_loaded_foods] = useState(0)
     const [loading, setLoading] = useState(true);
 
-    const load_more_foods = async() => {
-        const {success, message, foods} = await get_food_of_type(user_id, type, query, loaded_foods);
+    const load_more_foods = async(already_loaded: number) => {
+        const {success, message, foods} = await get_food_of_type(user_id, type, query, already_loaded);
         if (success) {
-            const len = food_items.length + foods?.length!
-            set_food_items(food_items.concat(foods!));
+            const len = already_loaded + foods?.length!
+            console.log(already_loaded)
+            if (already_loaded == 0) {
+                set_food_items(foods!)
+            }
+            else {
+                set_food_items(food_items.concat(foods!));
+            }
             set_loaded_foods(len)
         }
     }
@@ -28,7 +34,7 @@ export default function Menu({user_id, type}: MenuInfo) {
     useEffect(() => {
         const runner = async () => {
             setLoading(true)
-            await load_more_foods()
+            await load_more_foods(loaded_foods)
             setLoading(false);
         }
         runner();
@@ -63,7 +69,7 @@ export default function Menu({user_id, type}: MenuInfo) {
                         onClick={(e) => {
                             set_loaded_foods(0)
                             set_food_items([] as FoodItem[])
-                            load_more_foods()
+                            load_more_foods(0)
                         }}>
                     </Button>
                 </Group>
@@ -101,7 +107,7 @@ export default function Menu({user_id, type}: MenuInfo) {
                     color="blue"
                     size="md"
                     radius="xl"
-                    onClick={(e) => {load_more_foods()}}
+                    onClick={(e) => {load_more_foods(loaded_foods)}}
                     style={{
                     transition: "all 0.2s ease",
                     }}>
