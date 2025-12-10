@@ -533,6 +533,9 @@ def get_recipe(id: str, user_id: str = None):
                 response.data['user_has_liked'] = False
                 response.data['user_has_disliked'] = False
 
+            print("End of get_recipe: ")
+            print(response.data)
+
             return response.data
         else:
             return {"error": "Failed to get recipe"}

@@ -65,6 +65,7 @@ type FeedRecipe = {
 };
 
 export default function Dashboard() {
+  const pageSize = 5;
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -129,14 +130,21 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  useEffect(() => {
+  /*useEffect(() => {
+    if (!user) return;
+
     (async () => {
       try {
-        const res = await fetch("http://localhost:5001/recipes");
+        const res = await fetch(`http://localhost:5001/recipes`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+        });
         const data = await res.json();
 
         console.log(data)
-        setPages(data.count)
+        setPages(Math.ceil(data.count / pageSize))
 
         const tagCounts: Record<string, number> = {};
         const displayNames: Record<string, string> = {};
@@ -181,6 +189,7 @@ export default function Dashboard() {
       }
     })();
   }, []);
+  */
 
   // Fetch feed from followed users
   useEffect(() => {
@@ -224,9 +233,17 @@ export default function Dashboard() {
         setRecipesLoading(true);
         setRecipesError(null);
 
-        const res = await fetch(`http://localhost:5001/recipes`);
+        const res = await fetch(`http://localhost:5001/recipes`, {
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+        });
+
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
+
+        setPages(Math.ceil(data.count / pageSize))
 
         // show only posted
         const postedOnly: RecipeSummary[] = (data.recipes || [])
@@ -242,20 +259,21 @@ export default function Dashboard() {
           }));
 
         // fetch likes ONLY for posted ones
+        /*
         const withLikes = await Promise.all(
           postedOnly.map(async (recipe) => {
             try {
-              const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  recipe_id: recipe.recipe_id,
-                  user_id: user.id,
-                }),
-              });
-              const likeData = await likeRes.json();
-              if (!likeRes.ok)
-                throw new Error(likeData?.error || "like fetch failed");
+              //const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
+              //  method: "POST",
+              //  headers: { "Content-Type": "application/json" },
+              //  body: JSON.stringify({
+              //    recipe_id: recipe.recipe_id,
+              //    user_id: user.id,
+              //  }),
+              //});
+              //const likeData = await likeRes.json();
+              //if (!likeRes.ok)
+              //  throw new Error(likeData?.error || "like fetch failed");
               return {
                 ...recipe,
                 like_count: likeData.like_count || 0,
@@ -274,9 +292,49 @@ export default function Dashboard() {
             }
           })
         );
+        */
 
-        setRecipes(withLikes);
+        const tagCounts: Record<string, number> = {};
+        const displayNames: Record<string, string> = {};
+        
+        (data.recipes ?? []).forEach((r: any) => {
+          const raw = r.tags;
+          let arr: string[] = [];
+          if (Array.isArray(raw)) {
+            arr = raw;
+          } else if (typeof raw === "string" && raw.trim()) {
+            try {
+              const parsed = JSON.parse(raw);
+              arr = Array.isArray(parsed) ? parsed : raw.split(",");
+            } catch {
+              arr = raw.split(",");
+            }
+          }
+
+          arr.forEach((t) => {
+            const tag = String(t).trim();
+            if (!tag) return;
+            const key = tag.toLowerCase();
+            tagCounts[key] = (tagCounts[key] || 0) + 1;
+            if (!displayNames[key]) displayNames[key] = tag; // preserve casing
+          });
+        });
+
+        // sort tags by descending frequency, then alphabetically
+        const sorted = Object.keys(tagCounts)
+          .sort((a, b) => {
+            const diff = tagCounts[b] - tagCounts[a];
+            return diff !== 0
+              ? diff
+              : a.localeCompare(b, undefined, { sensitivity: "base" });
+          })
+          .map((key) => displayNames[key]);
+        
+        setAllTags(sorted);
+        setRecipes(postedOnly);
+        console.log(postedOnly)
       } catch (err: any) {
+        setAllTags([]);
         setRecipesError(err.message || "Failed to fetch recipes");
       } finally {
         setRecipesLoading(false);

@@ -899,8 +899,11 @@ def get_recipe_handler():
 def list_recipes():
     try:
         #TODO: optimize, make get_recipe unnecessary
+        user_id = request.headers.get(
+            'X-User-ID') or request.args.get('user_id')
+        print(user_id)
 
-        limit = 5
+        #limit = 5
         res = (
             supabase.table("recipes")
             # include it (quoted is safest)
@@ -910,11 +913,40 @@ def list_recipes():
             .execute()
         )
 
-        page_count = math.ceil(res.count / limit)
-        res.count = page_count
+        recipes = []
+        # for recipe in res.data:
+        #
+        #     # Count likes directly (more reliable than waiting for trigger)
+        #     like_count_result = supabase.table('recipe_likes').select(
+        #         'id', count='exact').eq('recipe_id', recipe['recipe_id']).eq('is_dislike', False).execute()
+        #     like_count = like_count_result.count if like_count_result.count is not None else 0
+        #     # Count dislikes directly (more reliable than waiting for trigger)
+        #     dislike_count_result = supabase.table('recipe_likes').select(
+        #         'id', count='exact').eq('recipe_id', recipe['recipe_id']).eq('is_dislike', True).execute()
+        #     dislike_count = dislike_count_result.count if dislike_count_result.count is not None else 0
+        #     print(
+        #         f"Direct count of likes: {like_count}, dislikes: {dislike_count}")
+        #
+        #     recipe['like_count'] = like_count
+        #     recipe['dislike_count'] = dislike_count
+        #
+        #     # Check if user has liked this recipe
+        #     if user_id:
+        #         liked_response = supabase.table('recipe_likes').select(
+        #             'id').eq('recipe_id', recipe['recipe_id']).eq('user_id', user_id).eq('is_dislike', False).execute()
+        #         recipe['user_has_liked'] = len(liked_response.data) > 0
+        #
+        #         disliked_response = supabase.table('recipe_likes').select(
+        #             'id').eq('recipe_id', recipe['recipe_id']).eq('user_id', user_id).eq('is_dislike', True).execute()
+        #         recipe['user_has_disliked'] = len(disliked_response.data) > 0
+        #     else:
+        #         recipe['user_has_liked'] = False
+        #         recipe['user_has_disliked'] = False
+        #
+        #     print(recipe)
+        #     recipes.append(recipe)
 
-        print(res)
-        print("pages:" + str(res.count))
+        print(res.count)
         return jsonify({"recipes": res.data, "count": res.count}), 200
     except Exception as e:
         print(f"List recipes exception: {str(e)}")
