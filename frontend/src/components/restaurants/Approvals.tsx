@@ -45,7 +45,7 @@ export default function RestaurantApprovals(): React.ReactElement {
                 return;
             }
 
-            setRestaurants((json.restaurants ?? []) as RestaurantRow[]);
+            setRestaurants(json.restaurants as RestaurantRow[]);
         } catch {
             setErr("Network error while fetching unapproved restaurants");
         } finally {
@@ -134,7 +134,7 @@ export default function RestaurantApprovals(): React.ReactElement {
 
                                 {r.address && (
                                     <Text size="sm" c="dimmed">
-                                        {r.address}
+                                        Address: {r.address}
                                     </Text>
                                 )}
 

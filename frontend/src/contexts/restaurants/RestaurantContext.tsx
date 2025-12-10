@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import {useAuth} from "@/contexts/AuthContext";
 
-type Restaurant = { id: string; name: string; address: string; owner: string; approved: boolean};
+type Restaurant = { id: string; name: string; address: string; owner: string; approved: boolean; u_id: any};
 type Review = {
     id: string;
     restaurant_id: string;
@@ -95,7 +95,8 @@ export const RestaurantsProvider = ({ children }: { children: React.ReactNode })
                 const address = r.address;
                 const owner = r.owner;
                 const approved = r.approved;
-                if (id && name && address && owner) next.push({ id, name, address, owner, approved});
+                const u_id = r.u_id;
+                if (id && name && address && owner) next.push({ id, name, address, owner, approved, u_id});
             }
             setItems(next);
             return { data, error: null };
