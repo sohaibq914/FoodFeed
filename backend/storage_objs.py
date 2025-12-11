@@ -95,14 +95,31 @@ class PlanComponent:
             'amount': self.amount
         }
 
-class Plan:
-    def __init__(self, plan_id, components):
+class PlanDisplay:
+    def __init__(self, plan_id, name, desc):
         self.plan_id = plan_id
+        self.name = name
+        self.desc = desc 
+
+    def to_json(self):
+        return {
+            'plan_id': self.plan_id,
+            'name': self.name,
+            'desc': self.desc
+        }
+
+class Plan:
+    def __init__(self, plan_id, name, desc, components):
+        self.plan_id = plan_id
+        self.name = name
+        self.desc = desc
         self.components = components
 
     def to_json(self):
         return {
             'plan_id': self.plan_id,
+            'name': self.name,
+            'desc': self.desc,
             'components': [comp.to_json() for comp in self.components]
         }
 

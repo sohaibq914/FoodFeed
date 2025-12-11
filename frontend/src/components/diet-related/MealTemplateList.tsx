@@ -2,7 +2,7 @@
 
 import '@mantine/dates/styles.css';
 
-import { Meal, MealTemplate, add_meal, add_meal_template, delete_meal_template, get_meal_templates, get_user_meals, update_meal_template, delete_meal } from "@/services/DietService";
+import { Meal, MealTemplate, add_meal, add_meal_template, delete_meal_template, get_meal_templates, get_user_meals, update_meal_template, delete_meal, get_user_meals_range } from "@/services/DietService";
 import { Button, Container, Group, NumberInput, Stack, TextInput, Title, Text, Divider, Alert, Card, ScrollArea, ActionIcon } from "@mantine/core";
 import { DateInput, DateTimePicker } from "@mantine/dates"
 import { create } from "domain";
@@ -33,8 +33,30 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
     const [error, set_error] = useState(null as null|string)
     const [meals_loaded, set_meals_loaded] = useState(0)
     
-    const load_more_meals = async (currently_loaded: number) => {
-        const {success: mealSuccess, message: mealMessage, meals: cur_meal_set} = await get_user_meals(user_id, meals_loaded)
+    const [start_time, set_start_time] = useState(new Date(Date.now()))
+    const [end_time, set_end_time] = useState(new Date(Date.now()))
+    const [using_range_query, set_using_range_query] = useState(false)
+
+    const load_all_meals = async () => {
+        set_error(null)
+        set_using_range_query(false)
+        load_more_meals(0, false)
+    }
+
+    const load_using_query = async () => {
+        set_error(null)
+        if (start_time >= end_time || (end_time.getTime() - start_time.getTime()) / (1000 * 60 * 60 * 24) > 7) {
+            set_error("Error: Time query proposed is out of range. Must be within a week of each other.")
+            return
+        } 
+        set_using_range_query(true)
+        load_more_meals(0, true)
+    }
+
+    const load_more_meals = async (currently_loaded: number, in_range_mode: boolean) => {
+        const {success: mealSuccess, message: mealMessage, meals: cur_meal_set} = (in_range_mode) ?
+            await get_user_meals_range(user_id, start_time, end_time, currently_loaded) :
+            await get_user_meals(user_id, currently_loaded)
         if (mealSuccess) {
             const len = currently_loaded + cur_meal_set?.length!
             if (currently_loaded == 0) {
@@ -59,7 +81,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                     })
                 )
             }
-            await load_more_meals(0)
+            await load_more_meals(0, using_range_query)
             set_loading(false)
         }
         runner()
@@ -217,6 +239,34 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                         </form>
                         <Divider/>
                         <Title>Meals</Title>
+                        <Group>
+                            <DateTimePicker 
+                                label="Start Time:"
+                                placeholder="Enter start:"
+                                value={start_time}
+                                onChange={(value) => {
+                                    if (value == null) {
+                                        set_start_time(new Date(Date.now()))
+                                    }
+                                    else {
+                                        set_start_time(new Date(value))
+                                    }
+                                }}></DateTimePicker>
+                            <DateTimePicker 
+                                label="End Time:"
+                                placeholder="Enter end:"
+                                value={end_time}
+                                onChange={(value) => {
+                                    if (value == null) {
+                                        set_end_time(new Date(Date.now()))
+                                    }
+                                    else {
+                                        set_end_time(new Date(value))
+                                    }
+                                }}></DateTimePicker>
+                        </Group>
+                        <Button onClick={(e) => {load_using_query()}}>Search Within Timespan</Button>
+                        <Button onClick={(e) => {load_all_meals()}}>Reset Ranged Query</Button>
                         <ScrollArea h={300}>
                         {
                             meals.map((value, index) => {
@@ -242,7 +292,7 @@ export default function MealTemplateList({user_id}: MealTemplateInfo) {
                             color="blue"
                             size="md"
                             radius="xl"
-                            onClick={(e) => {load_more_meals(meals_loaded)}}
+                            onClick={(e) => {load_more_meals(meals_loaded, using_range_query)}}
                             style={{
                             transition: "all 0.2s ease",
                             }}>

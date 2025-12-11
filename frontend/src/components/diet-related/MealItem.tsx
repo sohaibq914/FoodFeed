@@ -23,7 +23,7 @@ export default function MealItem({meal}: MealItemInfo) {
 
         <Group>
             <Stack>
-                <Title order={3}>{meal.name}</Title>
+                <Title order={5}>{meal.name}</Title>
                 <Text>{meal.calories}</Text>
             </Stack>
             <Stack>

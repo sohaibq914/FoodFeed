@@ -1,7 +1,7 @@
 import os
 from supabase_instance import supabase
 from dotenv import load_dotenv
-from storage_objs import Plan, PlanComponent
+from storage_objs import Plan, PlanComponent, PlanDisplay
 from datetime import datetime, timezone, timedelta
 
 load_dotenv()
@@ -13,14 +13,26 @@ def get_food_name(food_id):
         .eq('id', food_id) \
         .execute().data[0]['name']
 
-def get_meal_plan(user_id):
+def get_all_meal_plans(user_id):
     plan_res = supabase.table('meal_plan') \
         .select('*') \
         .eq('user_id', user_id) \
         .execute()
+    displays = []
+    for row in plan_res.data:
+        displays.append(PlanDisplay(row['id'], row['name'], row['desc']))
+    return displays
+
+def get_meal_plan(plan_id):
+    plan_res = supabase.table('meal_plan') \
+        .select('*') \
+        .eq('id', plan_id) \
+        .execute()
     if (len(plan_res.data) == 0):
         return None
     plan_id = plan_res.data[0]['id']
+    plan_name = plan_res.data[0]['name']
+    plan_desc = plan_res.data[0]['desc']
     comp_res = supabase.table('plan_components') \
         .select('*') \
         .eq('plan_id', plan_id) \
@@ -28,8 +40,26 @@ def get_meal_plan(user_id):
     components = []
     for row in comp_res.data:
         components.append(PlanComponent(row['id'], row['food_id'], row['amount']))
-    return Plan(plan_id, components)
-    
+    return Plan(plan_id, plan_name, plan_desc, components)
+
+def update_meal_plan_name(plan_id, name):
+    supabase.table('meal_plan') \
+        .update({'name': name}) \
+        .eq('id', plan_id) \
+        .execute()
+
+def update_meal_plan_desc(plan_id, desc):
+    supabase.table('meal_plan') \
+        .update({'desc': desc}) \
+        .eq('id', plan_id) \
+        .execute()
+
+def delete_meal_plan(plan_id):
+    supabase.table('meal_plan') \
+        .delete() \
+        .eq('id', plan_id) \
+        .execute()
+
 def add_component(plan_id, food_id, amount):
     return supabase.table('plan_components') \
         .insert({

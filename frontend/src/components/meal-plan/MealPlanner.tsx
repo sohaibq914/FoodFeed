@@ -3,7 +3,7 @@ import dayjs from 'dayjs';
 import { ActionIcon, Button, Card, Container, Divider, Group, Indicator, NumberInput, Stack, Text, TextInput, Title} from "@mantine/core";
 import '@mantine/dates/styles.css';
 import '@mantine/charts/styles.css';
-import {Plan, PlanComponent, get_meal_plan, get_days_of_plan, add_component, update_component, delete_component, mark_day, get_all_food_of_type, get_nutrients_to_foods, FoodItem, get_all_nutrients, NutritionItem} from '@/services/DietService'
+import {Plan, PlanComponent, get_meal_plan, get_days_of_plan, add_component, update_component, delete_component, mark_day, get_all_food_of_type, get_nutrients_to_foods, FoodItem, get_all_nutrients, NutritionItem, set_meal_name, set_meal_desc} from '@/services/DietService'
 import { useEffect, useState } from "react";
 import { Calendar } from "@mantine/dates";
 import { PieChart, PieChartCell } from '@mantine/charts';
@@ -16,6 +16,8 @@ interface MealPlannerInfo {
 }
 
 class SamplePlan implements Plan {
+    name: string = '';
+    desc: string = '';
     plan_id: string = '';
     components: PlanComponent[] = [];
 }
@@ -48,6 +50,9 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
     const [loading, setLoading] = useState(true)
     const [days, setDays] = useState([] as Date[])
 
+    const [mealName, setMealName] = useState('')
+    const [mealDesc, setMealDesc] = useState('')
+
     const [fQuery, setFQuery] = useState('')
     const [vQuery, setVQuery] = useState('')
     const [pQuery, setPQuery] = useState('')
@@ -55,9 +60,11 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
 
     useEffect(() => {
         const runner = async() => {
-            const {success, message, plan} = await get_meal_plan(user_id)
+            const {success, message, plan} = await get_meal_plan(user_id, plan_id)
             if (success) {
                 setMealPlan(plan!);
+                setMealName(plan?.name!)
+                setMealDesc(plan?.desc!)
                 setComponents(plan!.components)
                 let selectedIds = new Set<String>()
                 plan!.components.forEach((value) => {
@@ -133,6 +140,14 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
         }
     }
 
+    const update_meal_name = async () => {
+        const {success, message} = await set_meal_name(user_id, plan_id, mealName)
+    }
+
+    const update_meal_desc = async () => {
+        const {success, message} = await set_meal_desc(user_id, plan_id, mealDesc)
+    }
+
     const adjust_value = (comp_id: string, amount: number) => {
         setComponents(components.map((value) => {
             if (value.id === comp_id) {
@@ -202,6 +217,36 @@ export default function MealPlanner ({user_id, plan_id}: MealPlannerInfo) {
     return <Stack>
         {loading? <Text>Loading...</Text>:
             <Container>
+                {/* Name and desc */}
+                <Group>                
+                    <Stack>
+                        <TextInput
+                            label="Name"
+                            placeholder="Add your own name!"
+                            value={mealName}
+                            onChange={(e) => {setMealName(e.currentTarget.value)}}
+                            />
+                        <TextInput
+                            label="Description"
+                            placeholder="Add your own description!"
+                            value={mealDesc}
+                            onChange={(e) => {setMealDesc(e.currentTarget.value)}}
+                            />
+                    </Stack>
+                    <ActionIcon
+                        color="green"
+                        size="md"
+                        radius="xl"
+                        onClick={(e) => {
+                            update_meal_name()
+                            update_meal_desc()
+                        }}
+                        style={{
+                        transition: "all 0.2s ease",
+                        }}>
+                        <IconDeviceFloppy/>
+                    </ActionIcon>
+                </Group>
                 {/* Calendar View */}
                 <Group>
                     <Calendar

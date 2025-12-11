@@ -5,6 +5,7 @@ import MealTemplateList from "@/components/diet-related/MealTemplateList";
 import Menu from "@/components/diet-related/Menu";
 import NutritionChecklist from "@/components/diet-related/NutritionChecklist";
 import Header from "@/components/Header";
+import MealPlanList from "@/components/meal-plan/MealPlanList";
 import { useAuth } from "@/contexts/AuthContext";
 import { create_meal_plan, get_meal_plan, Plan } from "@/services/DietService";
 import { AppShell, Container, Group, Stack, Title, Text, Button, Divider } from "@mantine/core";
@@ -28,14 +29,6 @@ export default function DietPage() {
       }
     }, [user, loading, router]);
 
-    const [plan, setPlan] = useState(null as null|Plan)
-    useEffect(() => {
-      const runner = async () => {
-        const {success, plan} = await get_meal_plan(user.id)
-        setPlan(plan)
-      }
-      runner()
-    }, ['plan'])
     const alertUser = (e: BeforeUnloadEvent) => {
       e.preventDefault()
       e.returnValue = ''
@@ -79,24 +72,7 @@ export default function DietPage() {
                         }}>Dairy</Button>
                     </Group>
                     <Divider my="md"/>
-                    <Button onClick={(e) => {
-                      const runner = async() => {
-                        let current_plan_id = plan?.plan_id
-                        if (!plan) {
-                          const {success, plan_id} = await create_meal_plan(user.id)
-                          if (!success) {
-                            return
-                          }
-                          current_plan_id = plan_id!
-                        }
-                        console.log("New version")
-                        console.log(current_plan_id)
-                        router.push(`/diet-page/menu_plan/${current_plan_id}`)
-                      }
-                      runner()
-                    }}>
-                      {plan? 'Update Plan': 'Create Plan'}
-                    </Button>
+                    <MealPlanList user_id={user.id}/>
                 </Stack>             
               </Container>
             </AppShell.Main>

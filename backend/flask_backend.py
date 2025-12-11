@@ -1552,15 +1552,14 @@ def get_user_meals_range():
         start = data.get("start")
         end = data.get("end")
         loaded = data.get("loaded")
-        amount = 1
+        amount = 2
         meals = get_meals(user_id, start, end)
         print(meals)
-        print(str(start) + ", " + str(end))
         sent_meals = []
         averages = get_hour_average(meals)
         for i in range(loaded, min(loaded + amount, len(meals))):
             sent_meals.append(meals[i].to_json())
-        return jsonify({"meals": [meal.to_json() for meal in meals],
+        return jsonify({"meals": sent_meals,
                         "averages": [str(average) for average in averages]}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
@@ -1827,16 +1826,61 @@ def accept_food_form():
 
 # Meal Plans
 
+@app.route("/meal_plan/get_all_meal_plans", methods=["POST"])
+def get_all_of_users_meal_plans():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        plans = get_all_meal_plans(user_id)
+        return jsonify({"plans": [plan.to_json() for plan in plans]}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
+@app.route("/meal_plan/set_meal_plan_name", methods=["POST"])
+def set_name_of_meal_plan():
+    try:
+        data = request.get_json()
+        plan_id = data.get('plan_id')
+        name = data.get('name')
+        update_meal_plan_name(plan_id, name)
+        return jsonify({"message": "Succeeded!"}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/set_meal_plan_desc", methods=["POST"])
+def set_desc_of_meal_plan():
+    try:
+        data = request.get_json()
+        plan_id = data.get('plan_id')
+        desc = data.get('desc')
+        update_meal_plan_desc(plan_id, desc)
+        return jsonify({"message": "Succeeded!"}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @app.route("/meal_plan/get_meal_plan", methods=["POST"])
 def get_user_meal_plan():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
-        plan = get_meal_plan(user_id)
+        plan_id = data.get('plan_id')
+        plan = get_meal_plan(plan_id)
         if plan == None:
             return jsonify({"data": None}), 200
         return jsonify({"plan": plan.to_json()}), 200
+    except Exception as e:
+        print(f"Exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+@app.route("/meal_plan/delete_meal_plan", methods=["POST"])
+def delete_a_plan_of_user():
+    try:
+        data = request.get_json()
+        plan_id = data.get('plan_id')
+        plan = delete_meal_plan(plan_id)
+        return jsonify({"message": "Succeeded!"}), 200
     except Exception as e:
         print(f"Exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500

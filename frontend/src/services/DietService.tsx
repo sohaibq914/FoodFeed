@@ -48,7 +48,15 @@ export interface PlanComponent {
     amount: number;
 }
 
+export interface PlanDisplay {
+    name: string;
+    desc: string;
+    plan_id: string;
+}
+
 export interface Plan {
+    name: string;
+    desc: string;
     plan_id: string;
     components: PlanComponent[];
 }
@@ -596,11 +604,31 @@ export const accept_form = async (form_id: string): Promise<{success: boolean, m
 
 // Plans
 
-export const get_meal_plan = async (user_id: string): Promise<{success: boolean, message: string|null, plan: Plan|null}> => {    
+export const get_all_meal_plans = async (user_id: string): Promise<{success: boolean, message: string|null, plans: PlanDisplay[]|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/get_all_meal_plans',
+        JSON.stringify({
+            'user_id': user_id,
+        }),
+    );
+    try {    
+        if (response.ok) {
+            const items: { plans: PlanDisplay[] } = data
+            return {success: true, message: null, plans: items.plans}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error, plans: null};
+}
+
+export const get_meal_plan = async (user_id: string, plan_id: string): Promise<{success: boolean, message: string|null, plan: Plan|null}> => {    
     const {response, data} = await caller.call_function(
         'meal_plan/get_meal_plan',
         JSON.stringify({
-            'user_id': user_id
+            'user_id': user_id,
+            'plan_id': plan_id
         }),
     );
     try {    
@@ -613,6 +641,46 @@ export const get_meal_plan = async (user_id: string): Promise<{success: boolean,
         
     }
     return {success: false, message: data.error, plan: null};
+}
+
+export const set_meal_name = async (user_id: string, plan_id: string, name: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/set_meal_plan_name',
+        JSON.stringify({
+            'user_id': user_id,
+            'plan_id': plan_id,
+            'name': name
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
+}
+
+export const set_meal_desc = async (user_id: string, plan_id: string, desc: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/set_meal_plan_desc',
+        JSON.stringify({
+            'user_id': user_id,
+            'plan_id': plan_id,
+            'desc': desc
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
 }
 
 export const create_meal_plan = async (user_id: string): Promise<{success: boolean, message: string|null, plan_id: string|null}> => {    
@@ -632,6 +700,24 @@ export const create_meal_plan = async (user_id: string): Promise<{success: boole
         
     }
     return {success: false, message: data.error, plan_id: null};
+}
+
+export const delete_meal_plan = async (plan_id: string): Promise<{success: boolean, message: string|null}> => {    
+    const {response, data} = await caller.call_function(
+        'meal_plan/delete_meal_plan',
+        JSON.stringify({
+            'plan_id': plan_id
+        }),
+    );
+    try {    
+        if (response.ok) {
+            return {success: true, message: null}
+        }
+    }
+    catch {
+        
+    }
+    return {success: false, message: data.error};
 }
 
 export const add_component = async (plan_id: string, food_id: string, amount: number): Promise<{success: boolean, message: string|null, id: string|null}> => {    
@@ -759,6 +845,7 @@ export const get_nutrients_to_foods = async (): Promise<{success: boolean, messa
     return {success: false, message: data.error, nutrs_to_foods: null};
 }
 
+// Restrictions 
 export const get_restrictions = async(user_id: string): Promise<{success: boolean, message: string|null, 
         restrictions: RestrictionItem[] | null}> => {
     const {response, data} = await caller.call_function(
