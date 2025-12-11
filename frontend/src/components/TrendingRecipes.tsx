@@ -1,72 +1,32 @@
 "use client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import {
   Container,
-  Title,
-  Text,
-  Center,
-  Loader,
-  AppShell,
-  Card,
-  Stack,
-  Group,
-  Menu,
-  Button,
-  ActionIcon,
-  Avatar,
-  Badge,
-  Divider,
-  Modal,
-  ScrollArea,
-  Checkbox,
-  Pagination,
+  Paper,
   TextInput,
-  Grid
+  Textarea,
+  Button,
+  Title,
+  Alert,
+  Stack,
+  Center,
+  Flex,
+  Checkbox,
+  Tooltip,
+  FileInput,
+  Image,
+  Group,
+  CloseButton,
+  TagsInput,
+  SegmentedControl, 
+  Text,
+  NumberInput
 } from "@mantine/core";
-import {
-  IconHeart,
-  IconHeartFilled,
-  IconHeartBroken,
-  IconHeartBrokenFilled,
-  IconSortDescending,
-  IconSortAscending,
-  IconUser,
-  IconLock,
-  IconFilter,
-} from "@tabler/icons-react";
-import Header from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRouter, forbidden } from "next/navigation";
 
-type RecipeSummary = {
-  recipe_id: string;
-  title: string;
-  timestamp?: string;
-  like_count?: number;
-  dislike_count?: number;
-  user_has_liked?: boolean;
-  user_has_disliked?: boolean;
-  tags?: string;
-};
+export default function RecipeSearch() {
 
-type FeedRecipe = {
-  recipe_id: string;
-  title: string;
-  description?: string;
-  image?: string;
-  timestamp: string;
-  like_count: number;
-  dislike_count: number;
-  visibility?: string;
-  author: {
-    id: string;
-    username: string;
-    profile_picture_url?: string;
-  };
-};
-
-export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -85,8 +45,6 @@ export default function Dashboard() {
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [allTags, setAllTags] = useState<string[]>([]); // will fetch later
-
-  const [searchString, setSearchString] = useState("");
 
   // Feed state
   const [feedRecipes, setFeedRecipes] = useState<FeedRecipe[]>([]);
@@ -133,66 +91,57 @@ export default function Dashboard() {
     }
   }, [user, loading, router]);
 
-  //Gets all recipe tags
-  const fetchRecipeTags = async (search: any) => {
-    try {
-      let data;
-      if (search !== null)
-        data = search
-      else {
-        const res = await fetch("http://localhost:5001/recipes");
-        data = await res.json();
-      }
-
-      console.log("tags")
-      console.log(data)
-      setPages(data.count)
-
-      const tagCounts: Record<string, number> = {};
-      const displayNames: Record<string, string> = {};
-
-      (data.recipes ?? []).forEach((r: any) => {
-        const raw = r.tags;
-        let arr: string[] = [];
-        if (Array.isArray(raw)) {
-          arr = raw;
-        } else if (typeof raw === "string" && raw.trim()) {
-          try {
-            const parsed = JSON.parse(raw);
-            arr = Array.isArray(parsed) ? parsed : raw.split(",");
-          } catch {
-            arr = raw.split(",");
-          }
-        }
-
-        arr.forEach((t) => {
-          const tag = String(t).trim();
-          if (!tag) return;
-          const key = tag.toLowerCase();
-          tagCounts[key] = (tagCounts[key] || 0) + 1;
-          if (!displayNames[key]) displayNames[key] = tag; // preserve casing
-        });
-      });
-
-      // sort tags by descending frequency, then alphabetically
-      const sorted = Object.keys(tagCounts)
-        .sort((a, b) => {
-          const diff = tagCounts[b] - tagCounts[a];
-          return diff !== 0
-            ? diff
-            : a.localeCompare(b, undefined, { sensitivity: "base" });
-        })
-        .map((key) => displayNames[key]);
-
-      setAllTags(sorted);
-    } catch (e) {
-      console.error("Failed to load tags from recipes", e);
-      setAllTags([]);
-    }
-  }
-
   useEffect(() => {
-    fetchRecipeTags(null)
+    (async () => {
+      try {
+        const res = await fetch("http://localhost:5001/recipes");
+        const data = await res.json();
+
+        console.log(data)
+        setPages(data.count)
+
+        const tagCounts: Record<string, number> = {};
+        const displayNames: Record<string, string> = {};
+
+        (data.recipes ?? []).forEach((r: any) => {
+          const raw = r.tags;
+          let arr: string[] = [];
+          if (Array.isArray(raw)) {
+            arr = raw;
+          } else if (typeof raw === "string" && raw.trim()) {
+            try {
+              const parsed = JSON.parse(raw);
+              arr = Array.isArray(parsed) ? parsed : raw.split(",");
+            } catch {
+              arr = raw.split(",");
+            }
+          }
+
+          arr.forEach((t) => {
+            const tag = String(t).trim();
+            if (!tag) return;
+            const key = tag.toLowerCase();
+            tagCounts[key] = (tagCounts[key] || 0) + 1;
+            if (!displayNames[key]) displayNames[key] = tag; // preserve casing
+          });
+        });
+
+        // sort tags by descending frequency, then alphabetically
+        const sorted = Object.keys(tagCounts)
+          .sort((a, b) => {
+            const diff = tagCounts[b] - tagCounts[a];
+            return diff !== 0
+              ? diff
+              : a.localeCompare(b, undefined, { sensitivity: "base" });
+          })
+          .map((key) => displayNames[key]);
+
+        setAllTags(sorted);
+      } catch (e) {
+        console.error("Failed to load tags from recipes", e);
+        setAllTags([]);
+      }
+    })();
   }, []);
 
   // Fetch feed from followed users
@@ -229,87 +178,74 @@ export default function Dashboard() {
   }, [user]);
 
   // fetch all recipe titles with like data
-  const fetchRecipe = async (search: any) => {
+  useEffect(() => {
     if (!user) return;
 
-    try {
-      setRecipesLoading(true);
-      setRecipesError(null);
+    const fetchRecipes = async () => {
+      try {
+        setRecipesLoading(true);
+        setRecipesError(null);
 
-      console.log("likes")
-
-      let data;
-      if (search !== null)
-        data = search
-      else {
         const res = await fetch(`http://localhost:5001/recipes`);
-        data = await res.json();
+        const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
+
+        // show only posted
+        const postedOnly: RecipeSummary[] = (data.recipes || [])
+          .filter((r: any) => r.posted === true)
+          .map((r: any) => ({
+            ...r,
+            timestamp: r.timestamp ?? r.created_at ?? r.updated_at ?? null,
+            tags: Array.isArray(r.tags)
+              ? r.tags
+              : typeof r.tags === "string" && r.tags.trim()
+              ? JSON.parse(r.tags)
+              : [],
+          }));
+
+        // fetch likes ONLY for posted ones
+        const withLikes = await Promise.all(
+          postedOnly.map(async (recipe) => {
+            try {
+              const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  recipe_id: recipe.recipe_id,
+                  user_id: user.id,
+                }),
+              });
+              const likeData = await likeRes.json();
+              if (!likeRes.ok)
+                throw new Error(likeData?.error || "like fetch failed");
+              return {
+                ...recipe,
+                like_count: likeData.like_count || 0,
+                user_has_liked: likeData.user_has_liked || false,
+                dislike_count: likeData.dislike_count || 0,
+                user_has_disliked: likeData.user_has_disliked || false,
+              };
+            } catch {
+              return {
+                ...recipe,
+                like_count: 0,
+                user_has_liked: false,
+                dislike_count: 0,
+                user_has_disliked: false,
+              };
+            }
+          })
+        );
+
+        setRecipes(withLikes);
+      } catch (err: any) {
+        setRecipesError(err.message || "Failed to fetch recipes");
+      } finally {
+        setRecipesLoading(false);
       }
+    };
 
-      console.log(data.recipes)
-
-      // show only posted
-      const postedOnly: RecipeSummary[] = (data.recipes || [])
-        .filter((r: any) => r.posted === true)
-        .map((r: any) => ({
-          ...r,
-          timestamp: r.ts ?? r.created_at ?? r.updated_at ?? null,
-          tags: Array.isArray(r.tags)
-            ? r.tags
-            : typeof r.tags === "string" && r.tags.trim()
-            ? JSON.parse(r.tags)
-            : [],
-        }));
-      
-      console.log("postedOnly")
-      console.log(postedOnly)
-
-      // fetch likes ONLY for posted ones
-      const withLikes = await Promise.all(
-        postedOnly.map(async (recipe) => {
-          try {
-            const likeRes = await fetch(`http://localhost:5001/get_recipe`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                recipe_id: recipe.recipe_id,
-                user_id: user.id,
-              }),
-            });
-            const likeData = await likeRes.json();
-            if (!likeRes.ok)
-              throw new Error(likeData?.error || "like fetch failed");
-            return {
-              ...recipe,
-              like_count: likeData.like_count || 0,
-              user_has_liked: likeData.user_has_liked || false,
-              dislike_count: likeData.dislike_count || 0,
-              user_has_disliked: likeData.user_has_disliked || false,
-            };
-          } catch {
-            return {
-              ...recipe,
-              like_count: 0,
-              user_has_liked: false,
-              dislike_count: 0,
-              user_has_disliked: false,
-            };
-          }
-        })
-      );
-
-      console.log(withLikes)
-      setRecipes(withLikes);
-    } catch (err: any) {
-      setRecipesError(err.message || "Failed to fetch recipes");
-    } finally {
-      setRecipesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchRecipe(null);
+    fetchRecipes();
   }, [user]);
 
   const handleLikeToggle = async (
@@ -399,41 +335,6 @@ export default function Dashboard() {
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
   };
-
-  const handleSearch = async (searchString: string) => {
-    setRecipesLoading(true);
-    setRecipesError(null);
-
-    try {
-      if (searchString.length === 0) {
-        fetchRecipe(null)
-      }
-      else {
-        const response = await fetch("http://localhost:5001/search_recipes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            search_string: searchString,
-          }),
-        });
-
-        const data = await response.json();
-
-        console.log(data)
-        setPages(data.count)
-        setPage(1)
-            
-        if (!response.ok) throw new Error(data?.error || "Failed to search"); 
-
-        fetchRecipe(data);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setRecipesError(err.message || "Failed to search");
-      setRecipesLoading(false)
-    }
-  };
-
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -590,15 +491,6 @@ export default function Dashboard() {
             <Title order={3} mt="xl">
               Discover More Recipes
             </Title>
-            
-            <Grid gutter={{ base: "xs", xs: 'xs', md: 'xs', xl: "xs"}}>
-              <Grid.Col span={10}>
-                <TextInput aria-label="Search for recipes" onChange={(e) => setSearchString(e.currentTarget.value)} ></TextInput>
-              </Grid.Col>
-              <Grid.Col span={2}>
-                <Button type="submit" onClick={() => handleSearch(searchString)} loading={recipesLoading}> Search </Button>
-              </Grid.Col>
-            </Grid>
 
             <Group align="center" justify="start" gap="xs" mt="sm" mb="md">
               <Text c="dimmed" size="sm">

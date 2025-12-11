@@ -929,6 +929,30 @@ def list_recipes():
         print(f"List recipes exception: {str(e)}")
         return jsonify({"error": "Failed to fetch recipes"}), 500
 
+@app.route("/search_recipes", methods=["POST"])
+def search_recipes():
+    try:
+        limit = 5
+        data = request.get_json()
+        search_string = data.get("search_string")
+        res = (supabase
+               .rpc('search_recipes', {'search_query': search_string}, count='exact')
+               .eq("posted", True)
+               .order("ts", desc=True)
+               .execute())
+
+        print(res)
+
+        page_count = math.ceil(res.count / limit)
+        res.count = page_count
+
+        #print(res)
+        #print("pages:" + str(res.count))
+        return jsonify({"recipes": res.data, "count": res.count}), 200
+    except Exception as e:
+        print(f"List recipes exception: {str(e)}")
+        return jsonify({"error": "Failed to fetch recipes"}), 500
+
 
 @app.route("/feed", methods=["GET"])
 @require_auth
