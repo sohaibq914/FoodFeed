@@ -301,6 +301,7 @@ export default function Dashboard() {
 
       console.log(withLikes)
       setRecipes(withLikes);
+      fetchRecipeTags(data)
     } catch (err: any) {
       setRecipesError(err.message || "Failed to fetch recipes");
     } finally {
