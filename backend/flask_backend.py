@@ -811,6 +811,32 @@ def handle_send_message(data):
 
 
 # Recipe handlers
+@app.route("/view_recipe", methods=["POST"])
+def view_recipe_handler():
+    try:
+        data = request.get_json()
+
+        id = data.get("recipe_id")
+
+        if not id:
+            return jsonify({"error": "no recipe provided"}), 400
+
+        result = supabase.table('recipes').select("views")\
+            .eq("recipe_id", id).single().execute()
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        else:
+            print(result.data["views"])
+
+            result = supabase.table('recipes').update({"views": result.data["views"]+1}) \
+                .eq("recipe_id", id).execute()
+            if "error" in result:
+                return jsonify({"error": result["error"]}), 400
+            return jsonify({"message": "Recipe view incremented"}), 200
+    except Exception as e:
+        print(f"View recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
     try:
@@ -913,7 +939,7 @@ def list_recipes():
         res = (
             supabase.table("recipes")
             # include it (quoted is safest)
-            .select('recipe_id,title,posted,"timestamp",tags', count='exact')
+            .select('recipe_id,title,posted,"timestamp",tags,views', count='exact')
             .eq("posted", True)
             .order("timestamp", desc=True)
             .execute()

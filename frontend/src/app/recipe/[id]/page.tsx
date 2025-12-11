@@ -139,6 +139,18 @@ export default function RecipePage() {
         console.log(recipe);
         setLikeCount(data.like_count ?? 0);
         setIsLiked(Boolean(data.user_has_liked));
+        try {
+          const res = await fetch(`${API_BASE}/view_recipe`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipe_id: recipeId,
+              user_id: user?.id ?? null,
+            }),
+          });
+        } catch (e: any) {
+          setError(e.message || "Failed to increment view")
+        } 
       } catch (e: any) {
         setError(e.message || "Failed to fetch recipe");
       } finally {
