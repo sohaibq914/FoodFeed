@@ -61,7 +61,7 @@ interface RestaurantsContextType {
 }
 
 const RestaurantsContext = createContext<RestaurantsContextType | undefined>(undefined);
-const Endpoint = "http://0.0.0.0:5001";
+const Endpoint = "http://localhost:5001";
 
 export const RestaurantsProvider = ({ children }: { children: React.ReactNode }) => {
     const [items, setItems] = useState<Restaurant[]>([]);
