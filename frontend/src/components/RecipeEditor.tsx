@@ -18,15 +18,33 @@ import {
   Group,
   CloseButton,
   TagsInput,
-  SegmentedControl, 
+  SegmentedControl,
   Text,
-  NumberInput
+  NumberInput,
 } from "@mantine/core";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRouter, forbidden } from "next/navigation";
+import { useRouter } from "next/navigation";
 
-const ingredientDefault = [
-  {name: "", quantity: 0, unit: ""},
+const ingredientDefault = [{ name: "", quantity: 0, unit: "" }];
+
+// ✅ Common preset tags
+const COMMON_TAGS = [
+  "Halal",
+  "Vegetarian",
+  "Vegan",
+  "Kosher",
+  "Gluten-free",
+  "Dairy-free",
+  "Nut-free",
+  "Egg-free",
+  "Soy-free",
+  "High protein",
+  "Low carb",
+  "Low sugar",
+  "Low sodium",
+  "Bulking",
+  "Keto",
+  "Paleo",
 ];
 
 export default function RecipeEditor(params: { recipe_id: string }) {
@@ -39,7 +57,8 @@ export default function RecipeEditor(params: { recipe_id: string }) {
   const [allergens, setAllergens] = useState("");
   const [files, setFiles] = useState<File | null>(null);
   const [previews, setPreviews] = useState<string>();
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]); // custom tags from input
+  const [selectedCommonTags, setSelectedCommonTags] = useState<string[]>([]); // ✅ preset tag checkboxes
   const [prepTime, setPrepTime] = useState(0);
   const [cookTime, setCookTime] = useState(0);
 
@@ -64,25 +83,22 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       setPreviews("");
       return;
     }
-    const urls = URL.createObjectURL(files);
-    setPreviews(urls);
-    return () => URL.revokeObjectURL(urls);
+    const url = URL.createObjectURL(files);
+    setPreviews(url);
+    return () => URL.revokeObjectURL(url);
   }, [files]);
 
   function removeImage() {
-    console.log("pressed");
     setPreviews("");
     setFiles(null);
   }
 
   function addIngredient() {
-    console.log("pressed");
-    setIngredients( [...ingredients, {name: "", quantity: 0, unit: ""}]);
+    setIngredients([...ingredients, { name: "", quantity: 0, unit: "" }]);
   }
 
   function removeIngredient(index: number) {
-    console.log("pressed");
-    setIngredients( ingredients.filter(i => ingredients.indexOf(i) !== index));
+    setIngredients(ingredients.filter((_, i) => i !== index));
   }
 
   // --- API helpers ---
@@ -98,10 +114,7 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         }),
       });
 
-
       const data = await response.json();
-
-      console.log(data)
 
       if (response.ok) {
         setAuthor(data.author_id || "");
@@ -113,15 +126,35 @@ export default function RecipeEditor(params: { recipe_id: string }) {
         setAllergens(data.allergens || "");
         setPreviews(data.image || "");
         setVisibility(data.visibility || "public");
-        setTags(JSON.parse(data.tags) || []);
-        setPrepTime(JSON.parse(data.prep_time))
-        setCookTime(JSON.parse(data.cook_time))
+        setPrepTime(JSON.parse(data.prep_time));
+        setCookTime(JSON.parse(data.cook_time));
 
-        console.log(user)
-        console.log("author id: " + data.author_id)
+        // ✅ Parse tags into preset + custom buckets
+        let parsedTags: string[] = [];
+        try {
+          parsedTags = data.tags ? JSON.parse(data.tags) : [];
+        } catch {
+          parsedTags = [];
+        }
+
+        const commonLower = COMMON_TAGS.map((t) => t.toLowerCase());
+        const preset: string[] = [];
+        const custom: string[] = [];
+
+        for (const tag of parsedTags) {
+          const idx = commonLower.indexOf(String(tag).toLowerCase());
+          if (idx !== -1) {
+            // normalize back to our canonical label
+            preset.push(COMMON_TAGS[idx]);
+          } else {
+            custom.push(tag);
+          }
+        }
+
+        setSelectedCommonTags(Array.from(new Set(preset)));
+        setTags(custom);
 
         if (user === null || data.author_id !== user.id) {
-          console.log("illegal!")
           router.push("/dashboard/");
         }
       } else {
@@ -134,11 +167,32 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     }
   };
 
-  const update_recipe = async (recipe_id: string, author: string, title: string, description: string, 
-    ingredients: {name: string, quantity: number, unit: string}[], instructions: string, nutrition: string, 
-    allergens: string, posting: boolean, image: File | null, visibility: string, prep_time: number, cook_time: number) => {
-
+  const update_recipe = async (
+    recipe_id: string,
+    author: string,
+    title: string,
+    description: string,
+    ingredients: { name: string; quantity: number; unit: string }[],
+    instructions: string,
+    nutrition: string,
+    allergens: string,
+    posting: boolean,
+    image: File | null,
+    visibility: string,
+    prep_time: number,
+    cook_time: number
+  ) => {
     try {
+      // ✅ Combine preset + custom tags before sending
+      const combinedTags = Array.from(
+        new Set(
+          [
+            ...selectedCommonTags,
+            ...tags.map((t) => t.trim()).filter((t) => t.length > 0),
+          ].map((t) => t.toLowerCase())
+        )
+      );
+
       const fd = new FormData();
       fd.append("recipe_id", recipe_id);
       fd.append("author", author);
@@ -151,19 +205,19 @@ export default function RecipeEditor(params: { recipe_id: string }) {
       fd.append("posting", String(posting));
       fd.append("visibility", visibility);
       if (image) {
-        fd.append("image", image)
+        fd.append("image", image);
       }
-      fd.append("tags", JSON.stringify(tags).toLowerCase())
-      fd.append("prep_time", String(prepTime))
-      fd.append("cook_time", String(cookTime))
+      fd.append("tags", JSON.stringify(combinedTags));
+      fd.append("prep_time", String(prep_time));
+      fd.append("cook_time", String(cook_time));
 
-      const response = await fetch(`http://localhost:5001/update_recipe`, { method: "POST", body: fd });
+      const response = await fetch(
+        `http://localhost:5001/update_recipe`,
+        { method: "POST", body: fd }
+      );
       const data = await response.json();
       if (!response.ok) throw new Error(data?.error || "Failed to update");
-      else 
-        // ✅ Reload page after success
-        router.push("/edit-recipe/" + data.recipe_id);
-
+      else router.push("/edit-recipe/" + data.recipe_id);
     } catch (err) {
       console.error(err);
       setError("Network error while updating recipe");
@@ -175,15 +229,15 @@ export default function RecipeEditor(params: { recipe_id: string }) {
     setLoading(true);
     setError("");
 
-    console.log("Posting: " + posting);
-
     if (!user) {
       setError("User not logged in");
       setLoading(false);
       return;
     }
 
-    const confirmMsg = posting ? "Are you sure you want to post this recipe to your profile?" : "Save this recipe as a draft?";
+    const confirmMsg = posting
+      ? "Are you sure you want to post this recipe to your profile?"
+      : "Save this recipe as a draft?";
     const confirmed = confirm(confirmMsg);
     if (!confirmed) {
       setLoading(false);
@@ -227,10 +281,28 @@ export default function RecipeEditor(params: { recipe_id: string }) {
 
         <form onSubmit={handleSubmit}>
           <Stack gap="sm">
-            <TextInput label="Title" placeholder="Your recipe's title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required size="md" />
+            <TextInput
+              label="Title"
+              placeholder="Your recipe's title"
+              value={title}
+              onChange={(e) => setTitle(e.currentTarget.value)}
+              required
+              size="md"
+            />
 
-            <Textarea label="Description" placeholder="Your recipe's description" autosize minRows={2} maxRows={3} value={description} onChange={(e) => setDesc(e.currentTarget.value)} required size="md" />
-            
+            <Textarea
+              label="Description"
+              placeholder="Your recipe's description"
+              autosize
+              minRows={2}
+              maxRows={3}
+              value={description}
+              onChange={(e) => setDesc(e.currentTarget.value)}
+              required
+              size="md"
+            />
+
+            {/* Ingredients */}
             <Stack gap="sm" align="flex-start">
               <Group justify="flex-start" gap="xs">
                 <Text size="md" fw={500}>
@@ -242,68 +314,185 @@ export default function RecipeEditor(params: { recipe_id: string }) {
               </Group>
               <Stack justify="space-between" align="stretch">
                 {ingredients.map((ingredient, index) => (
-                  <Group key = {index} justify="flex-start">
-                    <TextInput placeholder="Ingredient name" value={ingredient.name} required size="md"
-                    onChange={(e) => setIngredients(
-                      ingredients.map((ingredient, subIndex) => {
-                        if (index === subIndex) {
-                          return { ...ingredient, name: e.currentTarget.value };
-                        } else {
-                          return ingredient;
-                        }
-                      })
-                    )}/>          
-                    <NumberInput required size="md" placeholder="Quantity" allowNegative={false} decimalScale={3} hideControls value={ingredient.quantity}
-                    onChange={(e) => setIngredients(
-                      ingredients.map((ingredient, subIndex) => {
-                        if (index === subIndex) {  
-                          return { ...ingredient, quantity: Number(e)};
-                        } else {
-                          return ingredient;
-                        }
-                      })
-                    )}/>
-                    <TextInput placeholder="Unit" value={ingredient.unit} required size="md" 
-                    onChange={(e) => setIngredients(
-                      ingredients.map((ingredient, subIndex) => {
-                        if (index === subIndex) {
-                          return { ...ingredient, unit: e.currentTarget.value };
-                        } else {
-                          return ingredient;
-                        }
-                      })
-                    )}/>
-                    <CloseButton size="md" onClick={() => removeIngredient(index)} >
-                    </CloseButton>
+                  <Group key={index} justify="flex-start">
+                    <TextInput
+                      placeholder="Ingredient name"
+                      value={ingredient.name}
+                      required
+                      size="md"
+                      onChange={(e) =>
+                        setIngredients(
+                          ingredients.map((ing, subIndex) =>
+                            index === subIndex
+                              ? { ...ing, name: e.currentTarget.value }
+                              : ing
+                          )
+                        )
+                      }
+                    />
+                    <NumberInput
+                      required
+                      size="md"
+                      placeholder="Quantity"
+                      allowNegative={false}
+                      decimalScale={3}
+                      hideControls
+                      value={ingredient.quantity}
+                      onChange={(value) =>
+                        setIngredients(
+                          ingredients.map((ing, subIndex) =>
+                            index === subIndex
+                              ? { ...ing, quantity: Number(value) }
+                              : ing
+                          )
+                        )
+                      }
+                    />
+                    <TextInput
+                      placeholder="Unit"
+                      value={ingredient.unit}
+                      required
+                      size="md"
+                      onChange={(e) =>
+                        setIngredients(
+                          ingredients.map((ing, subIndex) =>
+                            index === subIndex
+                              ? { ...ing, unit: e.currentTarget.value }
+                              : ing
+                          )
+                        )
+                      }
+                    />
+                    <CloseButton
+                      size="md"
+                      onClick={() => removeIngredient(index)}
+                    />
                   </Group>
                 ))}
               </Stack>
               <Group justify="flex-start">
-                <Button size="md" onClick={() => addIngredient()} >
+                <Button size="md" onClick={addIngredient}>
                   Add ingredient
                 </Button>
               </Group>
             </Stack>
-            
-            <Textarea label="Instructions" placeholder="Your recipe's directions" autosize minRows={4} maxRows={10} value={instructions} onChange={(e) => setInstructions(e.currentTarget.value)} required size="md" />
+
+            <Textarea
+              label="Instructions"
+              placeholder="Your recipe's directions"
+              autosize
+              minRows={4}
+              maxRows={10}
+              value={instructions}
+              onChange={(e) => setInstructions(e.currentTarget.value)}
+              required
+              size="md"
+            />
 
             <Group justify="space-between" grow>
-              <NumberInput label="Preparation Time" placeholder="in minutes" value={prepTime} onChange={(e) => setPrepTime(Number(e))} size="md" suffix=" minutes" allowNegative={false} allowDecimal={false}/>
-              <NumberInput label="Cooking Time" placeholder="in minutes" value={cookTime} onChange={(e) => setCookTime(Number(e))} size="md" suffix=" minutes" allowNegative={false} allowDecimal={false}/>
+              <NumberInput
+                label="Preparation Time"
+                placeholder="in minutes"
+                value={prepTime}
+                onChange={(value) => setPrepTime(Number(value))}
+                size="md"
+                suffix=" minutes"
+                allowNegative={false}
+                allowDecimal={false}
+              />
+              <NumberInput
+                label="Cooking Time"
+                placeholder="in minutes"
+                value={cookTime}
+                onChange={(value) => setCookTime(Number(value))}
+                size="md"
+                suffix=" minutes"
+                allowNegative={false}
+                allowDecimal={false}
+              />
             </Group>
 
-            <Textarea label="Nutrition Facts" placeholder="Your recipe's nutritional information" autosize minRows={2} maxRows={6} value={nutrition} onChange={(e) => setNutrition(e.currentTarget.value)} size="md" />
+            <Textarea
+              label="Nutrition Facts"
+              placeholder="Your recipe's nutritional information"
+              autosize
+              minRows={2}
+              maxRows={6}
+              value={nutrition}
+              onChange={(e) => setNutrition(e.currentTarget.value)}
+              size="md"
+            />
 
-            <Textarea label="Allergens" placeholder="Your recipe's allergens" value={allergens} autosize minRows={2} maxRows={6} onChange={(e) => setAllergens(e.currentTarget.value)} size="md" />
-            
-            <TagsInput label="Tags" placeholder="Type a tag and press enter" value={tags} onChange={setTags} size="md" />
+            <Textarea
+              label="Allergens"
+              placeholder="Your recipe's allergens"
+              value={allergens}
+              autosize
+              minRows={2}
+              maxRows={6}
+              onChange={(e) => setAllergens(e.currentTarget.value)}
+              size="md"
+            />
 
-            <FileInput label="Add an Image" placeholder="Click to upload an image" accept="image/*" value={files} onChange={setFiles} clearable />
-        
+            {/* ✅ Tags: preset checklist + freeform input */}
+            <Stack gap="xs">
+              <Text size="sm" fw={500}>
+                Tags
+              </Text>
+              <Text size="xs" c="dimmed">
+                Select any common tags that apply, then add your own below.
+              </Text>
+
+              <Group gap="xs" justify="flex-start" wrap="wrap">
+                {COMMON_TAGS.map((tag) => (
+                  <Checkbox
+                    key={tag}
+                    label={tag}
+                    checked={selectedCommonTags.includes(tag)}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked;
+                      setSelectedCommonTags((prev) =>
+                        checked
+                          ? [...prev, tag]
+                          : prev.filter((t) => t !== tag)
+                      );
+                    }}
+                  />
+                ))}
+              </Group>
+
+              <TagsInput
+                placeholder="Type a tag and press enter"
+                value={tags}
+                onChange={setTags}
+                size="md"
+              />
+            </Stack>
+
+            <FileInput
+              label="Add an Image"
+              placeholder="Click to upload an image"
+              accept="image/*"
+              value={files}
+              onChange={setFiles}
+              clearable
+            />
+
             {previews && (
               <Group>
-                <Image src={previews} alt="preview" radius="sm" w="auto" h={140} fit="contain" />
-                <CloseButton type="button" size="sm" onClick={() => removeImage()}></CloseButton>
+                <Image
+                  src={previews}
+                  alt="preview"
+                  radius="sm"
+                  w="auto"
+                  h={140}
+                  fit="contain"
+                />
+                <CloseButton
+                  type="button"
+                  size="sm"
+                  onClick={removeImage}
+                />
               </Group>
             )}
 
@@ -314,7 +503,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
               </Text>
               <SegmentedControl
                 value={visibility}
-                onChange={(value) => setVisibility(value as "public" | "private")}
+                onChange={(value) =>
+                  setVisibility(value as "public" | "private")
+                }
                 data={[
                   { label: "🌍 Public - Everyone can see", value: "public" },
                   { label: "🔒 Private - Followers only", value: "private" },
@@ -323,7 +514,9 @@ export default function RecipeEditor(params: { recipe_id: string }) {
                 color="blue"
               />
               <Text size="xs" c="dimmed" mt={4}>
-                {visibility === "public" ? "This recipe will be visible to everyone" : "Only your followers can view this recipe"}
+                {visibility === "public"
+                  ? "This recipe will be visible to everyone"
+                  : "Only your followers can view this recipe"}
               </Text>
             </div>
 
@@ -334,10 +527,20 @@ export default function RecipeEditor(params: { recipe_id: string }) {
             )}
 
             <Flex justify="center" gap="xl" align="center">
-              <Button type="submit" loading={loading} size="md" onClick={() => setPosting(false)}>
+              <Button
+                type="submit"
+                loading={loading}
+                size="md"
+                onClick={() => setPosting(false)}
+              >
                 {loading ? "Loading..." : "Save Draft"}
               </Button>
-              <Button type="submit" loading={loading} size="md" onClick={() => setPosting(true)}>
+              <Button
+                type="submit"
+                loading={loading}
+                size="md"
+                onClick={() => setPosting(true)}
+              >
                 {loading ? "Loading..." : "Post"}
               </Button>
             </Flex>

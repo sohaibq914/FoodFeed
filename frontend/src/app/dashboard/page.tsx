@@ -48,6 +48,7 @@ type RecipeSummary = {
   user_has_liked?: boolean;
   user_has_disliked?: boolean;
   tags?: string;
+  views: number
 };
 
 type FeedRecipe = {
@@ -94,7 +95,7 @@ export default function Dashboard() {
   const [feedError, setFeedError] = useState<string | null>(null);
 
   const [sortOption, setSortOption] = useState<
-    "newest" | "oldest" | "mostLiked"
+    "newest" | "oldest" | "mostLiked" | "popular"
   >("newest");
 
   const getTime = (t?: string) => (t ? new Date(t).getTime() : 0);
@@ -117,6 +118,11 @@ export default function Dashboard() {
         (a, b) =>
           new Date(a.timestamp || 0).getTime() -
           new Date(b.timestamp || 0).getTime()
+      );
+    }
+    if (sortOption === "popular") {
+      return arr.sort(
+        (a, b) => (b.views || 0) - (a.views || 0)
       );
     }
     return arr.sort(
@@ -298,7 +304,7 @@ export default function Dashboard() {
           }
         })
       );
-
+      console.log("withLikes")
       console.log(withLikes)
       setRecipes(withLikes);
       fetchRecipeTags(data)
@@ -624,6 +630,8 @@ export default function Dashboard() {
                       ? "Most Liked"
                       : sortOption === "oldest"
                       ? "Oldest"
+                      : sortOption === "popular"
+                      ? "Trending"
                       : "Newest"}
                   </Button>
                 </Menu.Target>
@@ -639,6 +647,10 @@ export default function Dashboard() {
                   <Menu.Item onClick={() => setSortOption("mostLiked")}>
                     <IconHeartFilled size={14} style={{ marginRight: 6 }} />
                     Most Liked
+                  </Menu.Item>
+                  <Menu.Item onClick={() => setSortOption("popular")}>
+                    <IconHeartFilled size={14} style={{ marginRight: 6 }} />
+                    Trending
                   </Menu.Item>
                 </Menu.Dropdown>
               </Menu>

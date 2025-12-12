@@ -22,6 +22,7 @@ from email_service import send_password_reset_email, send_verification_email, se
 from verification_handler import create_verification_code, validate_verification_code, mark_code_as_used
 from mfa_handler import create_mfa_code, validate_mfa_code, mark_mfa_code_as_used, enable_mfa, disable_mfa, check_mfa_enabled
 import math
+import json
 load_dotenv()
 
 app = Flask(__name__)
@@ -811,6 +812,61 @@ def handle_send_message(data):
 
 
 # Recipe handlers
+@app.route("/recipe_by_ingredient", methods=["POST"])
+def handle_recipe_by_ingredient():
+    try:
+        limit = 5
+        data = request.get_json()
+        search_ingredient = data.get("ingredient")
+        print(search_ingredient)
+        res = supabase.table('recipes').select(
+            "*").neq('ingredients', 'null').eq("posted", True).order('views', desc=True).execute()
+
+        recipes = []
+        for recipe in res.data:
+            #if (recipe.ingredients)
+            parsed_recipe = json.loads(recipe['ingredients'])
+            print(parsed_recipe)
+            added = False
+            for ingredient in parsed_recipe:
+                if (not added and (ingredient.get('name').lower() == search_ingredient.lower())):
+                    print(ingredient.get('name'))
+                    added = True
+                    recipes.append(recipe)
+
+        print(recipes)
+
+        return jsonify({"recipes": recipes}), 200
+    except Exception as e:
+        print(f"List recipes exception: {str(e)}")
+        return jsonify({"error": "Failed to fetch recipes"}), 500
+
+@app.route("/view_recipe", methods=["POST"])
+def view_recipe_handler():
+    try:
+        data = request.get_json()
+
+        id = data.get("recipe_id")
+
+        if not id:
+            return jsonify({"error": "no recipe provided"}), 400
+
+        result = supabase.table('recipes').select("views")\
+            .eq("recipe_id", id).single().execute()
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        else:
+            print(result.data["views"])
+
+            result = supabase.table('recipes').update({"views": result.data["views"]+1}) \
+                .eq("recipe_id", id).execute()
+            if "error" in result:
+                return jsonify({"error": result["error"]}), 400
+            return jsonify({"message": "Recipe view incremented"}), 200
+    except Exception as e:
+        print(f"View recipe exception: {str(e)}")
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 @app.route("/update_recipe", methods=["POST"])
 def update_recipe_handler():
     try:
@@ -913,7 +969,7 @@ def list_recipes():
         res = (
             supabase.table("recipes")
             # include it (quoted is safest)
-            .select('recipe_id,title,posted,"timestamp",tags', count='exact')
+            .select('recipe_id,title,posted,"timestamp",tags,views', count='exact')
             .eq("posted", True)
             .order("timestamp", desc=True)
             .execute()
