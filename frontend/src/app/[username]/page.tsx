@@ -1,12 +1,53 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AppShell, Container, Title, Card, Text, SimpleGrid, Button, Center, Loader, Group, Modal, Avatar, FileInput, Alert, Stack, Badge, Textarea } from "@mantine/core";
+import {
+  AppShell,
+  Container,
+  Title,
+  Card,
+  Text,
+  SimpleGrid,
+  Button,
+  Center,
+  Loader,
+  Group,
+  Modal,
+  Avatar,
+  FileInput,
+  Alert,
+  Stack,
+  Badge,
+  Textarea,
+} from "@mantine/core";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import CommonHeader from "@/components/Header";
 import FollowersModal from "@/components/FollowersModal";
-import { IconPencil, IconTrash, IconArchive, IconCamera, IconUpload, IconUser, IconUserPlus, IconUserMinus, IconUsers, IconUserX, IconUserCheck, IconLock, IconCheck, IconX, IconBrandTwitter, IconBrandInstagram, IconBrandFacebook, IconBrandLinkedin, IconBrandYoutube, IconBrandTiktok, IconBrandGithub, IconWorld } from "@tabler/icons-react";
+import {
+  IconPencil,
+  IconTrash,
+  IconArchive,
+  IconCamera,
+  IconUpload,
+  IconUser,
+  IconUserPlus,
+  IconUserMinus,
+  IconUsers,
+  IconUserX,
+  IconUserCheck,
+  IconLock,
+  IconCheck,
+  IconX,
+  IconBrandTwitter,
+  IconBrandInstagram,
+  IconBrandFacebook,
+  IconBrandLinkedin,
+  IconBrandYoutube,
+  IconBrandTiktok,
+  IconBrandGithub,
+  IconWorld,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 
@@ -36,10 +77,14 @@ export default function ProfilePage() {
   const router = useRouter();
   // Delete modal
   const [modalOpen, setModalOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<RecipeSummary | null>(
+    null
+  );
 
   // Profile picture upload states
-  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
+    null
+  );
   const [uploadingPicture, setUploadingPicture] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<any>(null);
@@ -59,9 +104,9 @@ export default function ProfilePage() {
   const [blockLoading, setBlockLoading] = useState(false);
 
   // Description states
-  const [description, setDescription] = useState<string>('');
+  const [description, setDescription] = useState<string>("");
   const [editingDescription, setEditingDescription] = useState(false);
-  const [tempDescription, setTempDescription] = useState<string>('');
+  const [tempDescription, setTempDescription] = useState<string>("");
   const [savingDescription, setSavingDescription] = useState(false);
   const [descriptionError, setDescriptionError] = useState<string | null>(null);
 
@@ -77,11 +122,18 @@ export default function ProfilePage() {
     }
 
     if (isOwner) {
-      return user?.profile_picture_url || profileUser?.profile_picture_url || null;
+      return (
+        user?.profile_picture_url || profileUser?.profile_picture_url || null
+      );
     }
 
     return profileUser?.profile_picture_url || null;
-  }, [isOwner, user?.profile_picture_url, profileUser?.profile_picture_url, profilePictureLoading]);
+  }, [
+    isOwner,
+    user?.profile_picture_url,
+    profileUser?.profile_picture_url,
+    profilePictureLoading,
+  ]);
 
   // -- API helpers --
   const fetchRecipes = async (mode: ViewMode) => {
@@ -100,26 +152,36 @@ export default function ProfilePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to load likes");
 
         // data.likes: [{ recipe_id, title, author_id, posted }]
-        const liked: RecipeSummary[] = (data.likes || []).map((r: RecipeSummary) => ({
-          recipe_id: r.recipe_id,
-          title: r.title,
-          posted: r.posted ?? true,
-        }));
+        const liked: RecipeSummary[] = (data.likes || []).map(
+          (r: RecipeSummary) => ({
+            recipe_id: r.recipe_id,
+            title: r.title,
+            posted: r.posted ?? true,
+          })
+        );
         setRecipes(liked);
         return;
       }
 
       // posted/drafts
       const postedQuery = mode === "posted" ? "true" : "false";
-      const res = await fetch(`http://localhost:5001/users/${encodeURIComponent(profileUsername)}/recipes?posted=${postedQuery}`, {
-        headers: {
-          "X-User-ID": user?.id || "",
-        },
-      });
+      const res = await fetch(
+        `http://localhost:5001/users/${encodeURIComponent(
+          profileUsername
+        )}/recipes?posted=${postedQuery}`,
+        {
+          headers: {
+            "X-User-ID": user?.id || "",
+          },
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to load recipes");
 
-      const filtered: RecipeSummary[] = (data.recipes || []).filter((r: RecipeSummary) => (mode === "posted" ? r.posted !== false : r.posted === false));
+      const filtered: RecipeSummary[] = (data.recipes || []).filter(
+        (r: RecipeSummary) =>
+          mode === "posted" ? r.posted !== false : r.posted === false
+      );
       setRecipes(filtered);
     } catch (e: any) {
       // if (typeof e === "Error") {
@@ -163,9 +225,14 @@ export default function ProfilePage() {
 
   const fetchProfileUser = async () => {
     try {
-      const response = await fetch(`http://localhost:5001/user/by-username/${encodeURIComponent(profileUsername)}`, {
-        headers: user?.id ? { 'X-User-ID': user.id } : {},
-      });
+      const response = await fetch(
+        `http://localhost:5001/user/by-username/${encodeURIComponent(
+          profileUsername
+        )}`,
+        {
+          headers: user?.id ? { "X-User-ID": user.id } : {},
+        }
+      );
       const data = await response.json();
 
       if (response.ok) {
@@ -177,7 +244,7 @@ export default function ProfilePage() {
         }
 
         setIsPrivateProfile(false);
-        setDescription(data.user?.description || '');
+        setDescription(data.user?.description || "");
 
         // Fetch follower/following counts and follow status
         if (data.user?.id) {
@@ -185,7 +252,10 @@ export default function ProfilePage() {
           fetchSocialLinks(data.user.id);
         }
       } else {
-        setProfileUser({ username: profileUsername, profile_picture_url: null });
+        setProfileUser({
+          username: profileUsername,
+          profile_picture_url: null,
+        });
       }
     } catch (error) {
       console.error("Failed to fetch profile user:", error);
@@ -195,7 +265,9 @@ export default function ProfilePage() {
 
   const fetchSocialLinks = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:5001/user/${userId}/social-links`);
+      const response = await fetch(
+        `http://localhost:5001/user/${userId}/social-links`
+      );
       const data = await response.json();
 
       if (response.ok) {
@@ -208,9 +280,12 @@ export default function ProfilePage() {
 
   const fetchFollowData = async (userId: string) => {
     try {
-      const profileRes = await fetch(`http://localhost:5001/user/${userId}/profile`, {
-        headers: user?.id ? { 'X-User-ID': user.id } : {},
-      });
+      const profileRes = await fetch(
+        `http://localhost:5001/user/${userId}/profile`,
+        {
+          headers: user?.id ? { "X-User-ID": user.id } : {},
+        }
+      );
       const profileData = await profileRes.json();
 
       if (profileRes.ok && profileData.user) {
@@ -226,7 +301,9 @@ export default function ProfilePage() {
 
       // Check if current user is following this profile (only if logged in and not viewing own profile)
       if (user?.id && !isOwner) {
-        const followRes = await fetch(`http://localhost:5001/users/${userId}/is-following?follower_id=${user.id}`);
+        const followRes = await fetch(
+          `http://localhost:5001/users/${userId}/is-following?follower_id=${user.id}`
+        );
         const followData = await followRes.json();
 
         if (followRes.ok) {
@@ -234,7 +311,9 @@ export default function ProfilePage() {
         }
 
         // Check if there's a block relationship
-        const blockRes = await fetch(`http://localhost:5001/users/${userId}/is-blocked?current_user_id=${user.id}`);
+        const blockRes = await fetch(
+          `http://localhost:5001/users/${userId}/is-blocked?current_user_id=${user.id}`
+        );
         const blockData = await blockRes.json();
 
         if (blockRes.ok) {
@@ -253,14 +332,17 @@ export default function ProfilePage() {
     setFollowLoading(true);
     try {
       const endpoint = isFollowing ? "unfollow" : "follow";
-      const response = await fetch(`http://localhost:5001/users/${profileUser.id}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user.id,
-        },
-        body: JSON.stringify({ user_id: user.id }),
-      });
+      const response = await fetch(
+        `http://localhost:5001/users/${profileUser.id}/${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+          body: JSON.stringify({ user_id: user.id }),
+        }
+      );
 
       const data = await response.json();
 
@@ -294,14 +376,17 @@ export default function ProfilePage() {
     setBlockLoading(true);
     try {
       const endpoint = youBlockedThem ? "unblock" : "block";
-      const response = await fetch(`http://localhost:5001/users/${profileUser.id}/${endpoint}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user.id,
-        },
-        body: JSON.stringify({ user_id: user.id }),
-      });
+      const response = await fetch(
+        `http://localhost:5001/users/${profileUser.id}/${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+          body: JSON.stringify({ user_id: user.id }),
+        }
+      );
 
       const data = await response.json();
 
@@ -339,7 +424,9 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to delete recipe");
 
-      setRecipes((prev) => prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId));
+      setRecipes((prev) =>
+        prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId)
+      );
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to delete recipe");
@@ -348,18 +435,23 @@ export default function ProfilePage() {
 
   const handleDraft = async (recipeId: string) => {
     try {
-      const res = await fetch(`http://localhost:5001/recipes/${recipeId}/draft`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-ID": user?.id || "",
-        },
-      });
+      const res = await fetch(
+        `http://localhost:5001/recipes/${recipeId}/draft`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user?.id || "",
+          },
+        }
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to draft recipe");
 
       // Remove from current list to reflect state change
-      setRecipes((prev) => prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId));
+      setRecipes((prev) =>
+        prev.filter((r: RecipeSummary) => r.recipe_id !== recipeId)
+      );
     } catch (e: any) {
       console.error(e);
       setError(e.message || "Failed to draft recipe");
@@ -387,7 +479,9 @@ export default function ProfilePage() {
     const { error, data } = await uploadProfilePicture(profilePictureFile);
 
     if (error) {
-      setUploadError(error.error || error.message || "Failed to upload profile picture");
+      setUploadError(
+        error.error || error.message || "Failed to upload profile picture"
+      );
     } else {
       setProfilePictureFile(null);
     }
@@ -403,7 +497,7 @@ export default function ProfilePage() {
 
   const handleCancelEditDescription = () => {
     setEditingDescription(false);
-    setTempDescription('');
+    setTempDescription("");
     setDescriptionError(null);
   };
 
@@ -414,33 +508,43 @@ export default function ProfilePage() {
     setDescriptionError(null);
 
     try {
-      const response = await fetch(`http://localhost:5001/user/${user.id}/description`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-User-ID': user.id,
-        },
-        body: JSON.stringify({ description: tempDescription }),
-      });
+      const response = await fetch(
+        `http://localhost:5001/user/${user.id}/description`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": user.id,
+          },
+          body: JSON.stringify({ description: tempDescription }),
+        }
+      );
 
       const data = await response.json();
 
       if (response.ok) {
         setDescription(tempDescription);
         setEditingDescription(false);
-        setTempDescription('');
+        setTempDescription("");
       } else {
-        setDescriptionError(data.error || 'Failed to update description');
+        setDescriptionError(data.error || "Failed to update description");
       }
     } catch (error) {
-      console.error('Failed to update description:', error);
-      setDescriptionError('Failed to update description');
+      console.error("Failed to update description:", error);
+      setDescriptionError("Failed to update description");
     } finally {
       setSavingDescription(false);
     }
   };
 
-  const headerTitle = view === "posted" ? (isOwner ? "My Recipes" : `${profileUsername}'s Recipes`) : view === "drafts" ? "Drafts" : "Likes";
+  const headerTitle =
+    view === "posted"
+      ? isOwner
+        ? "My Recipes"
+        : `${profileUsername}'s Recipes`
+      : view === "drafts"
+      ? "Drafts"
+      : "Likes";
 
   if (authLoading) {
     return (
@@ -476,7 +580,9 @@ export default function ProfilePage() {
               mb="xl"
             >
               <Text size="sm">
-                This profile is private. Only <strong>@{profileUsername}</strong> can view their profile information.
+                This profile is private. Only{" "}
+                <strong>@{profileUsername}</strong> can view their profile
+                information.
               </Text>
             </Alert>
           )}
@@ -484,16 +590,42 @@ export default function ProfilePage() {
           {/* Profile Header */}
           <Group align="start" gap="xl" mb="xl">
             <div>
-              <Avatar src={profilePictureLoading ? undefined : profilePictureUrl || undefined} size={175} radius="xl" color="blue">
-                {profilePictureLoading ? <Loader size={30} /> : <IconUser size={60} />}
+              <Avatar
+                src={
+                  profilePictureLoading
+                    ? undefined
+                    : profilePictureUrl || undefined
+                }
+                size={175}
+                radius="xl"
+                color="blue"
+              >
+                {profilePictureLoading ? (
+                  <Loader size={30} />
+                ) : (
+                  <IconUser size={60} />
+                )}
               </Avatar>
 
               {isOwner && (
                 <Stack gap="xs" mt="md" style={{ maxWidth: 200 }}>
-                  <FileInput placeholder="Choose profile picture" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" value={profilePictureFile} onChange={setProfilePictureFile} leftSection={<IconCamera size={16} />} size="xs" />
+                  <FileInput
+                    placeholder="Choose profile picture"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                    value={profilePictureFile}
+                    onChange={setProfilePictureFile}
+                    leftSection={<IconCamera size={16} />}
+                    size="xs"
+                  />
 
                   {profilePictureFile && (
-                    <Button size="xs" leftSection={<IconUpload size={14} />} onClick={handleProfilePictureUpload} loading={uploadingPicture} disabled={uploadingPicture}>
+                    <Button
+                      size="xs"
+                      leftSection={<IconUpload size={14} />}
+                      onClick={handleProfilePictureUpload}
+                      loading={uploadingPicture}
+                      disabled={uploadingPicture}
+                    >
                       Upload
                     </Button>
                   )}
@@ -511,155 +643,207 @@ export default function ProfilePage() {
               <Title order={1} mb="sm">
                 @{profileUsername}
               </Title>
-              
+
               {(!isPrivateProfile || isOwner) && (
                 <>
-              {editingDescription ? (
-                <Card withBorder p="md" mb="md" style={{ backgroundColor: '#f8f9fa' }}>
-                  <Stack gap="xs">
-                    <Text size="sm" fw={500}>Edit Description</Text>
-                    <Textarea
-                      placeholder="Add a description to your profile..."
-                      value={tempDescription}
-                      onChange={(e) => setTempDescription(e.currentTarget.value)}
-                      minRows={3}
-                      maxRows={6}
-                      maxLength={500}
-                      error={descriptionError}
-                    />
-                    <Text size="xs" c="dimmed" ta="right">
-                      {tempDescription.length}/500
-                    </Text>
-                    <Group gap="xs">
-                      <Button
-                        size="sm"
-                        leftSection={<IconCheck size={16} />}
-                        onClick={handleSaveDescription}
-                        loading={savingDescription}
-                        disabled={savingDescription}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="light"
-                        color="gray"
-                        leftSection={<IconX size={16} />}
-                        onClick={handleCancelEditDescription}
-                        disabled={savingDescription}
-                      >
-                        Cancel
-                      </Button>
+                  {editingDescription ? (
+                    <Card
+                      withBorder
+                      p="md"
+                      mb="md"
+                      style={{ backgroundColor: "#f8f9fa" }}
+                    >
+                      <Stack gap="xs">
+                        <Text size="sm" fw={500}>
+                          Edit Description
+                        </Text>
+                        <Textarea
+                          placeholder="Add a description to your profile..."
+                          value={tempDescription}
+                          onChange={(e) =>
+                            setTempDescription(e.currentTarget.value)
+                          }
+                          minRows={3}
+                          maxRows={6}
+                          maxLength={500}
+                          error={descriptionError}
+                        />
+                        <Text size="xs" c="dimmed" ta="right">
+                          {tempDescription.length}/500
+                        </Text>
+                        <Group gap="xs">
+                          <Button
+                            size="sm"
+                            leftSection={<IconCheck size={16} />}
+                            onClick={handleSaveDescription}
+                            loading={savingDescription}
+                            disabled={savingDescription}
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="gray"
+                            leftSection={<IconX size={16} />}
+                            onClick={handleCancelEditDescription}
+                            disabled={savingDescription}
+                          >
+                            Cancel
+                          </Button>
+                        </Group>
+                      </Stack>
+                    </Card>
+                  ) : (
+                    description && (
+                      <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                        {description}
+                      </Text>
+                    )
+                  )}
+
+                  <Text c="dimmed" mb="md" mt="md" size="sm">
+                    {isOwner ? "This is your profile" : "Public view."}
+                  </Text>
+
+                  {/* Social Links */}
+                  {socialLinks.length > 0 && (
+                    <Group gap="xs" mb="md">
+                      {socialLinks.map((link: any) => {
+                        const platformIcons: Record<string, any> = {
+                          twitter: IconBrandTwitter,
+                          instagram: IconBrandInstagram,
+                          facebook: IconBrandFacebook,
+                          linkedin: IconBrandLinkedin,
+                          youtube: IconBrandYoutube,
+                          tiktok: IconBrandTiktok,
+                          github: IconBrandGithub,
+                          website: IconWorld,
+                        };
+
+                        const platformColors: Record<string, string> = {
+                          twitter: "blue",
+                          instagram: "pink",
+                          facebook: "blue",
+                          linkedin: "blue",
+                          youtube: "red",
+                          tiktok: "gray",
+                          github: "gray",
+                          website: "grape",
+                        };
+
+                        const Icon = platformIcons[link.platform] || IconWorld;
+
+                        return (
+                          <Button
+                            key={link.id}
+                            component="a"
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            variant="light"
+                            color={platformColors[link.platform] || "blue"}
+                            size="sm"
+                            leftSection={<Icon size={18} />}
+                          >
+                            {link.platform.charAt(0).toUpperCase() +
+                              link.platform.slice(1)}
+                          </Button>
+                        );
+                      })}
                     </Group>
-                  </Stack>
-                </Card>
-              ) : (
-                description && (
-                  
-                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
-                      {description}
-                    </Text>
-                  
-                )
-              )}
+                  )}
 
-              <Text c="dimmed" mb="md" mt="md" size="sm">
-                {isOwner ? "This is your profile" : "Public view."}
-              </Text>
-
-              {/* Social Links */}
-              {socialLinks.length > 0 && (
-                <Group gap="xs" mb="md">
-                  {socialLinks.map((link: any) => {
-                    const platformIcons: Record<string, any> = {
-                      twitter: IconBrandTwitter,
-                      instagram: IconBrandInstagram,
-                      facebook: IconBrandFacebook,
-                      linkedin: IconBrandLinkedin,
-                      youtube: IconBrandYoutube,
-                      tiktok: IconBrandTiktok,
-                      github: IconBrandGithub,
-                      website: IconWorld,
-                    };
-                    
-                    const platformColors: Record<string, string> = {
-                      twitter: 'blue',
-                      instagram: 'pink',
-                      facebook: 'blue',
-                      linkedin: 'blue',
-                      youtube: 'red',
-                      tiktok: 'gray',
-                      github: 'gray',
-                      website: 'grape',
-                    };
-
-                    const Icon = platformIcons[link.platform] || IconWorld;
-                    
-                    return (
-                      <Button
-                        key={link.id}
-                        component="a"
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="light"
-                        color={platformColors[link.platform] || 'blue'}
-                        size="sm"
-                        leftSection={<Icon size={18} />}
-                      >
-                        {link.platform.charAt(0).toUpperCase() + link.platform.slice(1)}
-                      </Button>
-                    );
-                  })}
-                </Group>
-              )}
-
-              {/* Follower/Following Stats */}
-              <Group gap="md" mb="md">
-                <Button variant="subtle" size="compact-sm" onClick={() => setFollowersModalOpen(true)} leftSection={<IconUsers size={16} />}>
-                  <Text fw={600}>{followerCount}</Text>
-                  <Text ml={4}>Followers</Text>
-                </Button>
-                <Button variant="subtle" size="compact-sm" onClick={() => setFollowingModalOpen(true)} leftSection={<IconUsers size={16} />}>
-                  <Text fw={600}>{followingCount}</Text>
-                  <Text ml={4}>Following</Text>
-                </Button>
-              </Group>
-
-              {/* Action Buttons */}
-              <Group gap="sm">
-                {isOwner ? (
-                  <>
-                    <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={handleEditDescription}>
-                      {description ? 'Edit Description' : 'Add Description'}
+                  {/* Follower/Following Stats */}
+                  <Group gap="md" mb="md">
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      onClick={() => setFollowersModalOpen(true)}
+                      leftSection={<IconUsers size={16} />}
+                    >
+                      <Text fw={600}>{followerCount}</Text>
+                      <Text ml={4}>Followers</Text>
                     </Button>
-                    {/* <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      onClick={() => setFollowingModalOpen(true)}
+                      leftSection={<IconUsers size={16} />}
+                    >
+                      <Text fw={600}>{followingCount}</Text>
+                      <Text ml={4}>Following</Text>
+                    </Button>
+                  </Group>
+
+                  {/* Action Buttons */}
+                  <Group gap="sm">
+                    {isOwner ? (
+                      <>
+                        <Button
+                          leftSection={<IconPencil size={16} />}
+                          variant="light"
+                          color="blue"
+                          radius="md"
+                          onClick={handleEditDescription}
+                        >
+                          {description ? "Edit Description" : "Add Description"}
+                        </Button>
+                        {/* <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
                       Edit Profile
                     </Button> */}
-                  </>
-                ) : user ? (
-                  <>
-                    {/* Show different UI if blocked */}
-                    {isBlocked && !youBlockedThem ? (
-                      <Text c="red" size="sm" fw={500}>
-                        This user has blocked you
-                      </Text>
-                    ) : (
-                      <>
-                        {!youBlockedThem && (
-                          <Button leftSection={isFollowing ? <IconUserMinus size={16} /> : <IconUserPlus size={16} />} variant={isFollowing ? "light" : "filled"} color={isFollowing ? "gray" : "blue"} radius="md" onClick={handleFollowToggle} loading={followLoading} disabled={followLoading || youBlockedThem}>
-                            {isFollowing ? "Following" : "Follow"}
-                          </Button>
-                        )}
-                        <Button leftSection={youBlockedThem ? <IconUserCheck size={16} /> : <IconUserX size={16} />} variant="light" color={youBlockedThem ? "gray" : "red"} radius="md" onClick={handleBlockToggle} loading={blockLoading} disabled={blockLoading}>
-                          {youBlockedThem ? "Unblock" : "Block"}
-                        </Button>
                       </>
-                    )}
-                  </>
-                ) : null}
-              </Group>
-              </>
+                    ) : user ? (
+                      <>
+                        {/* Show different UI if blocked */}
+                        {isBlocked && !youBlockedThem ? (
+                          <Text c="red" size="sm" fw={500}>
+                            This user has blocked you
+                          </Text>
+                        ) : (
+                          <>
+                            {!youBlockedThem && (
+                              <Button
+                                leftSection={
+                                  isFollowing ? (
+                                    <IconUserMinus size={16} />
+                                  ) : (
+                                    <IconUserPlus size={16} />
+                                  )
+                                }
+                                variant={isFollowing ? "light" : "filled"}
+                                color={isFollowing ? "gray" : "blue"}
+                                radius="md"
+                                onClick={handleFollowToggle}
+                                loading={followLoading}
+                                disabled={followLoading || youBlockedThem}
+                              >
+                                {isFollowing ? "Following" : "Follow"}
+                              </Button>
+                            )}
+                            <Button
+                              leftSection={
+                                youBlockedThem ? (
+                                  <IconUserCheck size={16} />
+                                ) : (
+                                  <IconUserX size={16} />
+                                )
+                              }
+                              variant="light"
+                              color={youBlockedThem ? "gray" : "red"}
+                              radius="md"
+                              onClick={handleBlockToggle}
+                              loading={blockLoading}
+                              disabled={blockLoading}
+                            >
+                              {youBlockedThem ? "Unblock" : "Block"}
+                            </Button>
+                          </>
+                        )}
+                      </>
+                    ) : null}
+                  </Group>
+                </>
               )}
             </div>
           </Group>
@@ -673,7 +857,8 @@ export default function ProfilePage() {
                     This Profile is Private
                   </Text>
                   <Text size="sm" c="dimmed" ta="center">
-                    Only <strong>@{profileUsername}</strong> can view their content.
+                    Only <strong>@{profileUsername}</strong> can view their
+                    content.
                   </Text>
                 </Stack>
               </Center>
@@ -703,7 +888,13 @@ export default function ProfilePage() {
                   <Text size="sm" c="dimmed" ta="center">
                     Unblock them to see their content.
                   </Text>
-                  <Button variant="light" color="blue" onClick={handleBlockToggle} loading={blockLoading} mt="sm">
+                  <Button
+                    variant="light"
+                    color="blue"
+                    onClick={handleBlockToggle}
+                    loading={blockLoading}
+                    mt="sm"
+                  >
                     Unblock User
                   </Button>
                 </Stack>
@@ -715,13 +906,22 @@ export default function ProfilePage() {
                 <Title order={2}>{headerTitle}</Title>
                 {isOwner && (
                   <Group>
-                    <Button variant={view === "posted" ? "filled" : "light"} onClick={() => setView("posted")}>
+                    <Button
+                      variant={view === "posted" ? "filled" : "light"}
+                      onClick={() => setView("posted")}
+                    >
                       My Recipes
                     </Button>
-                    <Button variant={view === "drafts" ? "filled" : "light"} onClick={() => setView("drafts")}>
+                    <Button
+                      variant={view === "drafts" ? "filled" : "light"}
+                      onClick={() => setView("drafts")}
+                    >
                       Drafts
                     </Button>
-                    <Button variant={view === "liked" ? "filled" : "light"} onClick={() => setView("liked")}>
+                    <Button
+                      variant={view === "liked" ? "filled" : "light"}
+                      onClick={() => setView("liked")}
+                    >
                       Likes
                     </Button>
                   </Group>
@@ -739,13 +939,25 @@ export default function ProfilePage() {
               {!loading && !error && (
                 <>
                   {recipes.length === 0 ? (
-                    <Text c="dimmed">{view === "posted" ? "No recipes yet." : "No drafts yet."}</Text>
+                    <Text c="dimmed">
+                      {view === "posted" ? "No recipes yet." : "No drafts yet."}
+                    </Text>
                   ) : (
                     <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="lg">
                       {recipes.map((r) => (
-                        <Card key={r.recipe_id} withBorder style={{ textDecoration: "none" }}>
+                        <Card
+                          key={r.recipe_id}
+                          withBorder
+                          style={{ textDecoration: "none" }}
+                        >
                           <Group justify="space-between" align="start" mb="xs">
-                            <Title order={4} style={{ margin: 0 }}>
+                            <Title
+                              order={4}
+                              style={{ margin: 0, cursor: "pointer" }}
+                              onClick={() =>
+                                router.push(`/recipe/${r.recipe_id}`)
+                              }
+                            >
                               {r.title || "(untitled)"}
                             </Title>
 
@@ -753,13 +965,24 @@ export default function ProfilePage() {
                               <Group gap="xs">
                                 {/* Archive / Move to drafts (only show on posted view) */}
                                 {view === "posted" && (
-                                  <Button variant="light" size="compact-sm" leftSection={<IconArchive size={16} />} onClick={() => handleDraft(r.recipe_id)}>
+                                  <Button
+                                    variant="light"
+                                    size="compact-sm"
+                                    leftSection={<IconArchive size={16} />}
+                                    onClick={() => handleDraft(r.recipe_id)}
+                                  >
                                     Draft
                                   </Button>
                                 )}
 
                                 {/* Delete */}
-                                <Button variant="light" color="red" size="compact-sm" leftSection={<IconTrash size={16} />} onClick={() => openDeleteModal(r)}>
+                                <Button
+                                  variant="light"
+                                  color="red"
+                                  size="compact-sm"
+                                  leftSection={<IconTrash size={16} />}
+                                  onClick={() => openDeleteModal(r)}
+                                >
                                   Delete
                                 </Button>
                               </Group>
@@ -773,17 +996,28 @@ export default function ProfilePage() {
                           )}
                           <Group gap="xs">
                             {isOwner && (
-                              <Badge mt="sm" mb="sm" color={r.posted ? "blue" : "gray"} size="sm" variant="light">
+                              <Badge
+                                mt="sm"
+                                mb="sm"
+                                color={r.posted ? "blue" : "gray"}
+                                size="sm"
+                                variant="light"
+                              >
                                 {r.posted ? "Posted" : "Draft"}
                               </Badge>
                             )}
                             {r.visibility === "private" && (
-                              <Badge color="orange" size="sm" variant="light" leftSection={<IconLock size={12} />}>
+                              <Badge
+                                color="orange"
+                                size="sm"
+                                variant="light"
+                                leftSection={<IconLock size={12} />}
+                              >
                                 Private
                               </Badge>
                             )}
                           </Group>
-                          {isOwner ? (
+                          {isOwner && view !== "liked" ? (
                             <Button
                               onClick={() => {
                                 router.push(`/edit-recipe/${r.recipe_id}`);
@@ -794,7 +1028,12 @@ export default function ProfilePage() {
                               Edit Recipe
                             </Button>
                           ) : (
-                            <Button component={Link} href={`/recipe/${r.recipe_id}`} size="compact-md" variant="light">
+                            <Button
+                              component={Link}
+                              href={`/recipe/${r.recipe_id}`}
+                              size="compact-md"
+                              variant="light"
+                            >
                               View Recipe
                             </Button>
                           )}
@@ -825,7 +1064,8 @@ export default function ProfilePage() {
         }}
       >
         <Text size="sm" mb="md">
-          Are you sure you want to delete <b>{pendingDelete?.title || "this recipe"}</b>?<br />
+          Are you sure you want to delete{" "}
+          <b>{pendingDelete?.title || "this recipe"}</b>?<br />
           This action <b>cannot be undone</b>.
         </Text>
 
@@ -840,10 +1080,24 @@ export default function ProfilePage() {
       </Modal>
 
       {/* Followers Modal */}
-      {profileUser?.id && <FollowersModal opened={followersModalOpen} onClose={() => setFollowersModalOpen(false)} userId={profileUser.id} type="followers" />}
+      {profileUser?.id && (
+        <FollowersModal
+          opened={followersModalOpen}
+          onClose={() => setFollowersModalOpen(false)}
+          userId={profileUser.id}
+          type="followers"
+        />
+      )}
 
       {/* Following Modal */}
-      {profileUser?.id && <FollowersModal opened={followingModalOpen} onClose={() => setFollowingModalOpen(false)} userId={profileUser.id} type="following" />}
+      {profileUser?.id && (
+        <FollowersModal
+          opened={followingModalOpen}
+          onClose={() => setFollowingModalOpen(false)}
+          userId={profileUser.id}
+          type="following"
+        />
+      )}
     </AppShell>
   );
 }
