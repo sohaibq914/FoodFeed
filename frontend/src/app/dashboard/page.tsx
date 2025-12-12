@@ -3,6 +3,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import UserSearchModal from "@/components/UserSearchModal";
+
 import {
   Container,
   Title,
@@ -24,7 +26,7 @@ import {
   Checkbox,
   Pagination,
   TextInput,
-  Grid
+  Grid,
 } from "@mantine/core";
 import {
   IconHeart,
@@ -35,6 +37,7 @@ import {
   IconSortAscending,
   IconUser,
   IconLock,
+  IconSearch,
   IconFilter,
 } from "@tabler/icons-react";
 import Header from "@/components/Header";
@@ -48,7 +51,7 @@ type RecipeSummary = {
   user_has_liked?: boolean;
   user_has_disliked?: boolean;
   tags?: string;
-  views: number
+  views: number;
 };
 
 type FeedRecipe = {
@@ -82,6 +85,9 @@ export default function Dashboard() {
   const [animatingRecipeDislike, setAnimatingRecipeDislike] = useState<
     string | null
   >(null);
+
+  const [userSearchOpen, setUserSearchOpen] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState("");
 
   const [tagModalOpen, setTagModalOpen] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -121,9 +127,7 @@ export default function Dashboard() {
       );
     }
     if (sortOption === "popular") {
-      return arr.sort(
-        (a, b) => (b.views || 0) - (a.views || 0)
-      );
+      return arr.sort((a, b) => (b.views || 0) - (a.views || 0));
     }
     return arr.sort(
       (a, b) =>
@@ -143,16 +147,15 @@ export default function Dashboard() {
   const fetchRecipeTags = async (search: any) => {
     try {
       let data;
-      if (search !== null)
-        data = search
+      if (search !== null) data = search;
       else {
         const res = await fetch("http://localhost:5001/recipes");
         data = await res.json();
       }
 
-      console.log("tags")
-      console.log(data)
-      setPages(data.count)
+      console.log("tags");
+      console.log(data);
+      setPages(data.count);
 
       const tagCounts: Record<string, number> = {};
       const displayNames: Record<string, string> = {};
@@ -195,10 +198,10 @@ export default function Dashboard() {
       console.error("Failed to load tags from recipes", e);
       setAllTags([]);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchRecipeTags(null)
+    fetchRecipeTags(null);
   }, []);
 
   // Fetch feed from followed users
@@ -242,18 +245,17 @@ export default function Dashboard() {
       setRecipesLoading(true);
       setRecipesError(null);
 
-      console.log("likes")
+      console.log("likes");
 
       let data;
-      if (search !== null)
-        data = search
+      if (search !== null) data = search;
       else {
         const res = await fetch(`http://localhost:5001/recipes`);
         data = await res.json();
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipes");
       }
 
-      console.log(data.recipes)
+      console.log(data.recipes);
 
       // show only posted
       const postedOnly: RecipeSummary[] = (data.recipes || [])
@@ -267,9 +269,9 @@ export default function Dashboard() {
             ? JSON.parse(r.tags)
             : [],
         }));
-      
-      console.log("postedOnly")
-      console.log(postedOnly)
+
+      console.log("postedOnly");
+      console.log(postedOnly);
 
       // fetch likes ONLY for posted ones
       const withLikes = await Promise.all(
@@ -304,10 +306,10 @@ export default function Dashboard() {
           }
         })
       );
-      console.log("withLikes")
-      console.log(withLikes)
+      console.log("withLikes");
+      console.log(withLikes);
       setRecipes(withLikes);
-      fetchRecipeTags(data)
+      fetchRecipeTags(data);
     } catch (err: any) {
       setRecipesError(err.message || "Failed to fetch recipes");
     } finally {
@@ -413,9 +415,8 @@ export default function Dashboard() {
 
     try {
       if (searchString.length === 0) {
-        fetchRecipe(null)
-      }
-      else {
+        fetchRecipe(null);
+      } else {
         const response = await fetch("http://localhost:5001/search_recipes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -426,21 +427,20 @@ export default function Dashboard() {
 
         const data = await response.json();
 
-        console.log(data)
-        setPages(data.count)
-        setPage(1)
-            
-        if (!response.ok) throw new Error(data?.error || "Failed to search"); 
+        console.log(data);
+        setPages(data.count);
+        setPage(1);
+
+        if (!response.ok) throw new Error(data?.error || "Failed to search");
 
         fetchRecipe(data);
       }
     } catch (err: any) {
       console.error(err);
       setRecipesError(err.message || "Failed to search");
-      setRecipesLoading(false)
+      setRecipesLoading(false);
     }
   };
-
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -448,11 +448,20 @@ export default function Dashboard() {
         <Header showSettingsButton={true} showBackButton={false} />
         <AppShell.Main>
           <Container size="lg" py="xl">
-            <Title order={2}>Your Feed</Title>
+            <Group justify="space-between" align="center" mt="md" mb="md">
+              <Title order={2}>Your Feed</Title>
+
+              <Button
+                leftSection={<IconSearch size={16} />}
+                onClick={() => setUserSearchOpen(true)}
+              >
+                Search for a user
+              </Button>
+            </Group>
+
             <Text c="dimmed" mt="md">
               Recipes from people you follow
             </Text>
-
             {/* === Feed from Followed Users === */}
             <Stack mt="xl" gap="md">
               {feedLoading && (
@@ -590,23 +599,30 @@ export default function Dashboard() {
                   </Card>
                 ))}
             </Stack>
-
             <Divider my="xl" />
-
             {/* === All Recipes (titles only) === */}
             <Title order={3} mt="xl">
               Discover More Recipes
             </Title>
-            
-            <Grid gutter={{ base: "xs", xs: 'xs', md: 'xs', xl: "xs"}}>
-              <Grid.Col span={10}>
-                <TextInput aria-label="Search for recipes" onChange={(e) => setSearchString(e.currentTarget.value)} ></TextInput>
+            <Grid>
+              <Grid.Col span="auto">
+                <TextInput
+                  aria-label="Search for recipes"
+                  onChange={(e) => setSearchString(e.currentTarget.value)}
+                />
               </Grid.Col>
-              <Grid.Col span={2}>
-                <Button type="submit" onClick={() => handleSearch(searchString)} loading={recipesLoading}> Search </Button>
+
+              <Grid.Col span="content">
+                <Button
+                  type="submit"
+                  onClick={() => handleSearch(searchString)}
+                  loading={recipesLoading}
+                  fullWidth
+                >
+                  Search
+                </Button>
               </Grid.Col>
             </Grid>
-
             <Group align="center" justify="start" gap="xs" mt="sm" mb="md">
               <Text c="dimmed" size="sm">
                 Sort by:
@@ -663,7 +679,6 @@ export default function Dashboard() {
                 Filter tags
               </Button>
             </Group>
-
             {recipesLoading && (
               <Center mt="md">
                 <Loader />
@@ -679,7 +694,7 @@ export default function Dashboard() {
                 {recipes.length === 0 ? (
                   <Text c="dimmed">No recipes found.</Text>
                 ) : (
-                  sortedRecipes.slice((page - 1) * 5, (page) * 5).map((r) => (
+                  sortedRecipes.slice((page - 1) * 5, page * 5).map((r) => (
                     <Card
                       key={r.recipe_id}
                       withBorder
@@ -772,12 +787,24 @@ export default function Dashboard() {
                   ))
                 )}
                 <Group justify="center">
-                  <Pagination total={pages} value={page} onChange={setPage} withEdges>
-                  </Pagination>
+                  <Pagination
+                    total={pages}
+                    value={page}
+                    onChange={setPage}
+                    withEdges
+                  ></Pagination>
                 </Group>
               </Stack>
             )}
           </Container>
+
+          {/* modal for user search */}
+          <UserSearchModal
+            opened={userSearchOpen}
+            onClose={() => setUserSearchOpen(false)}
+          />
+
+          {/* Modal for tag filtering */}
           <Modal
             opened={tagModalOpen}
             onClose={() => setTagModalOpen(false)}

@@ -2778,6 +2778,38 @@ def get_notification_preferences_handler():
     except Exception as e:
         print(f"Get notification preferences exception: {str(e)}")
         return jsonify({"error": f"Server error: {str(e)}"}), 500
+    
+    
+@app.route("/search_users", methods=["POST"])
+def search_users():
+    data = request.get_json() or {}
+    
+    query = (data.get("search_string") or data.get("query") or "").strip()
+
+    if not query:
+        return jsonify({"users": []}), 200
+
+    try:
+        # Case-insensitive username search 
+        res = (
+            supabase
+            .table("users")
+            .select("id, username, profile_picture_url")
+            .filter("username", "ilike", f"%{query}%")
+            .order("username", desc=False)
+            .limit(20)
+            .execute()
+        )
+
+        users = res.data or []
+
+        print("search_users query:", query, "results:", len(users))
+
+        return jsonify({"users": users}), 200
+
+    except Exception as e:
+        print("search_users error:", e)
+        return jsonify({"users": [], "error": str(e)}), 500
 
 
 @app.route('/notification-preferences', methods=['POST'])
