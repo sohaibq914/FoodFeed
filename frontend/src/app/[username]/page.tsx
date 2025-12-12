@@ -484,7 +484,7 @@ export default function ProfilePage() {
           {/* Profile Header */}
           <Group align="start" gap="xl" mb="xl">
             <div>
-              <Avatar src={profilePictureLoading ? undefined : profilePictureUrl || undefined} size={120} radius="xl" color="blue">
+              <Avatar src={profilePictureLoading ? undefined : profilePictureUrl || undefined} size={175} radius="xl" color="blue">
                 {profilePictureLoading ? <Loader size={30} /> : <IconUser size={60} />}
               </Avatar>
 
@@ -555,15 +555,15 @@ export default function ProfilePage() {
                 </Card>
               ) : (
                 description && (
-                  <Card withBorder p="md" mb="md">
+                  
                     <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
                       {description}
                     </Text>
-                  </Card>
+                  
                 )
               )}
 
-              <Text c="dimmed" mb="md" size="sm">
+              <Text c="dimmed" mb="md" mt="md" size="sm">
                 {isOwner ? "This is your profile" : "Public view."}
               </Text>
 
@@ -773,7 +773,7 @@ export default function ProfilePage() {
                           )}
                           <Group gap="xs">
                             {isOwner && (
-                              <Badge color={r.posted ? "blue" : "gray"} size="sm" variant="light">
+                              <Badge mt="sm" mb="sm" color={r.posted ? "blue" : "gray"} size="sm" variant="light">
                                 {r.posted ? "Posted" : "Draft"}
                               </Badge>
                             )}
