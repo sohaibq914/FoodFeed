@@ -1009,7 +1009,7 @@ def upload_profile_picture(user_id: str, file_content: bytes, file_name: str, co
         if content_type not in allowed_types:
             return {"error": "Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed."}
 
-        import uuid
+        # import uuid
         file_extension = file_name.split(
             '.')[-1] if '.' in file_name else 'jpg'
         unique_filename = f"profile_pictures/{user_id}_{uuid.uuid4().hex}.{file_extension}"
