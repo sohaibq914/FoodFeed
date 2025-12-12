@@ -965,7 +965,7 @@ def list_recipes():
     try:
         #TODO: optimize, make get_recipe unnecessary
 
-        limit = 5
+        limit = 20
         res = (
             supabase.table("recipes")
             # include it (quoted is safest)
@@ -988,7 +988,7 @@ def list_recipes():
 @app.route("/search_recipes", methods=["POST"])
 def search_recipes():
     try:
-        limit = 5
+        limit = 20
         data = request.get_json()
         search_string = data.get("search_string")
         res = (supabase

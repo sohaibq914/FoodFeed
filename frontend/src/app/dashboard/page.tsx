@@ -694,7 +694,7 @@ export default function Dashboard() {
                 {recipes.length === 0 ? (
                   <Text c="dimmed">No recipes found.</Text>
                 ) : (
-                  sortedRecipes.slice((page - 1) * 5, page * 5).map((r) => (
+                  sortedRecipes.slice((page - 1) * 20, page * 20).map((r) => (
                     <Card
                       key={r.recipe_id}
                       withBorder
