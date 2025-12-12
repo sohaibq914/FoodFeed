@@ -49,7 +49,26 @@ export default function UserSearchModal({
         });
 
         const data = await res.json();
-        setResults(data.users ?? []);
+
+        const normalizedQuery = query.toLowerCase();
+
+        const sorted = (data.users ?? []).sort(
+          (a: UserResult, b: UserResult) => {
+            const aStarts = a.username
+              .toLowerCase()
+              .startsWith(normalizedQuery);
+            const bStarts = b.username
+              .toLowerCase()
+              .startsWith(normalizedQuery);
+
+            if (aStarts && !bStarts) return -1;
+            if (!aStarts && bStarts) return 1;
+
+            return a.username.localeCompare(b.username);
+          }
+        );
+
+        setResults(sorted);
       } catch (err) {
         console.error(err);
       } finally {
@@ -61,7 +80,13 @@ export default function UserSearchModal({
   }, [query]);
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Search for a user" centered size="sm">
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Search for a user"
+      centered
+      size="sm"
+    >
       <Stack>
         <TextInput
           placeholder="Search username..."
@@ -77,7 +102,9 @@ export default function UserSearchModal({
             </Group>
           ) : results.length === 0 ? (
             <Text c="dimmed" ta="center" mt="md">
-              {query.length === 0 ? "Start typing to search..." : "No users found"}
+              {query.length === 0
+                ? "Start typing to search..."
+                : "No users found"}
             </Text>
           ) : (
             results.map((user) => (

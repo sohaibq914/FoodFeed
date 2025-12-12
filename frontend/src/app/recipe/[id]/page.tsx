@@ -442,7 +442,7 @@ export default function RecipePage() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <Container size="md" py="xl">
+        <Container size="lg" py="xl">
           {/* Header row */}
           <Group justify="space-between" align="flex-start">
             <div style={{ flex: 1 }}>
@@ -460,16 +460,25 @@ export default function RecipePage() {
                   {authorUsername}
                 </Link>
               </Text>
-              {recipe.image && (
-                <Image
-                  src={recipe.image}
-                  alt="preview"
-                  radius="sm"
-                  w="auto"
-                  h={140}
-                  fit="contain"
-                  mt="sm"
-                ></Image>
+
+              {tags.length > 0 && (
+                <>
+                  {/* <Text fw={600} mt="md" mb="md">
+                    Tags
+                  </Text> */}
+                  <Group gap="xs" mt="md">
+                    {tags.map((tag, index) => (
+                      <Badge
+                        key={`${tag}-${index}`}
+                        color="indigo"
+                        radius="xl"
+                        variant="light"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </Group>
+                </>
               )}
             </div>
 
@@ -598,32 +607,56 @@ export default function RecipePage() {
           {/* Body */}
           <Paper shadow="xs" p="md" mt="xl">
             <Stack>
-              {recipe.description && (
-                <>
-                  <Text fw={600}>Description</Text>
-                  <Text>{recipe.description}</Text>
-                </>
-              )}
-
-              {/* Prep and cook time */}
-              {(recipe.prep_time > 0 || recipe.cook_time > 0) && (
-                <Group justify="flex" gap="xl">
-                  {recipe.prep_time > 0 && (
-                    <Stack>
-                      <Text fw={600}>Preparation Time</Text>
-                      <Text>{recipe.prep_time} minutes</Text>
-                    </Stack>
+              {/* TOP ROW: text (desc + times) on left, image on right */}
+              <Group
+                align="flex-start"
+                justify="space-between"
+                wrap="nowrap"
+                gap="xl"
+              >
+                {/* LEFT COLUMN: description + prep/cook times */}
+                <Stack style={{ flex: 1, minWidth: 0 }}>
+                  {recipe.description && (
+                    <>
+                      <Text fw={600}>Description</Text>
+                      <Text>{recipe.description}</Text>
+                    </>
                   )}
 
-                  {recipe.cook_time > 0 && (
-                    <Stack>
-                      <Text fw={600}>Cooking Time</Text>
-                      <Text>{recipe.cook_time} minutes</Text>
-                    </Stack>
-                  )}
-                </Group>
-              )}
+                  {(recipe.prep_time > 0 || recipe.cook_time > 0) && (
+                    <Group justify="flex-start" gap="xl" mt="sm">
+                      {recipe.prep_time > 0 && (
+                        <Stack gap={0}>
+                          <Text fw={600}>Preparation Time</Text>
+                          <Text>{recipe.prep_time} minutes</Text>
+                        </Stack>
+                      )}
 
+                      {recipe.cook_time > 0 && (
+                        <Stack gap={0}>
+                          <Text fw={600}>Cooking Time</Text>
+                          <Text>{recipe.cook_time} minutes</Text>
+                        </Stack>
+                      )}
+                    </Group>
+                  )}
+                </Stack>
+
+                {/* RIGHT COLUMN: image */}
+                {recipe.image && (
+                  <Image
+                    src={recipe.image}
+                    alt="preview"
+                    radius="sm"
+                    style={{
+                      flex: 1, // take all remaining space
+                      maxWidth: "50%", // limit so it doesn’t overwhelm
+                      height: "auto",
+                      objectFit: "contain", // keep proportions
+                    }}
+                  />
+                )}
+              </Group>
               {ingredients && (
                 <>
                   <Text fw={600} mt="md">
@@ -678,26 +711,6 @@ export default function RecipePage() {
                     Allergens
                   </Text>
                   <Text>{recipe.allergens}</Text>
-                </>
-              )}
-
-              {tags.length > 0 && (
-                <>
-                  <Text fw={600} mt="md">
-                    Tags
-                  </Text>
-                  <Group gap="xs">
-                    {tags.map((tag, index) => (
-                      <Badge
-                        key={`${tag}-${index}`}
-                        color="indigo"
-                        radius="xl"
-                        variant="light"
-                      >
-                        {tag}
-                      </Badge>
-                    ))}
-                  </Group>
                 </>
               )}
             </Stack>
