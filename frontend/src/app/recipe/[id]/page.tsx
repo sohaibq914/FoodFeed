@@ -615,7 +615,7 @@ export default function RecipePage() {
                 gap="xl"
               >
                 {/* LEFT COLUMN: description + prep/cook times */}
-                <Stack style={{ flex: 1, minWidth: 0 }}>
+                <Stack style={{ flex: 1, minWidth: 0, maxWidth: "50%" }}>
                   {recipe.description && (
                     <>
                       <Text fw={600}>Description</Text>
