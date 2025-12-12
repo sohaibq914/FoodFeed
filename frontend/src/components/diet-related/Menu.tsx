@@ -86,7 +86,8 @@ export default function Menu({user_id, type}: MenuInfo) {
                     .map((value, index) => {
                         return <Group key={index}>
                                 <FoodCard food_name={String(value.name)} 
-                                description={String(value.description)}></FoodCard>
+                                description={String(value.description)}
+                                type={type}></FoodCard>
                                 <Group gap="xs" align="center" onClick={(e) => e.preventDefault()}>
                                     <ActionIcon
                                         variant={value.favorite ? "filled" : "light"}

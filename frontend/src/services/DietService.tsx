@@ -72,6 +72,12 @@ export interface RestrictionItem {
     user_has: string;
 }  
 
+export type Recipe = {
+  recipe_id: string;
+  title: string;
+  views: number
+};
+
 class MealHolder implements Meal {
     id: string;
     name: string;
@@ -415,6 +421,29 @@ export const get_food_of_type = async (user_id: string, type: string, query: str
     catch {
     }
     return {success: false, message: data.error, foods: null};
+}
+
+export const get_recipes_by_ingredient = async (ingredient: string): Promise<{success: boolean, message:string|null, recipes:Recipe[]}> => {    
+    const {response, data} = await caller.call_function(
+        '/recipe_by_ingredient',
+        JSON.stringify({
+            'ingredient': ingredient.toLowerCase()
+        })
+    );
+        
+    try {
+        if (response.ok) {
+            console.log("get recipes")
+            console.log(ingredient)
+            console.log(data)
+            const items: { recipes: Recipe[] } = data
+            console.log(items.recipes)
+            return {success: true, message: null, recipes: items.recipes}
+        }
+    }
+    catch {
+    }
+    return {success: false, message: data.error, recipes: []};
 }
 
 export const get_all_food_of_type = async (user_id: string, type: string, query: string): Promise<{success: boolean, message:string|null, foods:FoodItem[]|null}> => {    
