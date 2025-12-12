@@ -4,7 +4,7 @@ import { TextInput, Group, Button, Badge } from "@mantine/core";
 import { IconSearch, IconX } from "@tabler/icons-react";
 import { useRestaurants } from "@/contexts/restaurants/RestaurantContext";
 
-const Endpoint = "http://0.0.0.0:5001";
+const Endpoint = "http://localhost:5001";
 
 export default function RestaurantSearchBar(): React.ReactElement {
     const { filter, setFilter, items, tagQuery, setTagQuery } = useRestaurants();
