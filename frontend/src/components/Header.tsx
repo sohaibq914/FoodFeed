@@ -88,20 +88,13 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
               Messages
             </Button>
               
-            <Button
-                component={Link}
-                href="/submission-history"
-                variant="light"
-                leftSection={<IconFolderCheck size={16} />}
-              >
-              </Button>
+            <ActionIcon component={Link} href="/submission-history" variant="light" size="lg" color="blue">
+                <IconFolderCheck size={20} />
+              </ActionIcon>
             {isAdmin ?
-            <Button
-                component={Link}
-                href="/submissions"
-                variant="light"
-                leftSection={<IconFilesFilled size={16} />}
-              ></Button> : <></>}
+            <ActionIcon component={Link} href="/submissions" variant="light" size="lg" color="blue">
+                <IconFilesFilled size={20} />
+              </ActionIcon> : <></>}
 
             {/* Notifications Bell */}
             <Indicator label={unreadCount} disabled={unreadCount === 0} color="red" size={16} inline>
