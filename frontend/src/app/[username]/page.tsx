@@ -633,9 +633,9 @@ export default function ProfilePage() {
                     <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={handleEditDescription}>
                       {description ? 'Edit Description' : 'Add Description'}
                     </Button>
-                    <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
+                    {/* <Button leftSection={<IconPencil size={16} />} variant="light" color="blue" radius="md" onClick={() => alert("Edit profile coming soon")}>
                       Edit Profile
-                    </Button>
+                    </Button> */}
                   </>
                 ) : user ? (
                   <>

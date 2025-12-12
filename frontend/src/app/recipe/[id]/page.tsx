@@ -134,8 +134,15 @@ export default function RecipePage() {
         if (!res.ok) throw new Error(data?.error || "Failed to fetch recipe");
 
         setRecipe(data as Recipe);
-        setIngredients(JSON.parse(data.ingredients));
-        setTags(JSON.parse(data.tags));
+        setIngredients(JSON.parse(data.ingredients || "[]"));
+
+        try {
+          const parsedTags = data.tags ? JSON.parse(data.tags) : [];
+          setTags(parsedTags);
+        } catch {
+          setTags([]);
+        }
+
         console.log(recipe);
         setLikeCount(data.like_count ?? 0);
         setIsLiked(Boolean(data.user_has_liked));
@@ -149,8 +156,8 @@ export default function RecipePage() {
             }),
           });
         } catch (e: any) {
-          setError(e.message || "Failed to increment view")
-        } 
+          setError(e.message || "Failed to increment view");
+        }
       } catch (e: any) {
         setError(e.message || "Failed to fetch recipe");
       } finally {
@@ -599,20 +606,23 @@ export default function RecipePage() {
               )}
 
               {/* Prep and cook time */}
-              {(recipe.prep_time || recipe.cook_time) && (<Group justify="flex" gap="xl">
-                {recipe.prep_time &&  (
-                  <Stack>
-                    <Text fw={600}>Preparation Time </Text>
-                    <Text>{recipe.prep_time} minutes</Text>
-                  </Stack>
-                )}
-                {recipe.cook_time && (
-                  <Stack>
-                    <Text fw={600}>Cooking Time</Text>
-                    <Text>{recipe.cook_time} minutes</Text>
-                  </Stack>
-                )}
-              </Group>)}
+              {(recipe.prep_time > 0 || recipe.cook_time > 0) && (
+                <Group justify="flex" gap="xl">
+                  {recipe.prep_time > 0 && (
+                    <Stack>
+                      <Text fw={600}>Preparation Time</Text>
+                      <Text>{recipe.prep_time} minutes</Text>
+                    </Stack>
+                  )}
+
+                  {recipe.cook_time > 0 && (
+                    <Stack>
+                      <Text fw={600}>Cooking Time</Text>
+                      <Text>{recipe.cook_time} minutes</Text>
+                    </Stack>
+                  )}
+                </Group>
+              )}
 
               {ingredients && (
                 <>
@@ -671,25 +681,25 @@ export default function RecipePage() {
                 </>
               )}
 
-              {recipe.tags && (recipe.tags.length === 0 && (
+              {tags.length > 0 && (
                 <>
                   <Text fw={600} mt="md">
                     Tags
                   </Text>
-                  <Group>
+                  <Group gap="xs">
                     {tags.map((tag, index) => (
                       <Badge
-                        key={index}
-                        color="indigo" // color
-                        radius="xl" // makes it rounded
-                        variant="light" // soft background
+                        key={`${tag}-${index}`}
+                        color="indigo"
+                        radius="xl"
+                        variant="light"
                       >
                         {tag}
                       </Badge>
                     ))}
                   </Group>
                 </>
-              ))}
+              )}
             </Stack>
           </Paper>
 
