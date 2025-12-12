@@ -3,6 +3,7 @@
 import FoodFormApprovalDisplay from "@/components/food-approval/FoodFormApprovalDisplay";
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
+import { is_admin } from "@/services/AdminService";
 import { AppShell, Container, Group, Stack, Title, Text, Button } from "@mantine/core";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -15,15 +16,22 @@ export default function DietPage() {
       if (!loading && !user) {
         router.push("/login");
       }
-      else if (!user?.isAdmin) {
-        router.push("/")
-      }
       window.addEventListener('beforeunload', alertUser)
 
       return () => {
           window.removeEventListener('beforeunload', alertUser)
       }
     }, [user, loading, router]);
+
+    useEffect(() => {
+      const runner = async () => {
+        const {success, message, is_admin: isAnAdmin} = await is_admin(user?.id!)
+        if (!success || !isAnAdmin) {
+          router.push("/login");
+        }
+      }
+      runner()
+    }, ["isAdmin"])
 
     const alertUser = (e: BeforeUnloadEvent) => {
       e.preventDefault()

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container, Title, Button, Group, AppShell, Text, Indicator, ActionIcon } from "@mantine/core";
 import { IconSettings, IconMessage, IconPlus, IconFolderCheck, IconFilesFilled, IconBell } from "@tabler/icons-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { is_admin } from "@/services/AdminService"
 import { useEffect, useState } from "react";
 
 interface CommonHeaderProps {
@@ -12,6 +13,8 @@ interface CommonHeaderProps {
 export default function CommonHeader({ showBackButton = false, showSettingsButton = true }: CommonHeaderProps) {
   const { user, signOut } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isAdmin, setIsAdmin] = useState(false)
+
   useEffect(() => {
     if (user?.id) {
       fetchUnreadCount();
@@ -20,6 +23,16 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  useEffect(() => {
+    const runner = async () => {
+      const {success, message, is_admin: isAnAdmin} = await is_admin(user?.id!)
+      if (success) {
+        setIsAdmin(isAnAdmin)
+      }
+    }
+    runner()
+  }, ["isAdmin"])
 
   const fetchUnreadCount = async () => {
     if (!user?.id) return;
@@ -82,14 +95,13 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
                 leftSection={<IconFolderCheck size={16} />}
               >
               </Button>
-            {user?.isAdmin ?
+            {isAdmin ?
             <Button
                 component={Link}
                 href="/submissions"
                 variant="light"
                 leftSection={<IconFilesFilled size={16} />}
-              >
-              </Button> : <></>}
+              ></Button> : <></>}
 
             {/* Notifications Bell */}
             <Indicator label={unreadCount} disabled={unreadCount === 0} color="red" size={16} inline>
@@ -98,7 +110,7 @@ export default function CommonHeader({ showBackButton = false, showSettingsButto
               </ActionIcon>
             </Indicator>
 
-            <Button component={Link} href="/diet-page" variant="light" leftSection={<IconSettings size={16} />}>
+            <Button component={Link} href="/diet-page" variant="light">
               Diet Page
             </Button>
 

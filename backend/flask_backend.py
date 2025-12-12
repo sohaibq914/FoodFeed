@@ -39,12 +39,12 @@ except Exception as e:
 # Admin status
 
 
-@app.route("/is_admin", methods=["GET"])
+@app.route("/verify_admin/is_admin", methods=["POST"])
 def get_admin_status():
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-        return jsonify({"recipes": is_admin(user_id)}), 200
+        return jsonify({"is_admin": is_admin(user_id)}), 200
     except Exception as e:
         print(f"Admin exception: {str(e)}")
         return jsonify({"error": "Failed to get admin status."}), 500

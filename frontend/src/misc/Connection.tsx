@@ -10,7 +10,6 @@ export class API_Caller {
             },
             body: body,
           });
-          
         return await {response: response, data: await response.json()};
     }
 };
