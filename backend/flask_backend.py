@@ -1610,7 +1610,7 @@ def get_user_meals():
         data = request.get_json()
         user_id = data.get("user_id")
         loaded = data.get("loaded")
-        amount = 2
+        amount = 5
         meals = get_all_user_meals(user_id)
         sent_meals = []
         averages = get_hour_average(meals)
@@ -1632,7 +1632,7 @@ def get_user_meals_range():
         start = data.get("start")
         end = data.get("end")
         loaded = data.get("loaded")
-        amount = 2
+        amount = 5
         meals = get_meals(user_id, start, end)
         print(meals)
         sent_meals = []
@@ -1661,7 +1661,7 @@ def get_food_of_type():
         user_id = data.get('user_id')
         query = data.get('query')
         loaded = data.get("loaded")
-        amount = 2
+        amount = 5
         foods = get_food_items(user_id, type, query)
         foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []
@@ -1734,7 +1734,7 @@ def get_elligible_foods():
         type = data.get('type')
         query = data.get('query')
         loaded = data.get("loaded")
-        amount = 2
+        amount = 5
         foods = get_elligble_foods_type(user_id, type, query)
         foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []
@@ -1768,7 +1768,7 @@ def get_food_of_nutrient():
         nutr_id = data.get('nutrient_id')
         query = data.get("query")
         loaded = data.get("loaded")
-        amount = 2
+        amount = 5
         foods = get_elligble_foods_nutrient(user_id, nutr_id, query)
         foods.sort(reverse=False, key= lambda x: (sort_by_favorite(x), sort_by_name(x)))
         sent_foods = []

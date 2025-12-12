@@ -74,6 +74,7 @@ export default function NutritionCard({user_id, item}: NutritionInfo) {
                         return <Group key={value.id}>
                                 <FoodCard
                                     food_name={String(value.name)} 
+                                    type={""}
                                     description={String(value.description)}
                                     ></FoodCard>
                                 {value.favorite && <IconHeartFilled color='red'/>}
